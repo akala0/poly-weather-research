@@ -47,6 +47,33 @@
 
 要求：Python 3.12 或更高版本、Git、网络可访问上述公开接口。推荐安装 `uv`。
 
+### macOS（推荐）
+
+先安装 Apple Command Line Tools、Homebrew、GitHub CLI 和 `uv`：
+
+```bash
+xcode-select --install
+brew install git gh uv
+gh auth login
+```
+
+选择 `GitHub.com`、`HTTPS` 和浏览器登录，然后克隆私有仓库：
+
+```bash
+git clone https://github.com/akala0/poly-weather-research.git
+cd poly-weather-research
+uv sync --extra dev
+uv run ruff check src tests
+uv run pytest -q
+uv run poly-weather validate-settlements
+```
+
+项目没有必须依赖 Windows 的运行时代码。`pathlib`、IANA 时区和依赖锁文件可在 macOS 使用；不要复制 Windows 的 `.venv`，必须在 Mac 上重新执行 `uv sync`。Apple Silicon 与 Intel Mac 均应使用各自平台重新解析的 Python 二进制依赖。
+
+如果 Homebrew 尚未安装，请从 [brew.sh](https://brew.sh/) 使用其官方安装命令，不要从第三方脚本安装。
+
+### Windows
+
 ```powershell
 git clone <GitHub 仓库地址>
 cd poly-weather-research
@@ -70,6 +97,8 @@ py -3.12 -m venv .venv
 
 - 从这台电脑安全复制整个 `D:\poly\data` 目录，以保留监测历史；复制前先停止三个守护进程，避免得到不一致的 DuckDB/WAL。
 - 不复制数据，在新电脑重建校准样本。没有研究库时，实时校准闸门会保持 `blocked`，这是预期的 fail-closed 行为。
+
+DuckDB、SQLite 和 JSONL 文件可以从 Windows 复制到 macOS，但不要复制 `.venv`、PID 或旧日志。建议在停止守护进程后打包 `D:\poly\data`，在 Mac 仓库根目录解压为 `data/`。历史 payload 中可能保留旧的 Windows 绝对归档路径；这些字段只用于审计展示，不应作为 Mac 上的新写入路径。
 
 重建当前实时校准样本：
 
@@ -97,6 +126,18 @@ uv run poly-weather signal-engine --market highest-temperature-in-nyc-on-august-
 ```powershell
 uv run poly-weather stream-status
 ```
+
+macOS 使用相同参数，在三个 Terminal 窗口分别运行：
+
+```bash
+uv run poly-weather market-stream highest-temperature-in-nyc-on-august-22-2026 highest-temperature-in-los-angeles-on-august-22-2026 --runtime 0
+
+uv run poly-weather weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed --runtime 0
+
+uv run poly-weather signal-engine --market highest-temperature-in-nyc-on-august-22-2026=new-york-daily-high-research-seed --market highest-temperature-in-los-angeles-on-august-22-2026=los-angeles-daily-high-research-seed --runtime 0
+```
+
+初次接手建议先在前台运行并观察 `uv run poly-weather stream-status`。验证稳定后再使用 `tmux`、`launchd` 或其他 macOS 服务管理方式；不要一开始就配置自动重启，以免错误参数持续写入数据。
 
 关键文件：
 
