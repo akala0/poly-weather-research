@@ -1,0 +1,5 @@
+from poly_weather.cli import app
+
+if __name__ == "__main__":
+    app()
+
