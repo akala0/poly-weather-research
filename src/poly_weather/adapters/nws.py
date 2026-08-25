@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from poly_weather.domain import NwsObservation, ObservedDailyHigh, TruthKind
+from poly_weather.temperature import celsius_to_fahrenheit
 
 
 class NwsClient:
@@ -45,10 +46,14 @@ class NwsClient:
         payload = response.json()
         properties = payload.get("properties", {})
         temperature = properties.get("temperature", {}).get("value")
+        temperature_decimal = None if temperature is None else Decimal(str(temperature))
         return NwsObservation(
             station_id=normalized,
             timestamp=properties["timestamp"],
-            temperature_c=None if temperature is None else Decimal(str(temperature)),
+            temperature_c=temperature_decimal,
+            temperature_precision_degraded=(
+                temperature_decimal is not None and temperature_decimal.as_tuple().exponent >= 0
+            ),
             raw=payload,
         )
 
@@ -112,7 +117,7 @@ class NwsClient:
                 value = Decimal(str(measure["value"]))
                 unit_code = str(measure.get("unitCode") or "")
                 if unit_code.endswith("degC"):
-                    value = value * Decimal(9) / Decimal(5) + Decimal(32)
+                    value = celsius_to_fahrenheit(value)
                 elif not unit_code.endswith("degF"):
                     raise ValueError(f"unsupported NWS temperature unit: {unit_code!r}")
                 observations.append((observed_at, value))

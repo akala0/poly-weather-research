@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -8,9 +9,50 @@ import httpx
 
 from poly_weather.domain import AviationWeatherSnapshot, MetarReport, TafReport
 
+_TENTHS_GROUP = re.compile(
+    r"(?:^|\s)T(?P<temp_sign>[01])(?P<temp>\d{3})"
+    r"(?P<dew_sign>[01])(?P<dew>\d{3})(?:\s|$)"
+)
+
 
 def _epoch(value: object) -> datetime:
     return datetime.fromtimestamp(int(value), tz=UTC)
+
+
+def parse_metar_temperature(row: dict[str, Any]) -> tuple[Decimal | None, Decimal | None, str, bool]:
+    """Prefer the METAR remarks T group; mark whole-degree body/API fallback."""
+    raw_text = str(row.get("rawOb") or "")
+    match = _TENTHS_GROUP.search(raw_text)
+    if match:
+        temperature = Decimal(match.group("temp")) / Decimal(10)
+        dewpoint = Decimal(match.group("dew")) / Decimal(10)
+        if match.group("temp_sign") == "1":
+            temperature = -temperature
+        if match.group("dew_sign") == "1":
+            dewpoint = -dewpoint
+        return temperature, dewpoint, "metar_remarks_t_group", False
+    temperature = None if row.get("temp") is None else Decimal(str(row["temp"]))
+    dewpoint = None if row.get("dewp") is None else Decimal(str(row["dewp"]))
+    return temperature, dewpoint, "metar_body_or_api_whole_degree", temperature is not None
+
+
+def parse_metar_report(row: dict[str, Any], *, station_id: str) -> MetarReport:
+    temperature, dewpoint, source, degraded = parse_metar_temperature(row)
+    return MetarReport(
+        station_id=str(row.get("icaoId") or station_id).upper(),
+        observed_at=_epoch(row["obsTime"]),
+        temperature_c=temperature,
+        dewpoint_c=dewpoint,
+        temperature_source=source,
+        temperature_precision_degraded=degraded,
+        raw_text=str(row.get("rawOb") or ""),
+        flight_category=row.get("fltCat"),
+        raw={
+            **row,
+            "temperature_source": source,
+            "temperature_precision_degraded": degraded,
+        },
+    )
 
 
 class AviationWeatherClient:
@@ -58,19 +100,7 @@ class AviationWeatherClient:
         return tuple(
             sorted(
                 (
-                    MetarReport(
-                        station_id=str(row.get("icaoId") or station_id).upper(),
-                        observed_at=_epoch(row["obsTime"]),
-                        temperature_c=(
-                            None if row.get("temp") is None else Decimal(str(row["temp"]))
-                        ),
-                        dewpoint_c=(
-                            None if row.get("dewp") is None else Decimal(str(row["dewp"]))
-                        ),
-                        raw_text=str(row.get("rawOb") or ""),
-                        flight_category=row.get("fltCat"),
-                        raw=row,
-                    )
+                    parse_metar_report(row, station_id=station_id)
                     for row in rows
                     if row.get("obsTime") is not None
                 ),

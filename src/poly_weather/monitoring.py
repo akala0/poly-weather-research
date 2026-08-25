@@ -13,6 +13,7 @@ from poly_weather.domain import (
     NwsObservation,
     TafReport,
 )
+from poly_weather.temperature import celsius_to_fahrenheit
 
 
 class MonitorThresholds(BaseModel):
@@ -27,7 +28,7 @@ class MonitorThresholds(BaseModel):
 def _fahrenheit(value_c: Decimal | None) -> Decimal | None:
     if value_c is None:
         return None
-    return value_c * Decimal(9) / Decimal(5) + Decimal(32)
+    return celsius_to_fahrenheit(value_c)
 
 
 def _taf_summary(taf: TafReport | None) -> tuple[bool, bool, int | None]:
