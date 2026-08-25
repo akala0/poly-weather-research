@@ -1,6 +1,6 @@
 # Poly Weather 开发交接说明
 
-更新日期：2026-08-22
+更新日期：2026-08-24
 
 ## 项目定位与安全边界
 
@@ -11,33 +11,40 @@
 ## 当前已完成
 
 - Polymarket Gamma/CLOB 市场发现、历史价格采集和公共 Market WebSocket。
-- WebSocket 单连接同时监测纽约和洛杉矶共 44 个 outcome token。
-- NOAA/NWS 最新机场观测、AWC METAR/TAF 与 GEFS 集合预报采集。
-- KLGA、KLAX 双站点异步天气守护进程。
+- WebSocket 单连接已真实覆盖 10 城当天和次日共 440 个 outcome token；暂不需要连接池。
+- NOAA/NWS 最新机场观测、AWC METAR/TAF 与 Open-Meteo deterministic 预报采集。
+- KLGA、KLAX、KORD、KMIA、KATL、KDAL、KHOU、KSEA 八站点异步天气守护进程。
 - 原始 JSONL、SQLite/DuckDB 研究存储和带时间戳的审计记录。
-- 温度分桶解析、连续性检查、整华氏度 `ROUND_HALF_UP` 规则。
+- 温度分桶解析、连续性检查及基于 Normal CDF 半度边界的概率积分。
 - 结算证据解析、SHA-256 快照与 fail-closed 核验。
 - 同站点 NOAA NCEI 日最高温与 Open-Meteo Previous Runs 历史预报连接。
-- 无前视偏差的滚动校准评估：MAE、RMSE、Brier、LogLoss。
+- `lead_days=0` 前视阻断；校准和回测只允许 Previous Runs lead 1–7。
+- Open-Meteo 请求/返回网格 3 km fail-closed 校验。
+- GFS/ICON/GEM 一次请求式历史采集、DuckDB JSON 逐模型值和逆 MAE 权重学习。
+- 真实 2°F 桶概率、首选桶命中率及 `evaluate-bucket-skill` CLI。
+- 实时天气流已切换到逐站点学习权重的 GFS/ICON/GEM blend，事件保留三模型和 blended 完整序列。
+- signal engine 只消费 `multi_model_deterministic_forecast`，并校验流权重与校准权重完全一致。
 - 实时原始概率、验证后选用概率、盘口净边际和可信度闸门。
-- 市场原始流与 DuckDB 写入分离，数据库检查点不会阻塞 WebSocket 收包。
+- 完整 `book` + 所有逐档增量无损写 JSONL；DuckDB 保存初始和每资产 30 秒深度检查点，避免拖慢收包。
+- $50/$200/$1000 深度成交均价、滑点、部分成交比例和扣滑点边际已进入只读信号快照。
+- `liquidity-report` 与 `execution-cost-calibration` CLI 已加入；旧 p 代理交易与现有深度档案暂无日期重叠。
 - 市场、天气、信号心跳监测与过期阻断。
-- 37 项单元测试及 Ruff 静态检查。
+- 候选净边际超过 15% 时强制告警并阻止 paper alert。
+- 66 项单元测试及 Ruff 静态检查。
 
 ## 当前校准结论
 
-本机研究库各包含 80 个 `lead_days=0` 样本和 80 个 `lead_days=1` 样本。实时系统使用 `lead_days=0`，且只使用目标日前的数据。
+P0 验证确认 Previous Runs `lead_days=0` 含目标日内模型更新，不能用于校准或回测。实时和 CLI 现统一使用 deterministic 数据；历史回归及校准默认使用 lead 1。现有 day 0 数据仍保留用于审计，但所有生产 CLI 和实时校准入口都会拒绝它。
 
-- KLGA：50 个样本外测试；原始 RMSE 约 1.469°F，校准 RMSE 约 1.474°F。保留已验证的原始概率，不采用偏差修正。
-- KLAX：50 个样本外测试；原始 RMSE 约 0.855°F，校准 RMSE 约 0.926°F；Brier 与 LogLoss 改善，且 RMSE 退化未超过 10% 闸门。采用约 `+0.385°F` 的偏差修正。
+2026-08-22 洛杉矶回归使用 lead 1 单值 82.2°F、81 条此前样本的 `+0.764°F` 偏差和 2.647°F 残差标准差，模型首选桶由旧 ensemble 路径的 86–87°F 修正为 82–83°F。该结果验证管线修复，不证明存在稳定盈利能力。
 
-这些结果只说明管线与当前校准策略通过了预设验证规则，不证明存在稳定盈利能力。
+多模型 walk-forward 实验结果：KLAX 在多模型共同可用的 78 天上有 48 个测试日，真实桶平均概率由同日期 GFS 的 19.80% 提升至 24.94%，首选桶命中率由 25.0% 提升至 43.75%；全样本诊断权重约为 GFS 46.2%、ICON 29.5%、GEM 24.3%。KLGA 的 51 个测试日从 GFS 的 18.84%/27.45% 提升至多模型的 24.82%/35.29%，全样本权重约为 GFS 32.1%、ICON 35.2%、GEM 32.7%。权重在正式评估中按测试日逐步学习，全样本权重只作诊断展示。
 
 ## 尚未完成
 
-1. 联合历史回放：需要把当时可见的天气、集合预报版本和 CLOB 盘口严格按时间对齐。
-2. 成交可实现性：当前边际基于最佳卖价和固定成本缓冲，尚未完整模拟盘口深度、排队、滑点和短时撤单。
-3. 多日、多城市泛化：当前实时配置只验证了 KLGA/KLAX 和 2026-08-22 两个事件。
+1. 联合历史回放：需要使用 Single Runs 固定初始化时间，把当时已发布的 deterministic 跑次与 CLOB 盘口严格按时间对齐；Previous Runs lead 1 仍不是完整的单一 vintage。
+2. 成交可实现性：完整深度吃单成本已经估算，但仍未模拟挂单排队、短时撤单和真实手续费；现有结论仍不能视作可执行收益。
+3. 多日、多城市泛化：8 城市行情采集已启动，但新增六城的结算 registry 仍是 `unverified`，且尚未积累足够已结算样本。
 4. 自动市场轮换：每日新事件仍需要发现、核验并更新运行参数。
 5. Wunderground 最终结算差异审计：实时信号使用同机场 NOAA 数据，但最终仍应记录官方页面值并比较差异。
 6. 告警渠道、服务管理、开机自启、进程自动拉起与磁盘保留策略。
@@ -93,48 +100,52 @@ py -3.12 -m venv .venv
 
 ## 数据不会随 Git 仓库迁移
 
-`data/` 被有意排除，因为其中包含约数百 MB 的实时 JSONL、DuckDB、WAL、状态和日志。新电脑有两种选择：
+`data/` 被有意排除，因为其中包含持续增长的实时 JSONL、DuckDB、状态和日志。新电脑有两种选择：
 
 - 从这台电脑安全复制整个 `D:\poly\data` 目录，以保留监测历史；复制前先停止三个守护进程，避免得到不一致的 DuckDB/WAL。
 - 不复制数据，在新电脑重建校准样本。没有研究库时，实时校准闸门会保持 `blocked`，这是预期的 fail-closed 行为。
 
 DuckDB、SQLite 和 JSONL 文件可以从 Windows 复制到 macOS，但不要复制 `.venv`、PID 或旧日志。建议在停止守护进程后打包 `D:\poly\data`，在 Mac 仓库根目录解压为 `data/`。历史 payload 中可能保留旧的 Windows 绝对归档路径；这些字段只用于审计展示，不应作为 Mac 上的新写入路径。
 
+当前 Windows 主机已对 `data/raw/polymarket_clob_websocket` 启用 NTFS 透明压缩。2026-08-24 实测 863 MB 逻辑 JSON 占用约 350 MB 物理空间（2.5:1）；读取、测试和复制时仍表现为普通 JSONL。macOS 不继承 NTFS 压缩属性，因此迁移后需要另行配置 APFS 压缩/归档和磁盘保留策略。
+
 重建当前实时校准样本：
 
 ```powershell
-uv run poly-weather backfill-calibration new-york-daily-high-research-seed 2026-06-01 2026-08-21 --lead-days 0
-uv run poly-weather backfill-calibration los-angeles-daily-high-research-seed 2026-06-01 2026-08-21 --lead-days 0
-uv run poly-weather evaluate-calibration new-york-daily-high-research-seed --lead-days 0
-uv run poly-weather evaluate-calibration los-angeles-daily-high-research-seed --lead-days 0
+uv run poly-weather backfill-calibration new-york-daily-high-research-seed 2026-06-01 2026-08-21 --lead-days 1 --multi-model
+uv run poly-weather backfill-calibration los-angeles-daily-high-research-seed 2026-06-01 2026-08-21 --lead-days 1 --multi-model
+uv run poly-weather evaluate-bucket-skill new-york-daily-high-research-seed --start-date 2026-06-01 --end-date 2026-08-21 --lead-days 1
+uv run poly-weather evaluate-bucket-skill los-angeles-daily-high-research-seed --start-date 2026-06-01 --end-date 2026-08-21 --lead-days 1
 ```
 
-## 双城市只读运行
+## 八城市只读行情运行
 
-以下三个命令需要分别保持运行。事件 slug 带日期，切换日期时必须先核验新事件规则，不能只替换日期后直接认为可用。
+以下命令需要分别保持运行。市场事件由 supervisor 自动发现并严格核验，不再手工替换日期 slug。
 
 ```powershell
-uv run poly-weather market-stream highest-temperature-in-nyc-on-august-22-2026 highest-temperature-in-los-angeles-on-august-22-2026 --runtime 0
+uv run poly-weather market-supervisor --runtime 0
 
-uv run poly-weather weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed --runtime 0
+uv run poly-weather weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed chicago-daily-high-research-seed miami-daily-high-research-seed atlanta-daily-high-research-seed dallas-daily-high-research-seed houston-daily-high-research-seed seattle-daily-high-research-seed chongqing-daily-high-research-seed chengdu-daily-high-research-seed --runtime 0
 
-uv run poly-weather signal-engine --market highest-temperature-in-nyc-on-august-22-2026=new-york-daily-high-research-seed --market highest-temperature-in-los-angeles-on-august-22-2026=los-angeles-daily-high-research-seed --runtime 0
+uv run poly-weather signal-engine --supervised --runtime 0
 ```
 
 查看心跳：
 
 ```powershell
 uv run poly-weather stream-status
+uv run poly-weather liquidity-report --source auto
+uv run poly-weather execution-cost-calibration
 ```
 
 macOS 使用相同参数，在三个 Terminal 窗口分别运行：
 
 ```bash
-uv run poly-weather market-stream highest-temperature-in-nyc-on-august-22-2026 highest-temperature-in-los-angeles-on-august-22-2026 --runtime 0
+uv run poly-weather market-supervisor --runtime 0
 
-uv run poly-weather weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed --runtime 0
+uv run poly-weather weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed chicago-daily-high-research-seed miami-daily-high-research-seed atlanta-daily-high-research-seed dallas-daily-high-research-seed houston-daily-high-research-seed seattle-daily-high-research-seed chongqing-daily-high-research-seed chengdu-daily-high-research-seed --runtime 0
 
-uv run poly-weather signal-engine --market highest-temperature-in-nyc-on-august-22-2026=new-york-daily-high-research-seed --market highest-temperature-in-los-angeles-on-august-22-2026=los-angeles-daily-high-research-seed --runtime 0
+uv run poly-weather signal-engine --supervised --runtime 0
 ```
 
 初次接手建议先在前台运行并观察 `uv run poly-weather stream-status`。验证稳定后再使用 `tmux`、`launchd` 或其他 macOS 服务管理方式；不要一开始就配置自动重启，以免错误参数持续写入数据。
@@ -142,6 +153,8 @@ uv run poly-weather signal-engine --market highest-temperature-in-nyc-on-august-
 关键文件：
 
 - `data/runtime/polymarket_ws_status.json`
+- `data/runtime/market_supervisor_status.json`
+- `data/runtime/signal_config_update.json`
 - `data/runtime/weather_daemon_status.json`
 - `data/runtime/signal_engine_status.json`
 - `data/runtime/signal_state.json`

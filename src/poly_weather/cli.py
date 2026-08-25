@@ -8,9 +8,10 @@ from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
+import duckdb
 import httpx
 import typer
 from pydantic import ValidationError
@@ -22,15 +23,62 @@ from poly_weather.adapters.historical_weather import (
     OpenMeteoPreviousRunsClient,
 )
 from poly_weather.adapters.nws import NwsClient
-from poly_weather.adapters.open_meteo import OpenMeteoEnsembleClient
+from poly_weather.adapters.open_meteo import OpenMeteoDeterministicClient
 from poly_weather.adapters.polymarket import GammaClient, is_weather_market
-from poly_weather.calibration import fit_bias_calibration, rolling_origin_evaluate
+from poly_weather.calibration import (
+    evaluate_bucket_skill,
+    fit_bias_calibration,
+    learn_model_weights,
+    rolling_origin_evaluate,
+)
+from poly_weather.certainty_report import (
+    download_iem_asos,
+    render_certainty_summary_report,
+    station_certainty_summary,
+)
 from poly_weather.config import load_settlement_registry
+from poly_weather.depth_calibration import (
+    build_depth_cost_calibration,
+    render_depth_cost_calibration,
+)
 from poly_weather.domain import CalibrationSample, TruthKind, VerificationStatus
-from poly_weather.market_stream import MarketWebSocketBot
-from poly_weather.modeling import build_bucket_forecast
+from poly_weather.liquidity import (
+    archived_liquidity_rows,
+    archived_liquidity_rows_from_jsonl,
+    render_liquidity_report,
+)
+from poly_weather.market_stream import EventArchivePolicy, MarketWebSocketBot
+from poly_weather.market_supervisor import (
+    MarketEventSupervisor,
+    discover_event,
+    event_asset_maps,
+)
+from poly_weather.modeling import (
+    DEFAULT_MULTI_MODEL_WEIGHTS,
+    blend_multi_model_forecasts,
+    build_bucket_forecast,
+)
 from poly_weather.monitoring import MonitorThresholds, build_monitor_snapshot
+from poly_weather.no_forward import forward_summary, render_forward_report
+from poly_weather.no_side_analysis import (
+    audit_no_proxy_distortion,
+    load_history_directory,
+    render_no_proxy_audit,
+)
 from poly_weather.paper import PaperPolicy, make_paper_decision
+from poly_weather.precision_audit import (
+    download_iem_precision_rows,
+    precision_comparison,
+    render_precision_audit,
+    temperature_observations_from_precision_rows,
+)
+from poly_weather.real_no_books import (
+    analyze_eliminated_no_exit,
+    analyze_real_no_books,
+    paired_book_snapshots,
+    render_eliminated_exit_report,
+    render_real_no_report,
+)
 from poly_weather.research_store import ResearchWarehouse
 from poly_weather.settlement import (
     parse_settlement_evidence,
@@ -43,7 +91,13 @@ from poly_weather.signal_engine import (
     build_live_calibration,
 )
 from poly_weather.storage import CatalogStore, RawEventArchive
+from poly_weather.temperature import celsius_to_fahrenheit
 from poly_weather.weather_stream import WeatherDaemon, WeatherStation
+from poly_weather.wrh_backfill import (
+    WrhBackfillRequest,
+    backfill_wrh_history,
+    render_wrh_backfill_report,
+)
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -56,6 +110,20 @@ DEFAULT_DATA_DIR = Path("data")
 
 def _emit(payload: object) -> None:
     typer.echo(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+
+
+def _read_json_with_retry(path: Path, *, attempts: int = 5) -> dict[str, Any]:
+    for attempt in range(attempts):
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(value, dict):
+                raise ValueError(f"{path} does not contain a JSON object")
+            return value
+        except PermissionError:
+            if attempt + 1 >= attempts:
+                raise
+            time.sleep(0.02 * (attempt + 1))
+    raise AssertionError("unreachable JSON retry state")
 
 
 def _event_by_slug_with_retry(
@@ -84,6 +152,13 @@ def _parse_aware_datetime(value: str, *, label: str) -> datetime:
     return parsed
 
 
+def _parse_date(value: str, *, label: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise typer.BadParameter(f"{label} must use YYYY-MM-DD") from exc
+
+
 def _interruptible_sleep(seconds: float) -> None:
     remaining = max(0.0, seconds)
     while remaining > 0:
@@ -94,7 +169,9 @@ def _interruptible_sleep(seconds: float) -> None:
 
 @app.command("validate-settlements")
 def validate_settlements(
-    config: Annotated[Path, typer.Option("--config", help="Settlement registry JSON file.")] = DEFAULT_CONFIG,
+    config: Annotated[
+        Path, typer.Option("--config", help="Settlement registry JSON file.")
+    ] = DEFAULT_CONFIG,
 ) -> None:
     """Validate schema and report which entries are allowed downstream."""
     try:
@@ -124,7 +201,9 @@ def discover_markets(
     pages: Annotated[int, typer.Option(min=1, max=100, help="Maximum pages to fetch.")] = 1,
     page_size: Annotated[int, typer.Option(min=1, max=50, help="Events per search page.")] = 20,
     query: Annotated[str, typer.Option(help="Gamma public-search query.")] = "highest temperature",
-    data_dir: Annotated[Path, typer.Option(help="Archive and catalog directory.")] = DEFAULT_DATA_DIR,
+    data_dir: Annotated[
+        Path, typer.Option(help="Archive and catalog directory.")
+    ] = DEFAULT_DATA_DIR,
 ) -> None:
     """Search public Gamma events, archive responses, and retain weather markets."""
     archive = RawEventArchive(data_dir / "raw")
@@ -246,9 +325,7 @@ def aviation_snapshot(
     )
     latest_temperature_f = None
     if latest_metar and latest_metar.temperature_c is not None:
-        latest_temperature_f = (
-            latest_metar.temperature_c * Decimal(9) / Decimal(5) + Decimal(32)
-        )
+        latest_temperature_f = celsius_to_fahrenheit(latest_metar.temperature_c)
     _emit(
         {
             "source": snapshot.source,
@@ -284,13 +361,14 @@ def forecast_buckets(
     event_slug: Annotated[str, typer.Argument(help="Exact Polymarket event slug.")],
     settlement_key: Annotated[str, typer.Argument(help="Settlement registry entry key.")],
     target_date_text: Annotated[str, typer.Argument(help="Local settlement date (YYYY-MM-DD).")],
-    config: Annotated[Path, typer.Option("--config", help="Settlement registry JSON file.")] = DEFAULT_CONFIG,
+    config: Annotated[
+        Path, typer.Option("--config", help="Settlement registry JSON file.")
+    ] = DEFAULT_CONFIG,
     data_dir: Annotated[Path, typer.Option(help="Archive directory.")] = DEFAULT_DATA_DIR,
-    pseudocount_text: Annotated[str, typer.Option("--pseudocount", help="Non-negative Dirichlet smoothing per bucket.")] = "0.5",
-    calibration_lead_days: Annotated[int, typer.Option(min=0, max=7)] = 1,
+    calibration_lead_days: Annotated[int, typer.Option(min=1, max=7)] = 1,
     min_calibration_samples: Annotated[int, typer.Option(min=2)] = 30,
 ) -> None:
-    """Build a research-only GEFS probability distribution for an event's buckets."""
+    """Build a deterministic, calibration-based distribution for event buckets."""
     registry = load_settlement_registry(config)
     try:
         spec = registry.by_key(settlement_key)
@@ -298,25 +376,19 @@ def forecast_buckets(
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=2) from exc
     if spec.latitude is None or spec.longitude is None or spec.timezone is None:
-        typer.echo("Settlement entry needs latitude, longitude, and timezone for forecasting.", err=True)
+        typer.echo(
+            "Settlement entry needs latitude, longitude, and timezone for forecasting.", err=True
+        )
         raise typer.Exit(code=2)
     try:
         target_date = date.fromisoformat(target_date_text)
     except ValueError as exc:
         typer.echo("Target date must use YYYY-MM-DD format.", err=True)
         raise typer.Exit(code=2) from exc
-    try:
-        pseudocount = Decimal(pseudocount_text)
-        if pseudocount < 0:
-            raise ValueError
-    except (ValueError, ArithmeticError) as exc:
-        typer.echo("Pseudocount must be a non-negative decimal.", err=True)
-        raise typer.Exit(code=2) from exc
-
     local_today = datetime.now(ZoneInfo(spec.timezone)).date()
     forecast_days = (target_date - local_today).days + 1
-    if forecast_days < 1 or forecast_days > 10:
-        typer.echo("Target date must be within the current 10-day GEFS ensemble window.", err=True)
+    if target_date >= local_today and forecast_days > 10:
+        typer.echo("Target date must be within the current 10-day forecast window.", err=True)
         raise typer.Exit(code=2)
 
     archive = RawEventArchive(data_dir / "raw")
@@ -329,28 +401,51 @@ def forecast_buckets(
         payload=event.raw_payload,
     )
 
-    with OpenMeteoEnsembleClient() as weather:
-        forecast_url, ensemble = weather.temperature_forecast(
-            latitude=spec.latitude,
-            longitude=spec.longitude,
-            timezone=spec.timezone,
-            forecast_days=forecast_days,
+    if target_date < local_today:
+        with OpenMeteoPreviousRunsClient() as weather:
+            forecast_url, historical = weather.daily_highs(
+                station_id=spec.station_id or settlement_key,
+                latitude=spec.latitude,
+                longitude=spec.longitude,
+                timezone=spec.timezone,
+                start_date=target_date,
+                end_date=target_date,
+                lead_days=calibration_lead_days,
+            )
+        matching = [point.value_f for point in historical.values if point.local_date == target_date]
+        if not matching:
+            typer.echo("Deterministic historical forecast is unavailable.", err=True)
+            raise typer.Exit(code=1)
+        deterministic_high = Decimal(str(matching[0]))
+        forecast_model = historical.model or "gfs_seamless"
+        deterministic_raw_path = archive.append(
+            source="open_meteo_previous_runs",
+            fetched_at=historical.fetched_at,
+            request_url=forecast_url,
+            payload=historical.raw,
         )
-    ensemble_raw_path = archive.append(
-        source="open_meteo_gefs",
-        fetched_at=ensemble.fetched_at,
-        request_url=forecast_url,
-        payload=ensemble.raw,
-    )
+    else:
+        with OpenMeteoDeterministicClient() as weather:
+            forecast_url, deterministic = weather.temperature_forecast(
+                latitude=spec.latitude,
+                longitude=spec.longitude,
+                timezone=spec.timezone,
+                forecast_days=forecast_days,
+            )
+        deterministic_high = deterministic.daily_high(target_date)
+        forecast_model = deterministic.model
+        deterministic_raw_path = archive.append(
+            source="open_meteo_deterministic",
+            fetched_at=deterministic.fetched_at,
+            request_url=forecast_url,
+            payload=deterministic.raw,
+        )
 
-    source_matches = (
-        spec.resolution_source_url is not None
-        and event.resolution_source == str(spec.resolution_source_url)
+    source_matches = spec.resolution_source_url is not None and event.resolution_source == str(
+        spec.resolution_source_url
     )
     slug_matches = re.fullmatch(spec.market_slug_pattern, event.event_slug) is not None
-    tradeable = (
-        spec.status is VerificationStatus.VERIFIED and source_matches and slug_matches
-    )
+    tradeable = spec.status is VerificationStatus.VERIFIED and source_matches and slug_matches
     if spec.status is not VerificationStatus.VERIFIED:
         reason = "settlement registry entry is unverified"
     elif not slug_matches:
@@ -360,12 +455,12 @@ def forecast_buckets(
     else:
         reason = "verified settlement, slug, and resolution source"
 
-    raw_member_highs = ensemble.daily_highs(target_date)
     calibration_applied = False
     calibration_sample_count = 0
     calibration_bias_f = None
     calibration_basis = None
-    calibrated_member_highs = raw_member_highs
+    residual_std_f = None
+    calibrated_high = deterministic_high
     warehouse_path = data_dir / "research.duckdb"
     if warehouse_path.exists() and spec.station_id:
         with ResearchWarehouse(warehouse_path) as warehouse:
@@ -374,26 +469,31 @@ def forecast_buckets(
                 for sample in warehouse.samples(
                     station_id=spec.station_id,
                     lead_days=calibration_lead_days,
-                    model=ensemble.model,
+                    model=forecast_model,
                 )
                 if sample.target_date < target_date
             ]
         calibration_sample_count = len(prior_samples)
-        if calibration_sample_count >= min_calibration_samples:
+        if calibration_sample_count >= 2:
             fitted = fit_bias_calibration(prior_samples)
-            calibration_bias_f = fitted.bias_f
-            calibrated_member_highs = tuple(
-                value + Decimal(str(fitted.bias_f)) for value in raw_member_highs
-            )
-            calibration_applied = True
-            calibration_basis = "Open-Meteo Previous Runs + same-station NOAA NCEI daily truth"
+            residual_std_f = fitted.residual_std_f
+            if calibration_sample_count >= min_calibration_samples:
+                calibration_bias_f = fitted.bias_f
+                calibrated_high += Decimal(str(fitted.bias_f))
+                calibration_applied = True
+                calibration_basis = (
+                    "Open-Meteo Previous Runs lead>=1 + same-station NOAA NCEI daily truth"
+                )
+    if residual_std_f is None:
+        typer.echo("At least two no-lookahead calibration samples are required.", err=True)
+        raise typer.Exit(code=1)
 
     bucket_forecast = build_bucket_forecast(
         markets=event.markets,
-        member_highs_f=calibrated_member_highs,
+        deterministic_high_f=calibrated_high,
+        residual_std_f=residual_std_f,
         target_date=target_date,
-        ensemble_model=ensemble.model,
-        pseudocount=pseudocount,
+        forecast_model=forecast_model,
         calibration_applied=calibration_applied,
         calibration_sample_count=calibration_sample_count,
         calibration_bias_f=calibration_bias_f,
@@ -409,7 +509,7 @@ def forecast_buckets(
             "event_title": event.title,
             "settlement_key": spec.key,
             "event_raw_path": str(event_raw_path.resolve()),
-            "ensemble_raw_path": str(ensemble_raw_path.resolve()),
+            "deterministic_raw_path": str(deterministic_raw_path.resolve()),
         }
     )
     snapshot_path = archive.append(
@@ -426,7 +526,9 @@ def forecast_buckets(
 def inspect_settlement(
     event_slug: Annotated[str, typer.Argument(help="Exact Polymarket event slug.")],
     settlement_key: Annotated[str, typer.Argument(help="Registry entry to compare against.")],
-    config: Annotated[Path, typer.Option("--config", help="Settlement registry JSON file.")] = DEFAULT_CONFIG,
+    config: Annotated[
+        Path, typer.Option("--config", help="Settlement registry JSON file.")
+    ] = DEFAULT_CONFIG,
     data_dir: Annotated[Path, typer.Option(help="Archive directory.")] = DEFAULT_DATA_DIR,
 ) -> None:
     """Parse resolution evidence and apply the fail-closed verification checklist."""
@@ -467,17 +569,44 @@ def inspect_settlement(
 @app.command("backfill-calibration")
 def backfill_calibration(
     settlement_key: Annotated[str, typer.Argument(help="Settlement registry entry key.")],
-    start_date_text: Annotated[str, typer.Argument(help="First target date (YYYY-MM-DD).")],
-    end_date_text: Annotated[str, typer.Argument(help="Last target date (YYYY-MM-DD).")],
-    lead_days: Annotated[int, typer.Option(min=0, max=7, help="Fixed forecast lead in days.")] = 1,
+    start_date_text: Annotated[
+        str | None, typer.Argument(help="First target date (YYYY-MM-DD).")
+    ] = None,
+    end_date_text: Annotated[
+        str | None, typer.Argument(help="Last target date (YYYY-MM-DD).")
+    ] = None,
+    start_date_option: Annotated[
+        str | None, typer.Option("--start-date", help="First target date (YYYY-MM-DD).")
+    ] = None,
+    end_date_option: Annotated[
+        str | None, typer.Option("--end-date", help="Last target date (YYYY-MM-DD).")
+    ] = None,
+    lead_days: Annotated[int, typer.Option(min=1, max=7, help="Fixed forecast lead in days.")] = 1,
     model: Annotated[str, typer.Option(help="Open-Meteo model identifier.")] = "gfs_seamless",
-    config: Annotated[Path, typer.Option("--config", help="Settlement registry JSON file.")] = DEFAULT_CONFIG,
+    multi_model: Annotated[
+        bool,
+        typer.Option("--multi-model", help="Backfill GFS, ICON, and GEM deterministic forecasts."),
+    ] = False,
+    config: Annotated[
+        Path, typer.Option("--config", help="Settlement registry JSON file.")
+    ] = DEFAULT_CONFIG,
     data_dir: Annotated[Path, typer.Option(help="Research data directory.")] = DEFAULT_DATA_DIR,
 ) -> None:
     """Join fixed-lead historical forecasts to same-station NOAA daily truth."""
+    if start_date_text and start_date_option and start_date_text != start_date_option:
+        typer.echo("Positional start date and --start-date disagree.", err=True)
+        raise typer.Exit(code=2)
+    if end_date_text and end_date_option and end_date_text != end_date_option:
+        typer.echo("Positional end date and --end-date disagree.", err=True)
+        raise typer.Exit(code=2)
+    start_date_value = start_date_option or start_date_text
+    end_date_value = end_date_option or end_date_text
+    if not start_date_value or not end_date_value:
+        typer.echo("Both start and end dates are required.", err=True)
+        raise typer.Exit(code=2)
     try:
-        start_date = date.fromisoformat(start_date_text)
-        end_date = date.fromisoformat(end_date_text)
+        start_date = date.fromisoformat(start_date_value)
+        end_date = date.fromisoformat(end_date_value)
     except ValueError as exc:
         typer.echo("Dates must use YYYY-MM-DD format.", err=True)
         raise typer.Exit(code=2) from exc
@@ -494,17 +623,52 @@ def backfill_calibration(
         typer.echo("Registry entry needs coordinates, timezone, and ncei_station_id.", err=True)
         raise typer.Exit(code=2)
 
+    forecast_high_f_by_model_by_date: dict[date, dict[str, float]] = {}
+    model_weights: dict[str, float] | None = None
     with OpenMeteoPreviousRunsClient() as forecast_client:
-        forecast_url, forecasts = forecast_client.daily_highs(
-            station_id=spec.station_id or settlement_key,
-            latitude=spec.latitude,
-            longitude=spec.longitude,
-            timezone=spec.timezone,
-            start_date=start_date,
-            end_date=end_date,
-            lead_days=lead_days,
-            model=model,
-        )
+        if multi_model:
+            forecast_url, forecasts_by_model = forecast_client.get_multi_model_ensemble(
+                station_id=spec.station_id or settlement_key,
+                latitude=spec.latitude,
+                longitude=spec.longitude,
+                timezone=spec.timezone,
+                start_date=start_date,
+                end_date=end_date,
+                lead_days=lead_days,
+            )
+            values_by_model = {
+                model_name: {point.local_date: point.value_f for point in series.values}
+                for model_name, series in forecasts_by_model.items()
+            }
+            common_forecast_dates = set.intersection(
+                *(set(values) for values in values_by_model.values())
+            )
+            forecast_high_f_by_model_by_date = {
+                day: {
+                    model_name: values_by_model[model_name][day] for model_name in values_by_model
+                }
+                for day in common_forecast_dates
+            }
+            model_weights = dict(DEFAULT_MULTI_MODEL_WEIGHTS)
+            forecast_by_date = {
+                day: blend_multi_model_forecasts(values, model_weights)
+                for day, values in forecast_high_f_by_model_by_date.items()
+            }
+            forecasts = next(iter(forecasts_by_model.values()))
+            stored_model = "multi_model_blend"
+        else:
+            forecast_url, forecasts = forecast_client.daily_highs(
+                station_id=spec.station_id or settlement_key,
+                latitude=spec.latitude,
+                longitude=spec.longitude,
+                timezone=spec.timezone,
+                start_date=start_date,
+                end_date=end_date,
+                lead_days=lead_days,
+                model=model,
+            )
+            forecast_by_date = {point.local_date: point.value_f for point in forecasts.values}
+            stored_model = model
     with NceiDailySummariesClient() as truth_client:
         truth_url, truth = truth_client.daily_highs(
             station_id=spec.ncei_station_id,
@@ -525,7 +689,6 @@ def backfill_calibration(
         request_url=truth_url,
         payload=truth.raw,
     )
-    forecast_by_date = {point.local_date: point.value_f for point in forecasts.values}
     truth_by_date = {point.local_date: point.value_f for point in truth.values}
     joined_dates = sorted(set(forecast_by_date) & set(truth_by_date))
     ingested_at = datetime.now(UTC)
@@ -534,13 +697,14 @@ def backfill_calibration(
             station_id=spec.station_id or settlement_key,
             target_date=day,
             lead_days=lead_days,
-            model=model,
+            model=stored_model,
             forecast_high_f=forecast_by_date[day],
             observed_high_f=truth_by_date[day],
             forecast_source=forecasts.source,
             truth_source=truth.source,
             truth_kind=TruthKind.NOAA_SAME_STATION_DAILY_FINAL.value,
             ingested_at=ingested_at,
+            forecast_high_f_by_model=forecast_high_f_by_model_by_date.get(day),
         )
         for day in joined_dates
     ]
@@ -556,10 +720,16 @@ def backfill_calibration(
             "station_id": spec.station_id,
             "ncei_station_id": spec.ncei_station_id,
             "lead_days": lead_days,
-            "model": model,
+            "model": stored_model,
+            "multi_model": multi_model,
+            "model_weights": model_weights,
             "joined_samples": written,
-            "forecast_only_dates": sorted(str(day) for day in set(forecast_by_date) - set(truth_by_date)),
-            "truth_only_dates": sorted(str(day) for day in set(truth_by_date) - set(forecast_by_date)),
+            "forecast_only_dates": sorted(
+                str(day) for day in set(forecast_by_date) - set(truth_by_date)
+            ),
+            "truth_only_dates": sorted(
+                str(day) for day in set(truth_by_date) - set(forecast_by_date)
+            ),
             "truth_kind": TruthKind.NOAA_SAME_STATION_DAILY_FINAL.value,
             "settlement_eligible": False,
             "forecast_raw_path": str(forecast_path.resolve()),
@@ -573,7 +743,7 @@ def backfill_calibration(
 @app.command("evaluate-calibration")
 def evaluate_calibration(
     settlement_key: Annotated[str, typer.Argument(help="Settlement registry entry key.")],
-    lead_days: Annotated[int, typer.Option(min=0, max=7)] = 1,
+    lead_days: Annotated[int, typer.Option(min=1, max=7)] = 1,
     model: Annotated[str, typer.Option()] = "gfs_seamless",
     min_train_size: Annotated[int, typer.Option(min=2)] = 14,
     test_size: Annotated[int, typer.Option(min=1)] = 7,
@@ -615,6 +785,74 @@ def evaluate_calibration(
     _emit(payload)
 
 
+@app.command("evaluate-bucket-skill")
+def evaluate_bucket_skill_command(
+    settlement_key: Annotated[str, typer.Argument(help="Settlement registry entry key.")],
+    start_date_text: Annotated[
+        str | None, typer.Option("--start-date", help="Optional first target date.")
+    ] = None,
+    end_date_text: Annotated[
+        str | None, typer.Option("--end-date", help="Optional last target date.")
+    ] = None,
+    lead_days: Annotated[int, typer.Option(min=1, max=7)] = 1,
+    model: Annotated[str, typer.Option()] = "multi_model_blend",
+    min_train_size: Annotated[int, typer.Option(min=2)] = 30,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Evaluate true 2°F bucket probability with walk-forward calibration."""
+    try:
+        start_date = date.fromisoformat(start_date_text) if start_date_text else None
+        end_date = date.fromisoformat(end_date_text) if end_date_text else None
+    except ValueError as exc:
+        typer.echo("Dates must use YYYY-MM-DD format.", err=True)
+        raise typer.Exit(code=2) from exc
+    if start_date and end_date and end_date < start_date:
+        typer.echo("Date range must be ordered.", err=True)
+        raise typer.Exit(code=2)
+    registry = load_settlement_registry(config)
+    try:
+        spec = registry.by_key(settlement_key)
+    except KeyError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=2) from exc
+    station_id = spec.station_id or settlement_key
+    with ResearchWarehouse(data_dir / "research.duckdb") as warehouse:
+        samples = warehouse.samples(
+            station_id=station_id,
+            lead_days=lead_days,
+            model=model,
+        )
+    samples = [
+        sample
+        for sample in samples
+        if (start_date is None or sample.target_date >= start_date)
+        and (end_date is None or sample.target_date <= end_date)
+    ]
+    try:
+        evaluation = evaluate_bucket_skill(samples, min_train_size=min_train_size)
+        learned_weights = (
+            learn_model_weights(samples)
+            if samples and all(sample.forecast_high_f_by_model for sample in samples)
+            else None
+        )
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=2) from exc
+    _emit(
+        {
+            "settlement_key": settlement_key,
+            "station_id": station_id,
+            "lead_days": lead_days,
+            "model": model,
+            "start_date": start_date,
+            "end_date": end_date,
+            "learned_weights_full_sample_diagnostic": learned_weights,
+            **evaluation,
+        }
+    )
+
+
 @app.command("noaa-daily-high")
 def noaa_daily_high(
     settlement_key: Annotated[str, typer.Argument(help="Settlement registry entry key.")],
@@ -654,13 +892,10 @@ def noaa_daily_high(
     payload = observed.model_dump(mode="json")
     payload.update(
         {
-            "whole_degree_value_f": observed.value_f.quantize(
-                Decimal("1"), rounding=ROUND_HALF_UP
-            ),
+            "whole_degree_value_f": observed.value_f.quantize(Decimal("1"), rounding=ROUND_HALF_UP),
             "signal_source_policy": spec.signal_truth_policy.value,
             "waits_for_wunderground": False,
-            "registry_signal_policy_enabled": spec.signal_truth_policy.value
-            == "same_station_noaa",
+            "registry_signal_policy_enabled": spec.signal_truth_policy.value == "same_station_noaa",
             "raw_path": str(raw_path.resolve()),
         }
     )
@@ -1072,6 +1307,7 @@ def market_stream(
         typer.Option("--silence-timeout", min=15, max=300),
     ] = 45,
     data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
 ) -> None:
     """Run the public event-driven Polymarket CLOB WebSocket daemon."""
     with GammaClient() as gamma:
@@ -1100,12 +1336,29 @@ def market_stream(
         if len(market.outcomes) == len(market.clob_token_ids)
         for token_id in market.clob_token_ids
     }
+    registry = load_settlement_registry(config)
+    event_policies: dict[str, EventArchivePolicy] = {}
+    for event in events:
+        for spec in registry.specs:
+            if spec.status is not VerificationStatus.VERIFIED:
+                continue
+            if re.fullmatch(spec.market_slug_pattern, event.event_slug) is None:
+                continue
+            evidence = parse_settlement_evidence(event, registry_spec=spec)
+            verification = verify_settlement_evidence(evidence, spec)
+            if verification.passed and evidence.target_date is not None and spec.timezone:
+                event_policies[event.event_slug] = EventArchivePolicy(
+                    timezone=spec.timezone,
+                    target_date=evidence.target_date,
+                )
+            break
     if not asset_slugs:
         typer.echo("Event has no aligned CLOB token identifiers.", err=True)
         raise typer.Exit(code=2)
     bot = MarketWebSocketBot(
         asset_slugs=asset_slugs,
         asset_events=asset_events,
+        event_policies=event_policies,
         data_dir=data_dir,
         silence_timeout_seconds=silence_timeout_seconds,
     )
@@ -1128,6 +1381,516 @@ def market_stream(
     _emit(payload)
 
 
+@app.command("market-supervisor")
+def market_supervisor(
+    runtime_seconds: Annotated[
+        float,
+        typer.Option("--runtime", min=0, help="0 runs until Ctrl+C."),
+    ] = 0,
+    discovery_interval_seconds: Annotated[
+        float,
+        typer.Option("--discovery-interval", min=30),
+    ] = 300,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Run fail-closed daily discovery plus hot WebSocket event rotation."""
+    registry = load_settlement_registry(config)
+    specs = tuple(spec for spec in registry.specs if spec.status is VerificationStatus.VERIFIED)
+    if not specs:
+        typer.echo("No verified settlement templates are configured.", err=True)
+        raise typer.Exit(code=2)
+    initial: dict[str, Any] = {}
+    with GammaClient() as gamma:
+        for spec in specs:
+            target = datetime.now(ZoneInfo(spec.timezone or "UTC")).date()
+            event = discover_event(gamma, spec, target)
+            if event is None:
+                continue
+            evidence = parse_settlement_evidence(event, registry_spec=spec)
+            verification = verify_settlement_evidence(evidence, spec)
+            if verification.passed:
+                initial[spec.key] = event
+    if not initial:
+        typer.echo("No current events passed strict settlement verification.", err=True)
+        raise typer.Exit(code=2)
+    asset_slugs: dict[str, str] = {}
+    asset_events: dict[str, str] = {}
+    initial_policies: dict[str, EventArchivePolicy] = {}
+    specs_by_key = {spec.key: spec for spec in specs}
+    for settlement_key, event in initial.items():
+        event_slugs, event_assets = event_asset_maps(event)
+        asset_slugs.update(event_slugs)
+        asset_events.update(event_assets)
+        spec = specs_by_key[settlement_key]
+        evidence = parse_settlement_evidence(event, registry_spec=spec)
+        if evidence.target_date is not None and spec.timezone:
+            initial_policies[event.event_slug] = EventArchivePolicy(
+                timezone=spec.timezone,
+                target_date=evidence.target_date,
+            )
+    bot = MarketWebSocketBot(
+        asset_slugs=asset_slugs,
+        asset_events=asset_events,
+        event_policies=initial_policies,
+        data_dir=data_dir,
+    )
+    supervisor = MarketEventSupervisor(
+        specs=specs,
+        bot=bot,
+        data_dir=data_dir,
+        discovery_interval_seconds=discovery_interval_seconds,
+    )
+
+    async def run_both() -> None:
+        bot_task = asyncio.create_task(
+            bot.run(runtime_seconds=runtime_seconds), name="supervised-market-stream"
+        )
+        try:
+            while bot.metrics.state not in {"connected", "failed", "stopped"}:
+                await asyncio.sleep(0.05)
+            if bot.metrics.state != "connected":
+                raise RuntimeError(f"market stream did not connect: {bot.metrics.state}")
+            await supervisor.reconcile(initial)
+            supervisor_task = asyncio.create_task(
+                supervisor.run(runtime_seconds=runtime_seconds), name="market-event-supervisor"
+            )
+            await bot_task
+            if not supervisor_task.done():
+                supervisor_task.cancel()
+            await asyncio.gather(supervisor_task, return_exceptions=True)
+        finally:
+            bot.stop_event.set()
+            await asyncio.gather(bot_task, return_exceptions=True)
+
+    try:
+        asyncio.run(run_both())
+    except KeyboardInterrupt:
+        typer.echo("Market supervisor interrupted by user.", err=True)
+        return
+    _emit(
+        {
+            "supervisor": asdict(supervisor.metrics),
+            "market": asdict(bot.metrics),
+            "active_events": [asdict(item) for item in supervisor.active.values()],
+            "status_path": str(supervisor.status_path.resolve()),
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("liquidity-report")
+def liquidity_report(
+    start_text: Annotated[
+        str | None,
+        typer.Option("--start", help="Optional inclusive ISO-8601 timestamp with offset."),
+    ] = None,
+    end_text: Annotated[
+        str | None,
+        typer.Option("--end", help="Optional exclusive ISO-8601 timestamp with offset."),
+    ] = None,
+    output_path: Annotated[
+        Path,
+        typer.Option("--output", help="Markdown report destination."),
+    ] = Path("data/liquidity_report.md"),
+    source: Annotated[
+        str,
+        typer.Option(help="auto, duckdb, or jsonl; auto is safe while the daemon runs."),
+    ] = "auto",
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Summarize spread, depth slippage, and partial fills from archived books."""
+    start = _parse_aware_datetime(start_text, label="start") if start_text else None
+    end = _parse_aware_datetime(end_text, label="end") if end_text else None
+    if start is not None and end is not None and end <= start:
+        raise typer.BadParameter("end must be later than start")
+    if source not in {"auto", "duckdb", "jsonl"}:
+        raise typer.BadParameter("source must be auto, duckdb, or jsonl")
+    database_path = data_dir / "market_stream.duckdb"
+    source_used = source
+    if source == "jsonl":
+        rows = archived_liquidity_rows_from_jsonl(
+            data_dir,
+            start=start,
+            end=end,
+        )
+    else:
+        try:
+            with ResearchWarehouse(database_path) as warehouse:
+                rows = archived_liquidity_rows(
+                    warehouse.connection,
+                    start=start,
+                    end=end,
+                )
+            source_used = "duckdb"
+        except duckdb.IOException:
+            if source == "duckdb":
+                raise
+            rows = archived_liquidity_rows_from_jsonl(
+                data_dir,
+                start=start,
+                end=end,
+            )
+            source_used = "jsonl"
+    render_liquidity_report(rows, output_path=output_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "source": source_used,
+            "group_count": len(rows),
+            "sample_count": sum(int(row["sample_count"]) for row in rows),
+            "groups_over_5c_slippage_at_200": sum(
+                row["slippage_200_usd"] is not None and row["slippage_200_usd"] > 0.05
+                for row in rows
+            ),
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("multi-city-certainty-report")
+def multi_city_certainty_report(
+    start_date_text: Annotated[str, typer.Option("--start-date")] = "2024-06-01",
+    end_date_text: Annotated[str, typer.Option("--end-date")] = "2026-08-23",
+    refresh: Annotated[bool, typer.Option("--refresh/--no-refresh")] = True,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/multi_city_certainty_report.md"
+    ),
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Download IEM observations and compare intraday certainty across cities."""
+    start_date = _parse_date(start_date_text, label="start date")
+    end_date = _parse_date(end_date_text, label="end date")
+    if end_date < start_date:
+        raise typer.BadParameter("end date must not precede start date")
+    registry = load_settlement_registry(config)
+    rows = []
+    downloads = []
+    for spec in registry.specs:
+        if spec.status is not VerificationStatus.VERIFIED or not spec.station_id or not spec.timezone:
+            continue
+        csv_path = data_dir / "hourly_obs" / f"{spec.station_id}.csv"
+        if refresh or not csv_path.exists():
+            downloads.append(
+                download_iem_asos(
+                    station_id=spec.station_id,
+                    timezone=spec.timezone,
+                    start_date=start_date,
+                    end_date=end_date,
+                    output_path=csv_path,
+                )
+            )
+        rows.append(station_certainty_summary(spec, csv_path))
+    render_certainty_summary_report(rows, output_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "station_count": len(rows),
+            "downloads": downloads,
+            "rows": rows,
+            "no_lookahead": True,
+        }
+    )
+
+
+@app.command("execution-cost-calibration")
+def execution_cost_calibration(
+    analysis_path: Annotated[
+        Path,
+        typer.Option("--analysis", help="market_lag_analysis.json path."),
+    ] = Path("data/market_lag_analysis.json"),
+    catalog_path: Annotated[
+        Path,
+        typer.Option("--catalog", help="settled_markets.json path."),
+    ] = Path("data/settled_markets.json"),
+    output_path: Annotated[
+        Path,
+        typer.Option("--output", help="Markdown report destination."),
+    ] = Path("data/execution_cost_calibration.md"),
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Compare p-proxy trades with strict no-lookahead archived order-book fills."""
+    analysis = json.loads(analysis_path.read_text(encoding="utf-8"))
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    result = build_depth_cost_calibration(analysis, catalog, data_dir=data_dir)
+    render_depth_cost_calibration(result, output_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "proxy_trade_count": result["proxy_trade_count"],
+            "catalog_matched_trade_count": result["catalog_matched_trade_count"],
+            "fully_executable_by_size": {
+                f"${row['size_usd']:.0f}": row["fully_executable_count"]
+                for row in result["summaries"]
+            },
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("audit-no-proxy")
+def audit_no_proxy(
+    catalog_path: Annotated[Path, typer.Option("--catalog")] = Path(
+        "data/settled_markets.json"
+    ),
+    histories_dir: Annotated[Path, typer.Option("--histories-dir")] = Path(
+        "data/historical_prices"
+    ),
+    observations_dir: Annotated[Path, typer.Option("--observations-dir")] = Path(
+        "data/hourly_obs"
+    ),
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/no_proxy_audit_report.md"
+    ),
+) -> None:
+    """Audit stale 1-p contradictions; never treats p as executable NO quotes."""
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    histories = load_history_directory(histories_dir)
+    stations = {str(event["station_id"]) for event in catalog.get("events") or []}
+    events = catalog.get("events") or []
+    first_date = min(date.fromisoformat(str(event["target_date"])) for event in events)
+    last_date = max(date.fromisoformat(str(event["target_date"])) for event in events)
+    timezone_by_station = {
+        str(event["station_id"]): str(event["timezone"]) for event in events
+    }
+    observations = {}
+    for station in stations:
+        precision_rows = download_iem_precision_rows(
+            station_id=station,
+            timezone=timezone_by_station[station],
+            start_date=first_date,
+            end_date=last_date,
+        )
+        observations[station] = temperature_observations_from_precision_rows(
+            precision_rows, station_id=station
+        )
+    result = audit_no_proxy_distortion(
+        catalog,
+        histories_by_event=histories,
+        observations_by_station=observations,
+    )
+    render_no_proxy_audit(result, output_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "event_count": result["event_count"],
+            "contradiction_point_count": result["contradiction_point_count"],
+            "contradiction_share_of_eliminated_points": result[
+                "contradiction_share_of_eliminated_points"
+            ],
+            "historical_no_backtest_usable": False,
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("audit-temperature-precision")
+def audit_temperature_precision(
+    start_date_text: Annotated[str, typer.Option("--start-date")] = "2024-06-01",
+    end_date_text: Annotated[str, typer.Option("--end-date")] = "2026-08-20",
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/temperature_precision_audit.md"
+    ),
+) -> None:
+    """Compare IEM tmpf with METAR remarks T-group precision for KLGA and ZUCK."""
+    start_date = _parse_date(start_date_text, label="start date")
+    end_date = _parse_date(end_date_text, label="end date")
+    stations = (
+        ("KLGA", "America/New_York"),
+        ("ZUCK", "Asia/Shanghai"),
+    )
+    results = []
+    for station_id, timezone in stations:
+        rows = download_iem_precision_rows(
+            station_id=station_id,
+            timezone=timezone,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        results.append(precision_comparison(rows, station_id=station_id))
+    render_precision_audit(results, output_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "start_date": start_date,
+            "end_date": end_date,
+            "stations": results,
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-real-no-books")
+def analyze_real_no_book_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/real_no_book_report.md"
+    ),
+) -> None:
+    """Analyze executable NO quotes from archived full-depth checkpoints."""
+    paths = sorted((data_dir / "raw" / "polymarket_book_checkpoints").glob("*/events.jsonl"))
+    pairs = paired_book_snapshots(paths)
+    result = analyze_real_no_books(pairs)
+    render_real_no_report(result, output_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "paired_snapshot_count": result["paired_snapshot_count"],
+            "usable_snapshot_count": result["usable_snapshot_count"],
+            "complement_gap_max": result["complement_gap_max"],
+            "proxy_comparable_count": result["proxy_comparable_count"],
+            "historical_settled_depth_overlap_count": 0,
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-eliminated-no-exit")
+def analyze_eliminated_no_exit_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/eliminated_no_exit_report.md"
+    ),
+) -> None:
+    """Measure real NO bid exit depth after irreversible physical elimination."""
+    registry = load_settlement_registry(config)
+    update = _read_json_with_retry(data_dir / "runtime" / "signal_config_update.json")
+    metadata = {}
+    observations = {}
+    for event in update.get("events") or []:
+        spec = registry.by_key(str(event["settlement_key"]))
+        if spec.station_id not in {"KLAX", "KLGA"} or not spec.timezone:
+            continue
+        event_slug = str(event["event_slug"])
+        metadata[event_slug] = {
+            "station_id": spec.station_id,
+            "timezone": spec.timezone,
+            "target_date": str(event["target_date"]),
+        }
+        target = date.fromisoformat(str(event["target_date"]))
+        if spec.station_id not in observations:
+            rows = download_iem_precision_rows(
+                station_id=spec.station_id,
+                timezone=spec.timezone,
+                start_date=target,
+                end_date=target + timedelta(days=1),
+            )
+            observations[spec.station_id] = temperature_observations_from_precision_rows(
+                rows, station_id=spec.station_id
+            )
+    paths = sorted((data_dir / "raw" / "polymarket_book_checkpoints").glob("*/events.jsonl"))
+    pairs = paired_book_snapshots(paths)
+    result = analyze_eliminated_no_exit(
+        pairs,
+        event_metadata=metadata,
+        observations_by_station=observations,
+    )
+    render_eliminated_exit_report(result, output_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "eliminated_market_count": result["eliminated_market_count"],
+            "stations": result["stations"],
+            "settled_event_count": 0,
+            "partial_forward_day": True,
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("no-forward-report")
+def no_forward_report(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    output_path: Annotated[
+        Path,
+        typer.Option("--output", help="Markdown report destination."),
+    ] = Path("data/no_forward_validation_report.md"),
+) -> None:
+    """Summarize real-book forward NO triggers without execution or p proxies."""
+    summary = forward_summary(data_dir)
+    render_forward_report(summary, output_path)
+    _emit({**summary, "report_path": str(output_path.resolve())})
+
+
+@app.command("wrh-backfill")
+def wrh_backfill(
+    settlement_keys: Annotated[
+        list[str], typer.Argument(help="One or more settlement registry entry keys.")
+    ],
+    start_date_text: Annotated[
+        str | None,
+        typer.Option("--start-date", help="First local date (YYYY-MM-DD)."),
+    ] = None,
+    end_date_text: Annotated[
+        str | None,
+        typer.Option("--end-date", help="Last local date (YYYY-MM-DD)."),
+    ] = None,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/wrh_backfill_report.md"
+    ),
+) -> None:
+    """Batch WRH history into an isolated post-hoc QC archive and database."""
+    if bool(start_date_text) != bool(end_date_text):
+        typer.echo("Provide both --start-date and --end-date, or neither.", err=True)
+        raise typer.Exit(code=2)
+    explicit_dates = start_date_text is not None and end_date_text is not None
+    if explicit_dates:
+        try:
+            requested_start = date.fromisoformat(str(start_date_text))
+            requested_end = date.fromisoformat(str(end_date_text))
+        except ValueError as exc:
+            typer.echo("Dates must use YYYY-MM-DD format.", err=True)
+            raise typer.Exit(code=2) from exc
+        if requested_end < requested_start:
+            typer.echo("End date cannot precede start date.", err=True)
+            raise typer.Exit(code=2)
+        if (requested_end - requested_start).days + 1 > 30:
+            typer.echo("WRH backfill cannot exceed 30 calendar days.", err=True)
+            raise typer.Exit(code=2)
+    registry = load_settlement_registry(config)
+    requests: list[WrhBackfillRequest] = []
+    for settlement_key in settlement_keys:
+        try:
+            spec = registry.by_key(settlement_key)
+        except KeyError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=2) from exc
+        if not spec.station_id or not spec.timezone:
+            typer.echo(
+                f"Registry entry {spec.key!r} needs station_id and timezone.",
+                err=True,
+            )
+            raise typer.Exit(code=2)
+        if explicit_dates:
+            start_date = requested_start
+            end_date = requested_end
+        else:
+            previous_local_day = datetime.now(ZoneInfo(spec.timezone)).date() - timedelta(
+                days=1
+            )
+            start_date = previous_local_day
+            end_date = previous_local_day
+        requests.append(
+            WrhBackfillRequest(
+                station_id=spec.station_id,
+                timezone=spec.timezone,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        )
+    try:
+        result = asyncio.run(backfill_wrh_history(requests, data_dir=data_dir))
+    except (httpx.HTTPError, ValueError) as exc:
+        typer.echo(f"WRH backfill failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    render_wrh_backfill_report(result, output_path)
+    _emit({**result, "report_path": str(output_path.resolve())})
+
+
 @app.command("weather-stream")
 def weather_stream(
     settlement_keys: Annotated[
@@ -1140,11 +1903,19 @@ def weather_stream(
     observation_interval_seconds: Annotated[
         float,
         typer.Option("--observation-interval", min=60, max=3600),
-    ] = 60,
+    ] = 120,
+    metar_interval_seconds: Annotated[
+        float,
+        typer.Option("--metar-interval", min=60, max=7200),
+    ] = 900,
+    international_observation_interval_seconds: Annotated[
+        float,
+        typer.Option("--international-observation-interval", min=60, max=7200),
+    ] = 1800,
     taf_interval_seconds: Annotated[
         float,
         typer.Option("--taf-interval", min=600, max=7200),
-    ] = 600,
+    ] = 3600,
     forecast_interval_seconds: Annotated[
         float,
         typer.Option("--forecast-interval", min=3600, max=21_600),
@@ -1171,15 +1942,39 @@ def weather_stream(
             latitude=spec.latitude,
             longitude=spec.longitude,
             timezone=spec.timezone,
+            nws_api_enabled=spec.nws_api_enabled,
+            open_meteo_enabled=spec.open_meteo_enabled,
         )
         for spec in specs
     ]
+    model_weights_by_station: dict[str, dict[str, float]] = {}
+    warehouse_path = data_dir / "research.duckdb"
+    if warehouse_path.exists():
+        with ResearchWarehouse(warehouse_path) as warehouse:
+            for station in stations:
+                samples = warehouse.samples(
+                    station_id=station.station_id,
+                    lead_days=1,
+                    model="multi_model_blend",
+                )
+                if samples and all(sample.forecast_high_f_by_model for sample in samples):
+                    model_weights_by_station[station.station_id] = learn_model_weights(samples)
+    for station in stations:
+        model_weights_by_station.setdefault(
+            station.station_id,
+            dict(DEFAULT_MULTI_MODEL_WEIGHTS),
+        )
     daemon = WeatherDaemon(
         stations=stations,
         data_dir=data_dir,
         observation_interval_seconds=observation_interval_seconds,
+        metar_interval_seconds=metar_interval_seconds,
+        international_observation_interval_seconds=(
+            international_observation_interval_seconds
+        ),
         taf_interval_seconds=taf_interval_seconds,
         forecast_interval_seconds=forecast_interval_seconds,
+        model_weights_by_station=model_weights_by_station,
     )
     try:
         metrics = asyncio.run(daemon.run(runtime_seconds=runtime_seconds))
@@ -1191,6 +1986,7 @@ def weather_stream(
         {
             "settlement_keys": [spec.key for spec in specs],
             "station_ids": [station.station_id for station in stations],
+            "model_weights_by_station": model_weights_by_station,
             "status_path": str(daemon.status_path.resolve()),
             "mode": "async_public_weather_read_only_no_execution",
         }
@@ -1206,6 +2002,7 @@ def stream_status(
     statuses = {}
     for name, filename in (
         ("market", "polymarket_ws_status.json"),
+        ("supervisor", "market_supervisor_status.json"),
         ("weather", "weather_daemon_status.json"),
         ("signal", "signal_engine_status.json"),
     ):
@@ -1214,8 +2011,17 @@ def stream_status(
             statuses[name] = {"state": "not_started", "status_path": str(path.resolve())}
             continue
         try:
-            statuses[name] = json.loads(path.read_text(encoding="utf-8"))
+            statuses[name] = _read_json_with_retry(path)
             statuses[name]["status_path"] = str(path.resolve())
+            updated_text = statuses[name].get("updated_at")
+            if updated_text:
+                updated_at = datetime.fromisoformat(str(updated_text)).astimezone(UTC)
+                age_seconds = (datetime.now(UTC) - updated_at).total_seconds()
+                stale_after = 300 if name == "weather" else 120
+                if age_seconds > stale_after:
+                    statuses[name]["reported_state"] = statuses[name].get("state")
+                    statuses[name]["state"] = "stale"
+                    statuses[name]["stale_age_seconds"] = round(age_seconds, 1)
         except (OSError, json.JSONDecodeError) as exc:
             statuses[name] = {
                 "state": "unreadable",
@@ -1225,70 +2031,34 @@ def stream_status(
     _emit(statuses)
 
 
-@app.command("signal-engine")
-def signal_engine(
-    market_specs: Annotated[
-        list[str],
-        typer.Option(
-            "--market",
-            help="Repeat EVENT_SLUG=SETTLEMENT_KEY for each monitored city.",
-        ),
-    ],
-    runtime_seconds: Annotated[
-        float,
-        typer.Option("--runtime", min=0, help="0 runs until Ctrl+C."),
-    ] = 0,
-    interval_seconds: Annotated[
-        float,
-        typer.Option("--interval", min=0.1, max=10),
-    ] = 0.25,
-    min_net_edge_text: Annotated[str, typer.Option("--min-net-edge")] = "0.03",
-    cost_buffer_text: Annotated[str, typer.Option("--cost-buffer")] = "0.01",
-    calibration_lead_days: Annotated[
-        int,
-        typer.Option(
-            "--calibration-lead-days",
-            min=0,
-            max=7,
-            help="Historical forecast lead used by the live credibility gate.",
-        ),
-    ] = 0,
-    min_calibration_samples: Annotated[
-        int,
-        typer.Option(
-            "--min-calibration-samples",
-            min=2,
-            help="Minimum training history before walk-forward validation.",
-        ),
-    ] = 30,
-    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
-    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
-) -> None:
-    """Run deterministic live probability and read-only edge calculations."""
-    registry = load_settlement_registry(config)
-    parsed_specs: list[tuple[str, str]] = []
-    for value in market_specs:
-        event_slug, separator, settlement_key = value.partition("=")
-        if not separator or not event_slug or not settlement_key:
-            typer.echo(f"Invalid --market value: {value!r}", err=True)
-            raise typer.Exit(code=2)
-        parsed_specs.append((event_slug, settlement_key))
-    configs = []
+def _build_signal_configs(
+    parsed_specs: list[tuple[str, str]],
+    *,
+    registry: Any,
+    data_dir: Path,
+    calibration_lead_days: int,
+    min_calibration_samples: int,
+    expected_sha_by_slug: dict[str, str] | None = None,
+) -> tuple[LiveSignalConfig, ...]:
+    configs: list[LiveSignalConfig] = []
     with GammaClient() as gamma:
         for event_slug, settlement_key in parsed_specs:
-            try:
-                spec = registry.by_key(settlement_key)
-            except KeyError as exc:
-                typer.echo(str(exc), err=True)
-                raise typer.Exit(code=2) from exc
+            spec = registry.by_key(settlement_key)
             if not spec.station_id or not spec.timezone:
-                typer.echo(f"Settlement {spec.key!r} lacks station or timezone.", err=True)
-                raise typer.Exit(code=2)
+                raise ValueError(f"Settlement {spec.key!r} lacks station or timezone")
             event = _event_by_slug_with_retry(gamma, event_slug)
             evidence = parse_settlement_evidence(event, registry_spec=spec)
             if evidence.target_date is None:
-                typer.echo(f"Could not parse target date for {event_slug!r}.", err=True)
-                raise typer.Exit(code=2)
+                raise ValueError(f"Could not parse target date for {event_slug!r}")
+            expected_sha = (expected_sha_by_slug or {}).get(event_slug)
+            if expected_sha is not None and evidence.evidence_sha256 != expected_sha:
+                # A resolved/edited prior-day event must fail closed without
+                # preventing every other independently verified city from loading.
+                typer.echo(
+                    f"Skipping {event_slug!r}: settlement evidence changed",
+                    err=True,
+                )
+                continue
             verification = verify_signal_contract(evidence, spec)
             contract_verified = (
                 spec.status is VerificationStatus.VERIFIED and verification.tradeable
@@ -1307,7 +2077,7 @@ def signal_engine(
                         for sample in warehouse.samples(
                             station_id=spec.station_id,
                             lead_days=calibration_lead_days,
-                            model="gfs_seamless",
+                            model="multi_model_blend",
                         )
                         if sample.target_date < evidence.target_date
                     ]
@@ -1330,13 +2100,126 @@ def signal_engine(
                     calibration=calibration,
                 )
             )
+    return tuple(configs)
+
+
+@app.command("signal-engine")
+def signal_engine(
+    market_specs: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--market",
+            help="Repeat EVENT_SLUG=SETTLEMENT_KEY for each monitored city.",
+        ),
+    ] = None,
+    supervised: Annotated[
+        bool,
+        typer.Option(
+            "--supervised",
+            help="Load verified events from market-supervisor and hot-reload generations.",
+        ),
+    ] = False,
+    runtime_seconds: Annotated[
+        float,
+        typer.Option("--runtime", min=0, help="0 runs until Ctrl+C."),
+    ] = 0,
+    interval_seconds: Annotated[
+        float,
+        typer.Option("--interval", min=0.1, max=10),
+    ] = 0.25,
+    min_net_edge_text: Annotated[str, typer.Option("--min-net-edge")] = "0.03",
+    cost_buffer_text: Annotated[str, typer.Option("--cost-buffer")] = "0.01",
+    calibration_lead_days: Annotated[
+        int,
+        typer.Option(
+            "--calibration-lead-days",
+            min=1,
+            max=7,
+            help="Historical forecast lead used by the live credibility gate.",
+        ),
+    ] = 1,
+    min_calibration_samples: Annotated[
+        int,
+        typer.Option(
+            "--min-calibration-samples",
+            min=2,
+            help="Minimum training history before walk-forward validation.",
+        ),
+    ] = 30,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Run deterministic live probability and read-only edge calculations."""
+    registry = load_settlement_registry(config)
+    update_path = data_dir / "runtime" / "signal_config_update.json"
+    parsed_specs: list[tuple[str, str]] = []
+    expected_sha_by_slug: dict[str, str] | None = None
+    initial_generation: int | None = None
+    for value in market_specs or ():
+        event_slug, separator, settlement_key = value.partition("=")
+        if not separator or not event_slug or not settlement_key:
+            typer.echo(f"Invalid --market value: {value!r}", err=True)
+            raise typer.Exit(code=2)
+        parsed_specs.append((event_slug, settlement_key))
+    if supervised:
+        try:
+            update_payload = _read_json_with_retry(update_path)
+            event_rows = update_payload["events"]
+            if not isinstance(event_rows, list) or not event_rows:
+                raise ValueError("supervisor config contains no verified events")
+            parsed_specs = [
+                (str(item["event_slug"]), str(item["settlement_key"]))
+                for item in event_rows
+            ]
+            expected_sha_by_slug = {
+                str(item["event_slug"]): str(item["evidence_sha256"])
+                for item in event_rows
+            }
+            initial_generation = int(update_payload["generation"])
+        except (OSError, KeyError, TypeError, ValueError) as exc:
+            typer.echo(f"Cannot load supervisor config: {exc}", err=True)
+            raise typer.Exit(code=2) from exc
+    if not parsed_specs:
+        typer.echo("Provide --market or use --supervised.", err=True)
+        raise typer.Exit(code=2)
+    try:
+        configs = _build_signal_configs(
+            parsed_specs,
+            registry=registry,
+            data_dir=data_dir,
+            calibration_lead_days=calibration_lead_days,
+            min_calibration_samples=min_calibration_samples,
+            expected_sha_by_slug=expected_sha_by_slug,
+        )
+    except (KeyError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=2) from exc
+
+    def load_supervisor_events(events: list[dict[str, Any]]) -> tuple[LiveSignalConfig, ...]:
+        pairs = [(str(item["event_slug"]), str(item["settlement_key"])) for item in events]
+        expected = {
+            str(item["event_slug"]): str(item["evidence_sha256"]) for item in events
+        }
+        return _build_signal_configs(
+            pairs,
+            registry=registry,
+            data_dir=data_dir,
+            calibration_lead_days=calibration_lead_days,
+            min_calibration_samples=min_calibration_samples,
+            expected_sha_by_slug=expected,
+        )
     engine = LiveSignalEngine(
         configs=tuple(configs),
         data_dir=data_dir,
         interval_seconds=interval_seconds,
         min_net_edge=Decimal(min_net_edge_text),
         cost_buffer=Decimal(cost_buffer_text),
+        config_update_path=update_path,
+        config_loader=load_supervisor_events,
     )
+    if initial_generation is not None:
+        engine._last_config_generation = initial_generation
+        engine.metrics.config_generation = initial_generation
     try:
         metrics = asyncio.run(engine.run(runtime_seconds=runtime_seconds))
     except KeyboardInterrupt:
