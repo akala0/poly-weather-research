@@ -37,6 +37,7 @@ class SearchPage(BaseModel):
     has_more: bool
     raw_payload: dict[str, Any]
     markets: tuple[Market, ...]
+    events: tuple[EventSnapshot, ...] = ()
 
 
 class EventSnapshot(BaseModel):
@@ -137,12 +138,14 @@ class GammaClient:
             raise ValueError("Gamma /public-search returned a non-object response")
 
         raw_markets: list[dict[str, Any]] = []
+        event_snapshots: list[EventSnapshot] = []
         events = payload.get("events") or []
         if not isinstance(events, list):
             raise ValueError("Gamma search events field is not a list")
         for event in events:
             if not isinstance(event, dict):
                 continue
+            event_markets: list[dict[str, Any]] = []
             for market in event.get("markets") or []:
                 if not isinstance(market, dict):
                     continue
@@ -151,6 +154,20 @@ class GammaClient:
                 enriched.setdefault("description", event.get("description"))
                 enriched.setdefault("resolutionSource", event.get("resolutionSource"))
                 raw_markets.append(enriched)
+                event_markets.append(enriched)
+            if event.get("id") and event.get("slug"):
+                event_snapshots.append(
+                    EventSnapshot(
+                        request_url=str(response.request.url),
+                        fetched_at=datetime.now(UTC),
+                        event_id=str(event["id"]),
+                        event_slug=str(event["slug"]),
+                        title=str(event.get("title") or ""),
+                        resolution_source=event.get("resolutionSource"),
+                        raw_payload=event,
+                        markets=tuple(Market.from_gamma(item) for item in event_markets),
+                    )
+                )
 
         pagination = payload.get("pagination") or {}
         return SearchPage(
@@ -161,6 +178,7 @@ class GammaClient:
             has_more=bool(pagination.get("hasMore", False)),
             raw_payload=payload,
             markets=tuple(Market.from_gamma(item) for item in raw_markets),
+            events=tuple(event_snapshots),
         )
 
     def iter_search_pages(

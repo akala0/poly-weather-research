@@ -4,18 +4,25 @@ import asyncio
 import json
 import random
 import time
+from collections import deque
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from datetime import time as datetime_time
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from websockets.asyncio.client import connect
 
 from poly_weather.research_store import ResearchWarehouse
+from poly_weather.retention import disk_capacity_status
 
 DEFAULT_MARKET_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+DEFAULT_MAX_WS_MESSAGE_SIZE = 16 * 1024 * 1024
+RECONNECT_LOOP_WINDOW_SECONDS = 300.0
+RECONNECT_LOOP_THRESHOLD = 5
 
 
 @dataclass(slots=True)
@@ -31,6 +38,9 @@ class StreamRecord:
     best_bid: Decimal | None
     best_ask: Decimal | None
     last_trade_price: Decimal | None
+    bids: tuple[dict[str, str], ...] | None
+    asks: tuple[dict[str, str], ...] | None
+    book_complete: bool
     raw: dict[str, Any]
 
 
@@ -41,10 +51,12 @@ class BookState:
     best_bid: Decimal | None = None
     best_ask: Decimal | None = None
     last_trade_price: Decimal | None = None
+    complete: bool = False
 
     def replace(self, bids: list[dict[str, Any]], asks: list[dict[str, Any]]) -> None:
         self.bids = self._levels(bids)
         self.asks = self._levels(asks)
+        self.complete = True
         self._refresh_top()
 
     @staticmethod
@@ -69,6 +81,16 @@ class BookState:
         self.best_bid = max(self.bids, default=None)
         self.best_ask = min(self.asks, default=None)
 
+    def depth(self) -> tuple[tuple[dict[str, str], ...], tuple[dict[str, str], ...]]:
+        bids = tuple(
+            {"price": str(price), "size": str(self.bids[price])}
+            for price in sorted(self.bids, reverse=True)
+        )
+        asks = tuple(
+            {"price": str(price), "size": str(self.asks[price])} for price in sorted(self.asks)
+        )
+        return bids, asks
+
 
 @dataclass(slots=True)
 class StreamMetrics:
@@ -79,6 +101,8 @@ class StreamMetrics:
     reconnects: int = 0
     messages: int = 0
     events: int = 0
+    events_skipped_archive: int = 0
+    hourly_audit_snapshots: int = 0
     rows_written: int = 0
     database_rows_written: int = 0
     pongs: int = 0
@@ -87,6 +111,28 @@ class StreamMetrics:
     database_queue_high_water: int = 0
     last_event_at: str | None = None
     last_error: str | None = None
+    last_error_fingerprint: str | None = None
+    same_error_reconnects_5m: int = 0
+    deterministic_reconnect_fault: str | None = None
+
+
+@dataclass(slots=True)
+class SubscriptionCommand:
+    operation: str
+    asset_ids: tuple[str, ...]
+    sent: asyncio.Future[None]
+
+
+@dataclass(frozen=True, slots=True)
+class EventArchivePolicy:
+    timezone: str
+    target_date: date
+    full_start: datetime_time = datetime_time(9, 0)
+    full_end: datetime_time = datetime_time(20, 0)
+
+    def full_capture(self, received_at: datetime) -> bool:
+        local_time = received_at.astimezone(ZoneInfo(self.timezone)).time().replace(tzinfo=None)
+        return self.full_start <= local_time < self.full_end
 
 
 class MarketStreamSink:
@@ -100,11 +146,15 @@ class MarketStreamSink:
         # daemons are running.
         self.warehouse = ResearchWarehouse(data_dir / "market_stream.duckdb")
         self.handles: dict[str, Any] = {}
+        self.checkpoint_handles: dict[str, Any] = {}
 
     def close(self) -> None:
         for handle in self.handles.values():
             handle.close()
         self.handles.clear()
+        for handle in self.checkpoint_handles.values():
+            handle.close()
+        self.checkpoint_handles.clear()
         self.warehouse.close()
 
     def _handle(self, day: str) -> Any:
@@ -114,6 +164,15 @@ class MarketStreamSink:
             path.parent.mkdir(parents=True, exist_ok=True)
             handle = path.open("a", encoding="utf-8", newline="\n", buffering=1024 * 1024)
             self.handles[day] = handle
+        return handle
+
+    def _checkpoint_handle(self, day: str) -> Any:
+        handle = self.checkpoint_handles.get(day)
+        if handle is None:
+            path = self.data_dir / "raw" / "polymarket_book_checkpoints" / day / "events.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            handle = path.open("a", encoding="utf-8", newline="\n", buffering=1024 * 1024)
+            self.checkpoint_handles[day] = handle
         return handle
 
     def write(self, records: list[StreamRecord]) -> None:
@@ -140,12 +199,22 @@ class MarketStreamSink:
                 "last_trade_price": (
                     str(record.last_trade_price) if record.last_trade_price is not None else None
                 ),
+                "bids": record.bids,
+                "asks": record.asks,
+                "book_complete": record.book_complete,
                 "raw": record.raw,
             }
             handle = self._handle(received.date().isoformat())
-            handle.write(json.dumps(envelope, ensure_ascii=False, separators=(",", ":")))
+            encoded = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
+            handle.write(encoded)
             handle.write("\n")
+            if record.bids is not None and record.asks is not None:
+                checkpoint_handle = self._checkpoint_handle(received.date().isoformat())
+                checkpoint_handle.write(encoded)
+                checkpoint_handle.write("\n")
         for handle in self.handles.values():
+            handle.flush()
+        for handle in self.checkpoint_handles.values():
             handle.flush()
 
     def write_database(self, records: list[StreamRecord]) -> None:
@@ -163,35 +232,116 @@ class MarketWebSocketBot:
         asset_slugs: dict[str, str],
         data_dir: Path,
         asset_events: dict[str, str] | None = None,
+        event_policies: dict[str, EventArchivePolicy] | None = None,
         websocket_url: str = DEFAULT_MARKET_WS_URL,
         heartbeat_seconds: float = 10,
         silence_timeout_seconds: float = 45,
         batch_size: int = 500,
         flush_interval_seconds: float = 0.25,
         queue_size: int = 50_000,
+        max_message_size_bytes: int = DEFAULT_MAX_WS_MESSAGE_SIZE,
     ) -> None:
         if not asset_slugs:
             raise ValueError("at least one asset id is required")
         self.asset_slugs = asset_slugs
         self.asset_events = asset_events or {}
+        self.event_policies = event_policies or {}
         self.data_dir = data_dir
         self.websocket_url = websocket_url
         self.heartbeat_seconds = heartbeat_seconds
         self.silence_timeout_seconds = silence_timeout_seconds
         self.batch_size = batch_size
         self.flush_interval_seconds = flush_interval_seconds
+        if max_message_size_bytes < 1024 * 1024:
+            raise ValueError("market websocket max message size cannot be below 1 MiB")
+        self.max_message_size_bytes = max_message_size_bytes
         self.queue: asyncio.Queue[StreamRecord] = asyncio.Queue(maxsize=queue_size)
         self.database_queue: asyncio.Queue[list[StreamRecord]] = asyncio.Queue(maxsize=200)
+        self.subscription_queue: asyncio.Queue[SubscriptionCommand] = asyncio.Queue()
         self.stop_event = asyncio.Event()
         self.run_id = str(uuid4())
         self.metrics = StreamMetrics(run_id=self.run_id, started_at=datetime.now(UTC).isoformat())
         self.books = {asset_id: BookState() for asset_id in asset_slugs}
+        self.book_snapshot_events = {asset_id: asyncio.Event() for asset_id in asset_slugs}
+        self.last_depth_checkpoint_ns: dict[str, int] = {}
+        self.last_hourly_archive: dict[tuple[str, str], str] = {}
+        self.depth_checkpoint_interval_ns = 30_000_000_000
         self.event_counts = {
             event_slug: 0 for event_slug in sorted(set(self.asset_events.values()))
         }
         self.sequence = 0
         self.status_path = data_dir / "runtime" / "polymarket_ws_status.json"
         self.sink = MarketStreamSink(data_dir=data_dir, run_id=self.run_id)
+        self.last_database_maintenance = time.monotonic()
+        self.last_disk_status_at = 0.0
+        self.disk_status_cache: dict[str, Any] = {}
+        self.reconnect_failures: deque[tuple[float, str]] = deque(maxlen=100)
+
+    async def subscribe_assets(
+        self,
+        *,
+        asset_slugs: dict[str, str],
+        asset_events: dict[str, str],
+        event_policies: dict[str, EventArchivePolicy] | None = None,
+        timeout_seconds: float = 30.0,
+    ) -> None:
+        """Hot-subscribe and return only after every asset has a fresh full book."""
+        new_ids = tuple(asset_id for asset_id in asset_slugs if asset_id not in self.asset_slugs)
+        if not new_ids:
+            await asyncio.wait_for(
+                asyncio.gather(
+                    *(
+                        self.book_snapshot_events.setdefault(asset_id, asyncio.Event()).wait()
+                        for asset_id in asset_slugs
+                    )
+                ),
+                timeout=timeout_seconds,
+            )
+            return
+        for asset_id in new_ids:
+            self.asset_slugs[asset_id] = asset_slugs[asset_id]
+            self.asset_events[asset_id] = asset_events[asset_id]
+            self.books[asset_id] = BookState()
+            self.book_snapshot_events[asset_id] = asyncio.Event()
+            event_slug = asset_events[asset_id]
+            self.event_counts.setdefault(event_slug, 0)
+        if event_policies:
+            self.event_policies.update(event_policies)
+        loop = asyncio.get_running_loop()
+        sent = loop.create_future()
+        await self.subscription_queue.put(
+            SubscriptionCommand(operation="subscribe", asset_ids=new_ids, sent=sent)
+        )
+        await asyncio.wait_for(sent, timeout=timeout_seconds)
+        await asyncio.wait_for(
+            asyncio.gather(*(self.book_snapshot_events[asset_id].wait() for asset_id in new_ids)),
+            timeout=timeout_seconds,
+        )
+        self._write_status()
+
+    async def unsubscribe_assets(
+        self,
+        asset_ids: list[str] | tuple[str, ...],
+        *,
+        timeout_seconds: float = 30.0,
+    ) -> None:
+        """Hot-unsubscribe assets after their replacement has been confirmed."""
+        selected = tuple(asset_id for asset_id in asset_ids if asset_id in self.asset_slugs)
+        if not selected:
+            return
+        loop = asyncio.get_running_loop()
+        sent = loop.create_future()
+        await self.subscription_queue.put(
+            SubscriptionCommand(operation="unsubscribe", asset_ids=selected, sent=sent)
+        )
+        await asyncio.wait_for(sent, timeout=timeout_seconds)
+        for asset_id in selected:
+            self.asset_slugs.pop(asset_id, None)
+            self.asset_events.pop(asset_id, None)
+            self.books.pop(asset_id, None)
+            self.book_snapshot_events.pop(asset_id, None)
+            self.last_depth_checkpoint_ns.pop(asset_id, None)
+        self._write_status()
 
     async def run(self, *, runtime_seconds: float = 0) -> StreamMetrics:
         self.sink.warehouse.start_market_stream_run(
@@ -219,9 +369,7 @@ class MarketWebSocketBot:
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:  # connection boundary: persist and retry all failures
-                    self.metrics.last_error = f"{type(exc).__name__}: {exc}"
-                    self.metrics.reconnects += 1
-                    self.metrics.state = "reconnecting"
+                    self._record_connection_failure(f"{type(exc).__name__}: {exc}")
                     self._write_status()
                     remaining = None if deadline is None else deadline - time.monotonic()
                     if remaining is not None and remaining <= 0:
@@ -236,11 +384,17 @@ class MarketWebSocketBot:
                     backoff = min(30.0, backoff * 2)
         finally:
             self.stop_event.set()
-            await writer
-            await database_writer
+            writer_results = await asyncio.gather(
+                writer,
+                database_writer,
+                return_exceptions=True,
+            )
             status_heartbeat.cancel()
             await asyncio.gather(status_heartbeat, return_exceptions=True)
-            self.metrics.state = "stopped"
+            background_errors = [
+                result for result in writer_results if isinstance(result, BaseException)
+            ]
+            self.metrics.state = "failed" if background_errors else "stopped"
             self._write_status()
             self.sink.warehouse.finish_market_stream_run(
                 run_id=self.run_id,
@@ -248,15 +402,67 @@ class MarketWebSocketBot:
                 metrics=asdict(self.metrics),
             )
             self.sink.close()
+            if background_errors:
+                raise RuntimeError("market stream background writer failed") from background_errors[
+                    0
+                ]
         return self.metrics
+
+    def _record_connection_failure(
+        self,
+        error: str,
+        *,
+        observed_at: float | None = None,
+    ) -> None:
+        """Classify repeated identical reconnects that cannot self-heal."""
+        now = time.monotonic() if observed_at is None else observed_at
+        self.metrics.last_error = error
+        self.metrics.last_error_fingerprint = error
+        self.metrics.reconnects += 1
+        self.reconnect_failures.append((now, error))
+        cutoff = now - RECONNECT_LOOP_WINDOW_SECONDS
+        while self.reconnect_failures and self.reconnect_failures[0][0] < cutoff:
+            self.reconnect_failures.popleft()
+        same_error_count = sum(
+            failure == error for _, failure in self.reconnect_failures
+        )
+        self.metrics.same_error_reconnects_5m = same_error_count
+        if same_error_count >= RECONNECT_LOOP_THRESHOLD:
+            if "message too big" in error.casefold() or "1009" in error:
+                fault = "message_too_big"
+                self.metrics.state = "faulted_message_too_big"
+            else:
+                fault = "repeated_identical_connection_failure"
+                self.metrics.state = "faulted_reconnect_loop"
+            self.metrics.deterministic_reconnect_fault = fault
+        else:
+            self.metrics.state = "reconnecting"
+
+    def _mark_data_connection_healthy(self) -> None:
+        """Clear a latched reconnect fault only after actual market data arrives."""
+        self.reconnect_failures.clear()
+        self.metrics.last_error = None
+        self.metrics.last_error_fingerprint = None
+        self.metrics.same_error_reconnects_5m = 0
+        self.metrics.deterministic_reconnect_fault = None
+        self.metrics.state = "connected"
+
+    def _websocket_connect_options(self) -> dict[str, Any]:
+        return {
+            "ping_interval": None,
+            "close_timeout": 5,
+            "max_queue": 4096,
+            # A 572-token initial book frame was observed at 1,081,647 bytes,
+            # already above websockets' 1 MiB default. Keep ample headroom for
+            # daily overlap and planned city expansion; compression stays off.
+            "max_size": self.max_message_size_bytes,
+            "compression": None,
+        }
 
     async def _connection(self, *, deadline: float | None) -> None:
         async with connect(
             self.websocket_url,
-            ping_interval=None,
-            close_timeout=5,
-            max_queue=4096,
-            compression=None,
+            **self._websocket_connect_options(),
         ) as websocket:
             await websocket.send(
                 json.dumps(
@@ -269,13 +475,17 @@ class MarketWebSocketBot:
                 )
             )
             self.metrics.connections += 1
-            self.metrics.state = "connected"
-            self.metrics.last_error = None
+            if self.metrics.deterministic_reconnect_fault is None:
+                self.metrics.state = "connected"
+                self.metrics.last_error = None
             self._write_status()
-            heartbeat = asyncio.create_task(self._heartbeat(websocket), name="market-stream-heartbeat")
+            heartbeat = asyncio.create_task(
+                self._heartbeat(websocket), name="market-stream-heartbeat"
+            )
             last_data_at = time.monotonic()
             try:
                 while not self.stop_event.is_set():
+                    await self._send_subscription_updates(websocket)
                     if deadline is not None and time.monotonic() >= deadline:
                         return
                     try:
@@ -292,6 +502,7 @@ class MarketWebSocketBot:
                         self.metrics.pongs += 1
                         continue
                     last_data_at = time.monotonic()
+                    self._mark_data_connection_healthy()
                     self.metrics.messages += 1
                     try:
                         decoded = json.loads(raw_message)
@@ -303,18 +514,87 @@ class MarketWebSocketBot:
                         if not isinstance(message, dict):
                             continue
                         for record in self._records(message):
-                            await self.queue.put(record)
                             self.metrics.events += 1
                             event_slug = self.asset_events.get(record.asset_id or "")
                             if event_slug is not None:
-                                self.event_counts[event_slug] = self.event_counts.get(event_slug, 0) + 1
-                            self.metrics.queue_high_water = max(
-                                self.metrics.queue_high_water, self.queue.qsize()
-                            )
+                                self.event_counts[event_slug] = (
+                                    self.event_counts.get(event_slug, 0) + 1
+                                )
+                            if self._prepare_for_archive(record):
+                                await self.queue.put(record)
+                                self.metrics.queue_high_water = max(
+                                    self.metrics.queue_high_water, self.queue.qsize()
+                                )
+                            else:
+                                self.metrics.events_skipped_archive += 1
                     self.metrics.last_event_at = datetime.now(UTC).isoformat()
             finally:
                 heartbeat.cancel()
                 await asyncio.gather(heartbeat, return_exceptions=True)
+
+    def _prepare_for_archive(self, record: StreamRecord) -> bool:
+        """Apply per-event local-time persistence policy after in-memory book updates."""
+        if record.event_type == "market_resolved":
+            return True
+        asset_id = record.asset_id
+        event_slug = self.asset_events.get(asset_id or "")
+        if event_slug is None and isinstance(record.raw.get("assets_ids"), list):
+            for candidate in record.raw["assets_ids"]:
+                event_slug = self.asset_events.get(str(candidate))
+                if event_slug:
+                    break
+        policy = self.event_policies.get(event_slug or "")
+        if policy is None:
+            # Existing callers without a settlement policy retain legacy full capture.
+            return True
+        received = datetime.fromtimestamp(record.received_at_ns / 1_000_000_000, tz=UTC)
+        if policy.full_capture(received):
+            return True
+        if asset_id is None:
+            return False
+        local = received.astimezone(ZoneInfo(policy.timezone))
+        hour_key = local.strftime("%Y-%m-%dT%H")
+        key = (event_slug or "", asset_id)
+        if self.last_hourly_archive.get(key) == hour_key:
+            return False
+        state = self.books.get(asset_id)
+        if state is None or not state.complete:
+            return False
+        record.bids, record.asks = state.depth()
+        record.raw = {
+            **record.raw,
+            "archive_policy": "outside_full_window_hourly_snapshot",
+            "archive_local_hour": hour_key,
+            "archive_timezone": policy.timezone,
+        }
+        self.last_hourly_archive[key] = hour_key
+        self.metrics.hourly_audit_snapshots += 1
+        return True
+
+    async def _send_subscription_updates(self, websocket: Any) -> None:
+        while True:
+            try:
+                command = self.subscription_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                return
+            try:
+                await websocket.send(
+                    json.dumps(
+                        {
+                            "operation": command.operation,
+                            "assets_ids": list(command.asset_ids),
+                        },
+                        separators=(",", ":"),
+                    )
+                )
+                if not command.sent.done():
+                    command.sent.set_result(None)
+            except Exception as exc:
+                if not command.sent.done():
+                    command.sent.set_exception(exc)
+                raise
+            finally:
+                self.subscription_queue.task_done()
 
     async def _heartbeat(self, websocket: Any) -> None:
         while not self.stop_event.is_set():
@@ -353,17 +633,31 @@ class MarketWebSocketBot:
                         asset_id=asset_id,
                         market_id=market_id,
                         state=state,
-                        raw=message,
+                        raw={
+                            **{
+                                key: value
+                                for key, value in message.items()
+                                if key != "price_changes"
+                            },
+                            "price_changes": [change],
+                        },
                     )
                 )
             return records
 
         asset_id = str(message.get("asset_id") or "") or None
         state = self.books.setdefault(asset_id or "", BookState())
+        raw = message
         if event_type == "book":
             bids = message.get("bids") if isinstance(message.get("bids"), list) else []
             asks = message.get("asks") if isinstance(message.get("asks"), list) else []
             state.replace(bids, asks)
+            if asset_id is not None:
+                self.book_snapshot_events.setdefault(asset_id, asyncio.Event()).set()
+            raw = {
+                **{key: value for key, value in message.items() if key not in {"bids", "asks"}},
+                "book_depth_stored_top_level": True,
+            }
         elif event_type == "best_bid_ask":
             state.best_bid = (
                 Decimal(str(message["best_bid"])) if message.get("best_bid") is not None else None
@@ -381,7 +675,7 @@ class MarketWebSocketBot:
                 asset_id=asset_id,
                 market_id=market_id,
                 state=state,
-                raw=message,
+                raw=raw,
             )
         ]
 
@@ -397,6 +691,18 @@ class MarketWebSocketBot:
         raw: dict[str, Any],
     ) -> StreamRecord:
         self.sequence += 1
+        # Persist a full book on authoritative snapshots and every subsequent
+        # level delta in ``raw``. Repeating the entire book for each delta makes
+        # an 8-city archive grow by tens of GB/day without adding information.
+        include_depth = event_type == "book"
+        if event_type == "price_change" and asset_id is not None:
+            previous = self.last_depth_checkpoint_ns.get(asset_id)
+            include_depth = previous is None or (
+                received_at_ns - previous >= self.depth_checkpoint_interval_ns
+            )
+        if include_depth and asset_id is not None:
+            self.last_depth_checkpoint_ns[asset_id] = received_at_ns
+        bids, asks = state.depth() if include_depth else (None, None)
         return StreamRecord(
             run_id=self.run_id,
             sequence=self.sequence,
@@ -409,46 +715,81 @@ class MarketWebSocketBot:
             best_bid=state.best_bid,
             best_ask=state.best_ask,
             last_trade_price=state.last_trade_price,
+            bids=bids,
+            asks=asks,
+            book_complete=state.complete,
             raw=raw,
         )
 
     async def _writer(self) -> None:
-        while not self.stop_event.is_set() or not self.queue.empty():
-            batch: list[StreamRecord] = []
-            try:
-                first = await asyncio.wait_for(
-                    self.queue.get(), timeout=self.flush_interval_seconds
-                )
-                batch.append(first)
-            except TimeoutError:
-                self._write_status()
-                continue
-            while len(batch) < self.batch_size:
+        try:
+            while not self.stop_event.is_set() or not self.queue.empty():
+                batch: list[StreamRecord] = []
                 try:
-                    batch.append(self.queue.get_nowait())
-                except asyncio.QueueEmpty:
-                    break
-            self.sink.write_raw(batch)
-            for _ in batch:
-                self.queue.task_done()
-            self.metrics.rows_written += len(batch)
-            await self.database_queue.put(batch)
-            self.metrics.database_queue_high_water = max(
-                self.metrics.database_queue_high_water, self.database_queue.qsize()
-            )
+                    first = await asyncio.wait_for(
+                        self.queue.get(), timeout=self.flush_interval_seconds
+                    )
+                    batch.append(first)
+                except TimeoutError:
+                    self._write_status()
+                    continue
+                while len(batch) < self.batch_size:
+                    try:
+                        batch.append(self.queue.get_nowait())
+                    except asyncio.QueueEmpty:
+                        break
+                # Initial snapshots for 176 assets are large. Keep filesystem JSON
+                # encoding and flushing off the receive loop so WebSocket heartbeats
+                # and frames continue to be serviced during bursty writes.
+                await asyncio.to_thread(self.sink.write_raw, batch)
+                for _ in batch:
+                    self.queue.task_done()
+                self.metrics.rows_written += len(batch)
+                database_batch = [
+                    record
+                    for record in batch
+                    if record.bids is not None
+                    or record.event_type in {"best_bid_ask", "last_trade_price"}
+                ]
+                if database_batch:
+                    await self.database_queue.put(database_batch)
+                    self.metrics.database_queue_high_water = max(
+                        self.metrics.database_queue_high_water,
+                        self.database_queue.qsize(),
+                    )
+                self._write_status()
+        except Exception as exc:
+            self.metrics.state = "failed"
+            self.metrics.last_error = f"raw writer {type(exc).__name__}: {exc}"
+            self.stop_event.set()
             self._write_status()
+            raise
 
     async def _database_writer(self) -> None:
-        while not self.stop_event.is_set() or not self.database_queue.empty():
-            try:
-                batch = await asyncio.wait_for(
-                    self.database_queue.get(), timeout=self.flush_interval_seconds
-                )
-            except TimeoutError:
-                continue
-            await asyncio.to_thread(self.sink.write_database, batch)
-            self.database_queue.task_done()
-            self.metrics.database_rows_written += len(batch)
+        try:
+            while not self.stop_event.is_set() or not self.database_queue.empty():
+                try:
+                    batch = await asyncio.wait_for(
+                        self.database_queue.get(), timeout=self.flush_interval_seconds
+                    )
+                except TimeoutError:
+                    continue
+                await asyncio.to_thread(self.sink.write_database, batch)
+                self.database_queue.task_done()
+                self.metrics.database_rows_written += len(batch)
+                if time.monotonic() - self.last_database_maintenance >= 86_400:
+                    await asyncio.to_thread(self._maintain_database)
+                    self.last_database_maintenance = time.monotonic()
+        except Exception as exc:
+            self.metrics.state = "failed"
+            self.metrics.last_error = f"database writer {type(exc).__name__}: {exc}"
+            self.stop_event.set()
+            self._write_status()
+            raise
+
+    def _maintain_database(self) -> None:
+        self.sink.warehouse.connection.execute("CHECKPOINT")
+        self.sink.warehouse.connection.execute("VACUUM")
 
     async def _status_heartbeat(self) -> None:
         while not self.stop_event.is_set():
@@ -460,6 +801,9 @@ class MarketWebSocketBot:
 
     def _write_status(self) -> None:
         self.status_path.parent.mkdir(parents=True, exist_ok=True)
+        if time.monotonic() - self.last_disk_status_at >= 60:
+            self.disk_status_cache = disk_capacity_status(self.data_dir)
+            self.last_disk_status_at = time.monotonic()
         payload = {
             **asdict(self.metrics),
             "pid": __import__("os").getpid(),
@@ -468,12 +812,29 @@ class MarketWebSocketBot:
             "events_by_event": self.event_counts,
             "queue_depth": self.queue.qsize(),
             "database_queue_depth": self.database_queue.qsize(),
+            "subscription_queue_depth": self.subscription_queue.qsize(),
+            "book_snapshot_count": sum(state.complete for state in self.books.values()),
+            "archive_full_window_local": "09:00-20:00",
+            "archive_policy_event_count": len(self.event_policies),
             "updated_at": datetime.now(UTC).isoformat(),
             "websocket_url": self.websocket_url,
+            "max_message_size_bytes": self.max_message_size_bytes,
+            "reconnect_loop_window_seconds": RECONNECT_LOOP_WINDOW_SECONDS,
+            "reconnect_loop_threshold": RECONNECT_LOOP_THRESHOLD,
             "read_only": True,
+            "retention": {
+                "raw_market_days": 30,
+                "aggregate_results": "permanent",
+            },
+            **self.disk_status_cache,
         }
-        temporary = self.status_path.with_suffix(".tmp")
-        temporary.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        temporary.replace(self.status_path)
+        temporary = self.status_path.with_name(f".{self.status_path.name}.{self.run_id}.tmp")
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        for attempt in range(5):
+            try:
+                temporary.replace(self.status_path)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.01 * (attempt + 1))

@@ -89,3 +89,14 @@ def test_registry_status_is_required_for_verification() -> None:
     assert "registry_verified" in rejected.failures
     assert accepted.tradeable is True
 
+
+def test_settlement_evidence_hash_is_stable_across_market_order() -> None:
+    event = _event()
+    spec = _spec(VerificationStatus.VERIFIED)
+    forward = parse_settlement_evidence(event, registry_spec=spec)
+    reversed_order = parse_settlement_evidence(
+        event.model_copy(update={"markets": tuple(reversed(event.markets))}),
+        registry_spec=spec,
+    )
+
+    assert forward.evidence_sha256 == reversed_order.evidence_sha256

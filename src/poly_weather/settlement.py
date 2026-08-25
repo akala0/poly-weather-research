@@ -26,7 +26,7 @@ from poly_weather.domain import (
 )
 from poly_weather.modeling import market_temperature_bucket, validate_bucket_partition
 
-PARSER_VERSION = "1"
+PARSER_VERSION = "2"
 _TITLE_RE = re.compile(
     r"^highest temperature in (?P<city>.+?) on (?P<month>[A-Za-z]+) (?P<day>\d{1,2})\?$",
     re.IGNORECASE,
@@ -144,8 +144,12 @@ def parse_settlement_evidence(
 
     parsed_buckets = []
     for market in event.markets:
-        parsed_buckets.append(market_temperature_bucket(market))
+        parsed_buckets.append(market_temperature_bucket(market, expected_unit=unit))
     buckets = validate_bucket_partition(tuple(parsed_buckets))
+    finite_widths = {
+        width for bucket in buckets if (width := bucket.width_degrees) is not None
+    }
+    bucket_width = next(iter(finite_widths)) if len(finite_widths) == 1 else None
     timezone = registry_spec.timezone if registry_spec and registry_spec.station_id == station_id else None
     fields = {
         "city": city,
@@ -157,7 +161,18 @@ def parse_settlement_evidence(
         "official_source_url": source_url,
         "unit": unit,
         "precision_degrees": precision,
-        "observation_table": "Daily Observations" if "daily observations" in description.lower() else None,
+        "observation_table": (
+            "Daily Observations"
+            if "daily observations" in description.lower()
+            else "Hourly Data / Temp"
+            if (
+                "hourly data" in description.lower()
+                or "highest reading under the \"temp\" column" in description.lower()
+            )
+            and "temp" in description.lower()
+            else None
+        ),
+        "bucket_width_degrees": bucket_width,
     }
     missing = tuple(name for name, value in fields.items() if value is None or value == "")
     canonical = json.dumps(
@@ -167,7 +182,9 @@ def parse_settlement_evidence(
             "title": event.title,
             "description": description,
             "resolution_source": event.resolution_source,
-            "market_slugs": [market.slug for market in event.markets],
+            # Gamma does not promise a stable child-market array order. The
+            # evidence is a set of contracts, so order must not alter its hash.
+            "market_slugs": sorted(market.slug for market in event.markets),
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -198,14 +215,19 @@ def verify_settlement_evidence(
         "registry_verified": spec.status is VerificationStatus.VERIFIED,
         "slug_exact": re.fullmatch(spec.market_slug_pattern, evidence.event_slug) is not None,
         "station_exact": spec.station_id == evidence.station_id,
+        "station_name_exact": spec.station_name == evidence.station_name,
         "timezone_exact": spec.timezone == evidence.timezone,
         "source_exact": (
             spec.resolution_source_url is not None
             and str(spec.resolution_source_url) == evidence.official_source_url
         ),
         "whole_degree_precision": evidence.precision_degrees == Decimal("1"),
+        "unit_exact": evidence.unit == spec.unit,
+        "bucket_width_exact": evidence.bucket_width_degrees == spec.bucket_width_degrees,
         "finalization_known": evidence.finalization_rule is not FinalizationRule.UNKNOWN,
+        "finalization_exact": evidence.finalization_rule.value == spec.finalization_rule,
         "late_revision_cutoff": evidence.ignores_late_revisions,
+        "late_revision_exact": evidence.ignores_late_revisions == spec.ignores_late_revisions,
     }
     failures = tuple(name for name, passed in checks.items() if not passed)
     passed = not failures
@@ -237,10 +259,12 @@ def verify_signal_contract(
         "parse_complete": evidence.parse_status is RuleParseStatus.COMPLETE,
         "slug_exact": re.fullmatch(spec.market_slug_pattern, evidence.event_slug) is not None,
         "station_exact": spec.station_id == evidence.station_id,
+        "station_name_exact": spec.station_name == evidence.station_name,
         "timezone_exact": spec.timezone == evidence.timezone,
         "source_recognized": evidence.official_source_name in {"Wunderground", "NOAA Timeseries"},
         "unit_exact": evidence.unit == spec.unit,
         "whole_degree_precision": evidence.precision_degrees == Decimal("1"),
+        "bucket_width_exact": evidence.bucket_width_degrees == spec.bucket_width_degrees,
         "finalization_known": evidence.finalization_rule is not FinalizationRule.UNKNOWN,
         "late_revision_cutoff": evidence.ignores_late_revisions,
         "same_station_noaa_policy": True,
