@@ -42,10 +42,16 @@ class SettlementSpec(BaseModel):
     timezone: str | None = None
     metric: str = "daily_high_temperature"
     unit: str = "fahrenheit"
+    bucket_width_degrees: int = Field(default=2, gt=0)
+    rounding_precision_degrees: Decimal = Field(default=Decimal("1"), gt=0)
+    finalization_rule: str = "first_next_day_observation"
+    ignores_late_revisions: bool = True
     window_basis: WindowBasis | None = None
     resolution_source_url: HttpUrl | None = None
     ncei_station_id: str | None = None
     signal_truth_policy: SignalTruthPolicy = SignalTruthPolicy.OFFICIAL_RESOLUTION_SOURCE
+    nws_api_enabled: bool = True
+    open_meteo_enabled: bool = True
     status: VerificationStatus = VerificationStatus.UNVERIFIED
     notes: str = ""
 
@@ -160,6 +166,7 @@ class NwsObservation(BaseModel):
     station_id: str
     timestamp: datetime
     temperature_c: Decimal | None
+    temperature_precision_degraded: bool = False
     raw: dict[str, Any]
 
 
@@ -199,6 +206,36 @@ class EnsembleForecast(BaseModel):
         return tuple(highs)
 
 
+class DeterministicForecast(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    model: str
+    latitude: float
+    longitude: float
+    timezone: str
+    temperature_unit: str
+    fetched_at: datetime
+    times: tuple[datetime, ...]
+    values: tuple[Decimal | None, ...]
+    raw: dict[str, Any]
+
+    @model_validator(mode="after")
+    def aligned_series(self) -> DeterministicForecast:
+        if len(self.values) != len(self.times):
+            raise ValueError("deterministic forecast values do not match time axis")
+        return self
+
+    def daily_high(self, target_date: date) -> Decimal:
+        available = [
+            value
+            for timestamp, value in zip(self.times, self.values, strict=True)
+            if timestamp.date() == target_date and value is not None
+        ]
+        if not available:
+            raise ValueError(f"forecast contains no usable values for {target_date.isoformat()}")
+        return max(available)
+
+
 class TemperatureBucket(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -207,6 +244,7 @@ class TemperatureBucket(BaseModel):
     label: str
     lower_f: int | None = None
     upper_f: int | None = None
+    unit: str = "fahrenheit"
     market_probability: Decimal | None = None
 
     @model_validator(mode="after")
@@ -220,12 +258,17 @@ class TemperatureBucket(BaseModel):
             self.upper_f is None or value_f <= self.upper_f
         )
 
+    @property
+    def width_degrees(self) -> int | None:
+        if self.lower_f is None or self.upper_f is None:
+            return None
+        return self.upper_f - self.lower_f + 1
+
 
 class BucketProbability(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     bucket: TemperatureBucket
-    member_count: int
     probability: Decimal
     edge_vs_market: Decimal | None = None
 
@@ -235,10 +278,10 @@ class BucketForecast(BaseModel):
 
     generated_at: datetime
     target_date: date
-    ensemble_model: str
-    sample_size: int
+    forecast_model: str
+    forecast_high_f: Decimal
+    residual_std_f: float
     rounding: str
-    pseudocount: Decimal
     calibration_applied: bool
     calibration_sample_count: int
     calibration_bias_f: float | None
@@ -278,6 +321,7 @@ class SettlementEvidence(BaseModel):
     official_source_url: str | None
     unit: str | None
     precision_degrees: Decimal | None
+    bucket_width_degrees: int | None
     observation_table: str | None
     finalization_rule: FinalizationRule
     ignores_late_revisions: bool
@@ -330,6 +374,7 @@ class CalibrationSample(BaseModel):
     truth_source: str
     truth_kind: str
     ingested_at: datetime
+    forecast_high_f_by_model: dict[str, float] | None = None
 
     @property
     def error_f(self) -> float:
@@ -396,6 +441,8 @@ class MetarReport(BaseModel):
     observed_at: datetime
     temperature_c: Decimal | None
     dewpoint_c: Decimal | None
+    temperature_source: str = "api_field"
+    temperature_precision_degraded: bool = False
     raw_text: str
     flight_category: str | None
     raw: dict[str, Any]

@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime
 
 import httpx
 
+from poly_weather.adapters.open_meteo import DEFAULT_MULTI_MODELS, validate_response_grid
 from poly_weather.domain import DailyHighPoint, DailyHighSeries
 
 
@@ -68,6 +69,11 @@ class OpenMeteoPreviousRunsClient:
         payload = response.json()
         if not isinstance(payload, dict) or not isinstance(payload.get("hourly"), dict):
             raise ValueError("Open-Meteo Previous Runs response has no hourly data")
+        validate_response_grid(
+            payload,
+            requested_latitude=latitude,
+            requested_longitude=longitude,
+        )
         hourly = payload["hourly"]
         times = hourly.get("time")
         # The API accepts temperature_2m_previous_day0 but returns the day-0
@@ -95,6 +101,81 @@ class OpenMeteoPreviousRunsClient:
             values=points,
             raw=payload,
         )
+
+    def get_multi_model_ensemble(
+        self,
+        *,
+        station_id: str,
+        latitude: float,
+        longitude: float,
+        timezone: str,
+        start_date: date,
+        end_date: date,
+        lead_days: int,
+        models: dict[str, str] | None = None,
+    ) -> tuple[str, dict[str, DailyHighSeries]]:
+        """Fetch aligned fixed-lead deterministic histories in one request."""
+        if not 1 <= lead_days <= 7:
+            raise ValueError("multi-model Previous Runs lead_days must be between 1 and 7")
+        selected_models = models or DEFAULT_MULTI_MODELS
+        if not selected_models:
+            raise ValueError("at least one historical model is required")
+        variable = f"temperature_2m_previous_day{lead_days}"
+        response = self._client.get(
+            "/v1/forecast",
+            params={
+                "latitude": latitude,
+                "longitude": longitude,
+                "hourly": variable,
+                "models": ",".join(selected_models.values()),
+                "temperature_unit": "fahrenheit",
+                "timezone": timezone,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict) or not isinstance(payload.get("hourly"), dict):
+            raise ValueError("Open-Meteo multi-model Previous Runs has no hourly data")
+        hourly = payload["hourly"]
+        times = hourly.get("time")
+        if not isinstance(times, list):
+            raise ValueError("Open-Meteo multi-model Previous Runs has no time axis")
+        fetched_at = datetime.now(UTC)
+        series_by_model: dict[str, DailyHighSeries] = {}
+        for short_name, model in selected_models.items():
+            validate_response_grid(
+                payload,
+                requested_latitude=latitude,
+                requested_longitude=longitude,
+            )
+            response_variable = f"{variable}_{model}"
+            values = hourly.get(response_variable)
+            if not isinstance(values, list) or len(times) != len(values):
+                raise ValueError(
+                    f"Open-Meteo multi-model Previous Runs values are invalid for {model}"
+                )
+            grouped: dict[date, list[float]] = defaultdict(list)
+            for raw_time, raw_value in zip(times, values, strict=True):
+                if raw_value is None:
+                    continue
+                grouped[datetime.fromisoformat(str(raw_time)).date()].append(float(raw_value))
+            points = tuple(
+                DailyHighPoint(local_date=day, value_f=max(day_values))
+                for day, day_values in sorted(grouped.items())
+                if day_values
+            )
+            series_by_model[short_name] = DailyHighSeries(
+                source="Open-Meteo Previous Runs multi-model",
+                station_id=station_id,
+                model=model,
+                lead_days=lead_days,
+                fetched_at=fetched_at,
+                values=points,
+                raw=payload,
+            )
+        return str(response.request.url), series_by_model
 
 
 class NceiDailySummariesClient:

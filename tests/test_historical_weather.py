@@ -1,6 +1,7 @@
 from datetime import date
 
 import httpx
+import pytest
 
 from poly_weather.adapters.historical_weather import (
     NceiDailySummariesClient,
@@ -15,6 +16,8 @@ def test_previous_runs_groups_hourly_values_into_daily_highs() -> None:
             200,
             request=request,
             json={
+                "latitude": 40.779,
+                "longitude": -73.88,
                 "hourly": {
                     "time": [
                         "2026-07-01T00:00",
@@ -54,6 +57,8 @@ def test_previous_runs_day_zero_uses_canonical_response_key() -> None:
             200,
             request=request,
             json={
+                "latitude": 33.9382,
+                "longitude": -118.3866,
                 "hourly": {
                     "time": ["2026-07-01T00:00", "2026-07-01T12:00"],
                     "temperature_2m": [70.0, 83.0],
@@ -76,6 +81,81 @@ def test_previous_runs_day_zero_uses_canonical_response_key() -> None:
         )
 
     assert series.values[0].value_f == 83.0
+
+
+def test_previous_runs_rejects_distant_grid() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "latitude": 34.0,
+                "longitude": -118.5,
+                "hourly": {
+                    "time": ["2026-07-01T12:00"],
+                    "temperature_2m_previous_day1": [83.0],
+                },
+            },
+        )
+
+    http_client = httpx.Client(
+        base_url="https://example.test", transport=httpx.MockTransport(handler)
+    )
+    with OpenMeteoPreviousRunsClient(client=http_client) as client:
+        with pytest.raises(ValueError, match=r"requested=.*returned=.*distance=12\.51 km"):
+            client.daily_highs(
+                station_id="KLAX",
+                latitude=33.9382,
+                longitude=-118.3866,
+                timezone="America/Los_Angeles",
+                start_date=date(2026, 7, 1),
+                end_date=date(2026, 7, 1),
+                lead_days=1,
+            )
+
+
+def test_previous_runs_fetches_multi_model_daily_highs_once() -> None:
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        assert request.url.params["models"] == (
+            "gfs_seamless,icon_seamless,gem_seamless"
+        )
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "latitude": 33.94541,
+                "longitude": -118.40222,
+                "hourly": {
+                    "time": ["2026-07-01T00:00", "2026-07-01T12:00"],
+                    "temperature_2m_previous_day1_gfs_seamless": [70.0, 82.0],
+                    "temperature_2m_previous_day1_icon_seamless": [71.0, 81.0],
+                    "temperature_2m_previous_day1_gem_seamless": [69.0, 83.0],
+                },
+            },
+        )
+
+    http_client = httpx.Client(
+        base_url="https://example.test", transport=httpx.MockTransport(handler)
+    )
+    with OpenMeteoPreviousRunsClient(client=http_client) as client:
+        _, forecasts = client.get_multi_model_ensemble(
+            station_id="KLAX",
+            latitude=33.9382,
+            longitude=-118.3866,
+            timezone="America/Los_Angeles",
+            start_date=date(2026, 7, 1),
+            end_date=date(2026, 7, 1),
+            lead_days=1,
+        )
+
+    assert requests == 1
+    assert {
+        model: series.values[0].value_f for model, series in forecasts.items()
+    } == {"gfs": 82.0, "icon": 81.0, "gem": 83.0}
 
 
 def test_ncei_adapter_reads_tmax_and_ignores_other_stations() -> None:
