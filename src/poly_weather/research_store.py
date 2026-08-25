@@ -17,6 +17,10 @@ from poly_weather.domain import (
     PaperDecision,
     RollingEvaluation,
 )
+from poly_weather.signal_schema import (
+    append_normalized_signal_snapshots,
+    create_normalized_signal_schema,
+)
 
 
 class ResearchWarehouse:
@@ -159,20 +163,9 @@ class ResearchWarehouse:
                 status VARCHAR NOT NULL,
                 metrics_json VARCHAR
             );
-            CREATE TABLE IF NOT EXISTS signal_snapshots (
-                run_id VARCHAR NOT NULL,
-                sequence BIGINT NOT NULL,
-                generated_at TIMESTAMPTZ NOT NULL,
-                event_slug VARCHAR NOT NULL,
-                station_id VARCHAR NOT NULL,
-                status VARCHAR NOT NULL,
-                payload_json VARCHAR NOT NULL,
-                PRIMARY KEY (run_id, sequence)
-            );
-            CREATE INDEX IF NOT EXISTS signal_snapshot_event_time_idx
-                ON signal_snapshots(event_slug, generated_at);
             """
         )
+        create_normalized_signal_schema(self.connection)
         self.connection.execute(
             "ALTER TABLE market_stream_events ADD COLUMN IF NOT EXISTS bids_json VARCHAR"
         )
@@ -586,30 +579,12 @@ class ResearchWarehouse:
         )
 
     def append_signal_snapshots(self, snapshots: Iterable[dict[str, Any]]) -> int:
-        import json
+        return append_normalized_signal_snapshots(self.connection, snapshots)
 
-        rows = list(snapshots)
-        if not rows:
-            return 0
-        self.connection.executemany(
-            """
-            INSERT INTO signal_snapshots VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (run_id, sequence) DO NOTHING
-            """,
-            [
-                (
-                    row["run_id"],
-                    row["sequence"],
-                    row["generated_at"].astimezone(UTC),
-                    row["event_slug"],
-                    row["station_id"],
-                    row["status"],
-                    json.dumps(row["payload"], ensure_ascii=False, separators=(",", ":")),
-                )
-                for row in rows
-            ],
-        )
-        return len(rows)
+    def checkpoint_signal_database(self) -> None:
+        """Reclaim committed storage without changing snapshot retention."""
+        self.connection.execute("CHECKPOINT")
+        self.connection.execute("VACUUM")
 
     def finish_signal_stream_run(
         self,

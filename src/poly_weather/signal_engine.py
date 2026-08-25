@@ -345,6 +345,7 @@ class SignalSink:
         self.run_id = run_id
         self.warehouse = ResearchWarehouse(data_dir / "signal_stream.duckdb")
         self.handles: dict[str, Any] = {}
+        self.last_database_maintenance = time.monotonic()
 
     def close(self) -> None:
         for handle in self.handles.values():
@@ -377,6 +378,9 @@ class SignalSink:
         for handle in self.handles.values():
             handle.flush()
         self.warehouse.append_signal_snapshots(rows)
+        if time.monotonic() - self.last_database_maintenance >= 86_400:
+            self.warehouse.checkpoint_signal_database()
+            self.last_database_maintenance = time.monotonic()
 
 
 class LiveSignalEngine:
@@ -1046,6 +1050,34 @@ class LiveSignalEngine:
                         "market_id": market.market_id,
                         "market_slug": market.slug,
                         "bucket": raw_probability.bucket.label,
+                        "bucket_lower_f": (
+                            float(raw_probability.bucket.lower_f)
+                            if raw_probability.bucket.lower_f is not None
+                            and raw_probability.bucket.unit == "fahrenheit"
+                            else (
+                                float(
+                                    celsius_to_fahrenheit(raw_probability.bucket.lower_f)
+                                )
+                                if raw_probability.bucket.lower_f is not None
+                                else None
+                            )
+                        ),
+                        "bucket_upper_f": (
+                            float(raw_probability.bucket.upper_f)
+                            if raw_probability.bucket.upper_f is not None
+                            and raw_probability.bucket.unit == "fahrenheit"
+                            else (
+                                float(
+                                    celsius_to_fahrenheit(raw_probability.bucket.upper_f)
+                                )
+                                if raw_probability.bucket.upper_f is not None
+                                else None
+                            )
+                        ),
+                        "bucket_lower_value": raw_probability.bucket.lower_f,
+                        "bucket_upper_value": raw_probability.bucket.upper_f,
+                        "temperature_unit": raw_probability.bucket.unit,
+                        "bucket_width_degrees": raw_probability.bucket.width_degrees,
                         "raw_model_probability": float(raw_probability.probability),
                         "calibrated_model_probability": (
                             float(selected_value) if selected_value is not None else None

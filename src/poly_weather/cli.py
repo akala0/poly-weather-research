@@ -90,6 +90,7 @@ from poly_weather.signal_engine import (
     LiveSignalEngine,
     build_live_calibration,
 )
+from poly_weather.signal_migration import migrate_signal_snapshots_from_jsonl
 from poly_weather.storage import CatalogStore, RawEventArchive
 from poly_weather.temperature import celsius_to_fahrenheit
 from poly_weather.weather_stream import WeatherDaemon, WeatherStation
@@ -2029,6 +2030,32 @@ def stream_status(
                 "status_path": str(path.resolve()),
             }
     _emit(statuses)
+
+
+@app.command("migrate-signal-schema")
+def migrate_signal_schema(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    target_path: Annotated[
+        Path | None,
+        typer.Option("--target", help="Independent candidate DuckDB path."),
+    ] = None,
+    replace: Annotated[
+        bool,
+        typer.Option("--replace", help="Replace an existing candidate, never the online DB."),
+    ] = False,
+) -> None:
+    """Vectorize all raw signal JSONL into the normalized candidate schema."""
+    source_root = data_dir / "raw" / "signal_snapshot"
+    paths = sorted(source_root.glob("*/events.jsonl"))
+    destination = target_path or data_dir / "signal_stream.candidate.duckdb"
+    report = migrate_signal_snapshots_from_jsonl(
+        paths,
+        target_path=destination,
+        source_database=data_dir / "signal_stream.duckdb",
+        replace=replace,
+        protected_tree=data_dir / "raw" / "no_forward_validation",
+    )
+    _emit(report)
 
 
 def _build_signal_configs(
