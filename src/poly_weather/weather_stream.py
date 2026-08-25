@@ -175,8 +175,10 @@ class WeatherDaemon:
             started_at=datetime.now(UTC),
             station_id=",".join(station.station_id for station in self.stations),
         )
-        timeout = httpx.Timeout(20, connect=10)
-        limits = httpx.Limits(max_connections=8, max_keepalive_connections=4)
+        timeout = httpx.Timeout(30, connect=10, pool=30)
+        # Ten stations can schedule WRH, NWS, METAR, TAF, and forecast fetches
+        # together at startup. Keep the client pool above that deterministic burst.
+        limits = httpx.Limits(max_connections=80, max_keepalive_connections=40)
         headers = {
             "User-Agent": "poly-weather/0.1 (research; read-only)",
             "Accept": "application/json, application/geo+json",
