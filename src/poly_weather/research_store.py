@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -50,6 +51,7 @@ class ResearchWarehouse:
                 truth_source VARCHAR NOT NULL,
                 truth_kind VARCHAR NOT NULL,
                 ingested_at TIMESTAMPTZ NOT NULL,
+                forecast_high_f_by_model JSON,
                 PRIMARY KEY (station_id, target_date, lead_days, model, truth_source)
             );
             CREATE TABLE IF NOT EXISTS evaluation_runs (
@@ -117,6 +119,9 @@ class ResearchWarehouse:
                 best_ask DECIMAL(18, 12),
                 last_trade_price DECIMAL(18, 12),
                 raw_json VARCHAR NOT NULL,
+                bids_json VARCHAR,
+                asks_json VARCHAR,
+                book_complete BOOLEAN NOT NULL DEFAULT FALSE,
                 PRIMARY KEY (run_id, sequence)
             );
             CREATE INDEX IF NOT EXISTS market_stream_asset_time_idx
@@ -141,6 +146,7 @@ class ResearchWarehouse:
                 temperature_c DOUBLE,
                 latency_ms BIGINT,
                 raw_json VARCHAR NOT NULL,
+                collection_mode VARCHAR NOT NULL DEFAULT 'realtime',
                 PRIMARY KEY (run_id, sequence)
             );
             CREATE INDEX IF NOT EXISTS weather_stream_station_time_idx
@@ -167,6 +173,26 @@ class ResearchWarehouse:
                 ON signal_snapshots(event_slug, generated_at);
             """
         )
+        self.connection.execute(
+            "ALTER TABLE market_stream_events ADD COLUMN IF NOT EXISTS bids_json VARCHAR"
+        )
+        self.connection.execute(
+            "ALTER TABLE market_stream_events ADD COLUMN IF NOT EXISTS asks_json VARCHAR"
+        )
+        self.connection.execute(
+            """
+            ALTER TABLE market_stream_events
+            ADD COLUMN IF NOT EXISTS book_complete BOOLEAN DEFAULT FALSE
+            """
+        )
+        self.connection.execute(
+            "ALTER TABLE calibration_samples "
+            "ADD COLUMN IF NOT EXISTS forecast_high_f_by_model JSON"
+        )
+        self.connection.execute(
+            "ALTER TABLE weather_stream_events "
+            "ADD COLUMN IF NOT EXISTS collection_mode VARCHAR DEFAULT 'realtime'"
+        )
 
     def upsert_samples(self, samples: Iterable[CalibrationSample]) -> int:
         rows = list(samples)
@@ -174,14 +200,19 @@ class ResearchWarehouse:
             return 0
         self.connection.executemany(
             """
-            INSERT INTO calibration_samples VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO calibration_samples (
+                station_id, target_date, lead_days, model, forecast_high_f,
+                observed_high_f, forecast_source, truth_source, truth_kind,
+                ingested_at, forecast_high_f_by_model
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (station_id, target_date, lead_days, model, truth_source)
             DO UPDATE SET
                 forecast_high_f=excluded.forecast_high_f,
                 observed_high_f=excluded.observed_high_f,
                 forecast_source=excluded.forecast_source,
                 truth_kind=excluded.truth_kind,
-                ingested_at=excluded.ingested_at
+                ingested_at=excluded.ingested_at,
+                forecast_high_f_by_model=excluded.forecast_high_f_by_model
             """,
             [
                 (
@@ -195,6 +226,15 @@ class ResearchWarehouse:
                     row.truth_source,
                     row.truth_kind,
                     row.ingested_at,
+                    (
+                        json.dumps(
+                            row.forecast_high_f_by_model,
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        )
+                        if row.forecast_high_f_by_model is not None
+                        else None
+                    ),
                 )
                 for row in rows
             ],
@@ -211,7 +251,8 @@ class ResearchWarehouse:
         result = self.connection.execute(
             """
             SELECT station_id, target_date, lead_days, model, forecast_high_f,
-                   observed_high_f, forecast_source, truth_source, truth_kind, ingested_at
+                   observed_high_f, forecast_source, truth_source, truth_kind, ingested_at,
+                   forecast_high_f_by_model
             FROM calibration_samples
             WHERE station_id = ? AND lead_days = ? AND model = ?
             ORDER BY target_date
@@ -230,6 +271,9 @@ class ResearchWarehouse:
                 truth_source=row[7],
                 truth_kind=row[8],
                 ingested_at=row[9],
+                forecast_high_f_by_model=(
+                    json.loads(row[10]) if isinstance(row[10], str) else row[10]
+                ),
             )
             for row in result
         ]
@@ -380,7 +424,24 @@ class ResearchWarehouse:
             return 0
         self.connection.executemany(
             """
-            INSERT INTO market_stream_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO market_stream_events (
+                run_id,
+                sequence,
+                received_at,
+                received_at_ns,
+                source_timestamp_ms,
+                event_type,
+                asset_id,
+                market_id,
+                market_slug,
+                best_bid,
+                best_ask,
+                last_trade_price,
+                raw_json,
+                bids_json,
+                asks_json,
+                book_complete
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (run_id, sequence) DO NOTHING
             """,
             [
@@ -398,6 +459,17 @@ class ResearchWarehouse:
                     record.best_ask,
                     record.last_trade_price,
                     json.dumps(record.raw, ensure_ascii=False, separators=(",", ":")),
+                    (
+                        json.dumps(record.bids, ensure_ascii=False, separators=(",", ":"))
+                        if record.bids is not None
+                        else None
+                    ),
+                    (
+                        json.dumps(record.asks, ensure_ascii=False, separators=(",", ":"))
+                        if record.asks is not None
+                        else None
+                    ),
+                    record.book_complete,
                 )
                 for record in rows
             ],
@@ -446,7 +518,11 @@ class ResearchWarehouse:
             return 0
         self.connection.executemany(
             """
-            INSERT INTO weather_stream_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO weather_stream_events (
+                run_id, sequence, received_at, received_at_ns,
+                source_timestamp_ms, provider, product, station_id,
+                temperature_c, latency_ms, raw_json, collection_mode
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (run_id, sequence) DO NOTHING
             """,
             [
@@ -462,6 +538,7 @@ class ResearchWarehouse:
                     event.temperature_c,
                     event.latency_ms,
                     json.dumps(event.raw, ensure_ascii=False, separators=(",", ":")),
+                    event.collection_mode,
                 )
                 for event in rows
             ],

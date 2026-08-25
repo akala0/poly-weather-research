@@ -17,12 +17,19 @@ def test_research_warehouse_upserts_and_exports_parquet(tmp_path) -> None:
         truth_source="NOAA NCEI Daily Summaries",
         truth_kind="same_station_noaa_proxy_not_exact_wunderground",
         ingested_at=datetime.now(UTC),
+        forecast_high_f_by_model={"gfs": 91.0, "icon": 92.0, "gem": 90.0},
     )
     parquet_path = tmp_path / "samples.parquet"
     with ResearchWarehouse(tmp_path / "research.duckdb") as warehouse:
         assert warehouse.upsert_samples([sample]) == 1
         assert warehouse.upsert_samples([sample]) == 1
-        assert len(warehouse.samples(station_id="KLGA", lead_days=1, model="gfs_seamless")) == 1
+        stored = warehouse.samples(station_id="KLGA", lead_days=1, model="gfs_seamless")
+        assert len(stored) == 1
+        assert stored[0].forecast_high_f_by_model == {
+            "gfs": 91.0,
+            "icon": 92.0,
+            "gem": 90.0,
+        }
         warehouse.export_samples_parquet(parquet_path)
         assert warehouse.status()["sample_count"] == 1
 
