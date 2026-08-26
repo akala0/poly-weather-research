@@ -20,7 +20,8 @@ from poly_weather.calibration import (
     rolling_origin_evaluate,
 )
 from poly_weather.domain import CalibrationSample, Market
-from poly_weather.execution_cost import estimate_fill_price
+from poly_weather.execution_cost import estimate_execution_cost
+from poly_weather.fees import LiquidityRole, fee_per_share
 from poly_weather.modeling import blend_multi_model_forecasts, build_bucket_forecast
 from poly_weather.no_forward import NoForwardTracker
 from poly_weather.research_store import ResearchWarehouse
@@ -927,19 +928,28 @@ class LiveSignalEngine:
                 )
                 yes_ask = self._decimal(yes_book.get("best_ask"))
                 no_ask = self._decimal(no_book.get("best_ask"))
+                yes_taker_fee = fee_per_share(yes_ask) if yes_ask is not None else None
+                no_taker_fee = fee_per_share(no_ask) if no_ask is not None else None
                 physical_margin_f, margin_tier, eliminated = physical_bucket_state(
                     observed_high,
                     upper=raw_probability.bucket.upper_f,
                     unit=raw_probability.bucket.unit,
                 )
                 raw_yes_edge = (
-                    raw_probability.probability - yes_ask - self.cost_buffer
-                    if yes_ask is not None
+                    raw_probability.probability
+                    - yes_ask
+                    - yes_taker_fee
+                    - self.cost_buffer
+                    if yes_ask is not None and yes_taker_fee is not None
                     else None
                 )
                 raw_no_edge = (
-                    Decimal(1) - raw_probability.probability - no_ask - self.cost_buffer
-                    if no_ask is not None
+                    Decimal(1)
+                    - raw_probability.probability
+                    - no_ask
+                    - no_taker_fee
+                    - self.cost_buffer
+                    if no_ask is not None and no_taker_fee is not None
                     else None
                 )
                 selected_value = (
@@ -948,13 +958,17 @@ class LiveSignalEngine:
                     else None
                 )
                 yes_edge = (
-                    selected_value - yes_ask - self.cost_buffer
-                    if selected_value is not None and yes_ask is not None
+                    selected_value - yes_ask - yes_taker_fee - self.cost_buffer
+                    if selected_value is not None
+                    and yes_ask is not None
+                    and yes_taker_fee is not None
                     else None
                 )
                 no_edge = (
-                    Decimal(1) - selected_value - no_ask - self.cost_buffer
-                    if selected_value is not None and no_ask is not None
+                    Decimal(1) - selected_value - no_ask - no_taker_fee - self.cost_buffer
+                    if selected_value is not None
+                    and no_ask is not None
+                    and no_taker_fee is not None
                     else None
                 )
                 raw_available = [
@@ -985,9 +999,10 @@ class LiveSignalEngine:
                         fill_candidates.append(
                             (
                                 "buy_yes",
-                                selected_value
-                                - Decimal(str(yes_fill["estimated_fill_price"]))
-                                - self.cost_buffer,
+                                 selected_value
+                                 - Decimal(str(yes_fill["estimated_fill_price"]))
+                                 - Decimal(str(yes_fill["taker_fee_per_share"]))
+                                 - self.cost_buffer,
                             )
                         )
                     if (
@@ -999,9 +1014,10 @@ class LiveSignalEngine:
                             (
                                 "buy_no",
                                 Decimal(1)
-                                - selected_value
-                                - Decimal(str(no_fill["estimated_fill_price"]))
-                                - self.cost_buffer,
+                                 - selected_value
+                                 - Decimal(str(no_fill["estimated_fill_price"]))
+                                 - Decimal(str(no_fill["taker_fee_per_share"]))
+                                 - self.cost_buffer,
                             )
                         )
                     executable_side, executable_edge = (
@@ -1024,6 +1040,25 @@ class LiveSignalEngine:
                             "slippage_bps_no": (
                                 no_fill["slippage_bps"] if no_fill else None
                             ),
+                            "slippage_per_share_yes": (
+                                yes_fill["slippage_per_share"] if yes_fill else None
+                            ),
+                            "slippage_per_share_no": (
+                                no_fill["slippage_per_share"] if no_fill else None
+                            ),
+                            "taker_fee_yes_usdc": (
+                                yes_fill["taker_fee_usdc"] if yes_fill else None
+                            ),
+                            "taker_fee_no_usdc": (
+                                no_fill["taker_fee_usdc"] if no_fill else None
+                            ),
+                            "taker_fee_per_share_yes": (
+                                yes_fill["taker_fee_per_share"] if yes_fill else None
+                            ),
+                            "taker_fee_per_share_no": (
+                                no_fill["taker_fee_per_share"] if no_fill else None
+                            ),
+                            "fee_assumption": "weather_taker_official_curve",
                             "filled_fraction_yes": (
                                 yes_fill["filled_fraction"] if yes_fill else 0.0
                             ),
@@ -1091,6 +1126,14 @@ class LiveSignalEngine:
                         "yes_best_ask": self._float(yes_book.get("best_ask")),
                         "no_best_bid": self._float(no_book.get("best_bid")),
                         "no_best_ask": self._float(no_book.get("best_ask")),
+                        "yes_taker_fee_per_share": (
+                            float(yes_taker_fee) if yes_taker_fee is not None else None
+                        ),
+                        "no_taker_fee_per_share": (
+                            float(no_taker_fee) if no_taker_fee is not None else None
+                        ),
+                        "liquidity_role_assumption": LiquidityRole.TAKER.value,
+                        "market_fee_category": "weather",
                         "no_book_complete": bool(no_book.get("book_complete")),
                         "no_book_age_minutes": no_book_age_minutes,
                         "physical_margin_f": physical_margin_f,
@@ -1268,20 +1311,29 @@ class LiveSignalEngine:
             and row.get("price") is not None
             and row.get("size") is not None
         ]
-        estimate = estimate_fill_price(levels, size_usd, "buy")
+        estimate = estimate_execution_cost(
+            levels,
+            size_usd,
+            "buy",
+            liquidity_role=LiquidityRole.TAKER,
+            market_category="weather",
+        )
         if estimate is None:
             return None
-        average_fill_price, slippage, filled_fraction = estimate
         top_price = min(Decimal(str(price)) for price, _size in levels)
         slippage_bps = (
-            float(slippage / top_price * Decimal(10_000))
+            float(estimate.slippage_vs_top / top_price * Decimal(10_000))
             if top_price > 0
             else None
         )
         return {
-            "estimated_fill_price": float(average_fill_price),
+            "estimated_fill_price": float(estimate.average_fill_price),
             "slippage_bps": slippage_bps,
-            "filled_fraction": filled_fraction,
+            "slippage_per_share": float(estimate.slippage_vs_top),
+            "filled_fraction": estimate.filled_fraction,
+            "filled_shares": float(estimate.filled_shares),
+            "taker_fee_usdc": float(estimate.fee_usdc),
+            "taker_fee_per_share": float(estimate.fee_per_share),
         }
 
     def _write_status(self) -> None:

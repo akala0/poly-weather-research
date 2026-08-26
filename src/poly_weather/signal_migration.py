@@ -272,6 +272,10 @@ def _create_native_tables(connection: duckdb.DuckDBPyConnection) -> None:
             signal.yes_best_ask::DECIMAL(5,3) AS yes_best_ask,
             signal.no_best_bid::DECIMAL(5,3) AS no_best_bid,
             signal.no_best_ask::DECIMAL(5,3) AS no_best_ask,
+            json_extract(signal_json, '$.yes_taker_fee_per_share')::DECIMAL(7,5)
+                AS yes_taker_fee_per_share,
+            json_extract(signal_json, '$.no_taker_fee_per_share')::DECIMAL(7,5)
+                AS no_taker_fee_per_share,
             coalesce(json_extract(signal_json, '$.no_book_complete')::BOOLEAN, false)
                 AS no_book_complete,
             json_extract(signal_json, '$.no_book_age_minutes')::DECIMAL(9,1)
@@ -296,6 +300,10 @@ def _create_native_tables(connection: duckdb.DuckDBPyConnection) -> None:
                 AS slippage_bps_yes_50,
             json_extract(signal_json, '$.execution_estimates[0].slippage_bps_no')::DECIMAL(12,1)
                 AS slippage_bps_no_50,
+            json_extract(signal_json, '$.execution_estimates[0].taker_fee_per_share_yes')::DECIMAL(7,5)
+                AS taker_fee_per_share_yes_50,
+            json_extract(signal_json, '$.execution_estimates[0].taker_fee_per_share_no')::DECIMAL(7,5)
+                AS taker_fee_per_share_no_50,
             json_extract(signal_json, '$.execution_estimates[0].filled_fraction_yes')::DECIMAL(5,4)
                 AS filled_fraction_yes_50,
             json_extract(signal_json, '$.execution_estimates[0].filled_fraction_no')::DECIMAL(5,4)
@@ -312,6 +320,10 @@ def _create_native_tables(connection: duckdb.DuckDBPyConnection) -> None:
                 AS slippage_bps_yes_200,
             json_extract(signal_json, '$.execution_estimates[1].slippage_bps_no')::DECIMAL(12,1)
                 AS slippage_bps_no_200,
+            json_extract(signal_json, '$.execution_estimates[1].taker_fee_per_share_yes')::DECIMAL(7,5)
+                AS taker_fee_per_share_yes_200,
+            json_extract(signal_json, '$.execution_estimates[1].taker_fee_per_share_no')::DECIMAL(7,5)
+                AS taker_fee_per_share_no_200,
             json_extract(signal_json, '$.execution_estimates[1].filled_fraction_yes')::DECIMAL(5,4)
                 AS filled_fraction_yes_200,
             json_extract(signal_json, '$.execution_estimates[1].filled_fraction_no')::DECIMAL(5,4)
@@ -328,6 +340,10 @@ def _create_native_tables(connection: duckdb.DuckDBPyConnection) -> None:
                 AS slippage_bps_yes_1000,
             json_extract(signal_json, '$.execution_estimates[2].slippage_bps_no')::DECIMAL(12,1)
                 AS slippage_bps_no_1000,
+            json_extract(signal_json, '$.execution_estimates[2].taker_fee_per_share_yes')::DECIMAL(7,5)
+                AS taker_fee_per_share_yes_1000,
+            json_extract(signal_json, '$.execution_estimates[2].taker_fee_per_share_no')::DECIMAL(7,5)
+                AS taker_fee_per_share_no_1000,
             json_extract(signal_json, '$.execution_estimates[2].filled_fraction_yes')::DECIMAL(5,4)
                 AS filled_fraction_yes_1000,
             json_extract(signal_json, '$.execution_estimates[2].filled_fraction_no')::DECIMAL(5,4)

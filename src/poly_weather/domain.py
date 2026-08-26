@@ -553,10 +553,17 @@ class PaperDecision(BaseModel):
     decision_time: datetime
     price_time: datetime
     yes_price: Decimal = Field(ge=0, le=1)
+    no_price: Decimal | None = Field(default=None, ge=0, le=1)
+    selected_token_price: Decimal = Field(ge=0, le=1)
     model_probability: Decimal = Field(ge=0, le=1)
     raw_edge: Decimal
+    estimated_fee: Decimal = Field(ge=0)
+    estimated_slippage: Decimal = Field(ge=0)
     estimated_cost: Decimal = Field(ge=0)
     net_edge: Decimal
+    liquidity_role: str
+    market_category: str
+    fee_rate: Decimal = Field(ge=0, le=1)
     action: PaperAction
     notional_usd: Decimal = Field(ge=0)
     reasons: tuple[str, ...]

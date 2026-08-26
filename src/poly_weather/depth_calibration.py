@@ -12,7 +12,7 @@ from statistics import fmean
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from poly_weather.execution_cost import estimate_fill_price
+from poly_weather.execution_cost import estimate_execution_cost
 
 
 @dataclass(frozen=True)
@@ -184,30 +184,36 @@ def build_depth_cost_calibration(
         )
         for size_usd in sizes_usd:
             entry_fill = (
-                estimate_fill_price(entry_book.asks, size_usd, "buy")
+                estimate_execution_cost(entry_book.asks, size_usd, "buy")
                 if entry_book is not None
                 else None
             )
             exit_fill = (
-                estimate_fill_price(exit_book.bids, size_usd, "sell")
+                estimate_execution_cost(exit_book.bids, size_usd, "sell")
                 if exit_book is not None
                 else None
             )
-            fully_executable = entry_fill is not None and entry_fill[2] >= 1.0
+            fully_executable = entry_fill is not None and entry_fill.filled_fraction >= 1.0
             if item["exit"] is not None:
                 fully_executable = (
-                    fully_executable and exit_fill is not None and exit_fill[2] >= 1.0
+                    fully_executable
+                    and exit_fill is not None
+                    and exit_fill.filled_fraction >= 1.0
                 )
             depth_pnl = None
             if fully_executable and entry_fill is not None:
                 exit_price = (
-                    exit_fill[0]
+                    exit_fill.average_fill_price - exit_fill.fee_per_share
                     if exit_fill is not None
                     else Decimal("1")
                     if trade["physical_bucket_won"]
                     else Decimal("0")
                 )
-                depth_pnl = exit_price - entry_fill[0]
+                depth_pnl = (
+                    exit_price
+                    - entry_fill.average_fill_price
+                    - entry_fill.fee_per_share
+                )
             proxy_pnl = Decimal(str(trade["pnl_per_share_p_proxy"]))
             records.append(
                 {
@@ -217,10 +223,14 @@ def build_depth_cost_calibration(
                     "bucket": trade["bucket"],
                     "size_usd": float(size_usd),
                     "fully_executable": fully_executable,
-                    "entry_fill": float(entry_fill[0]) if entry_fill else None,
-                    "entry_filled_fraction": entry_fill[2] if entry_fill else 0.0,
-                    "exit_fill": float(exit_fill[0]) if exit_fill else None,
-                    "exit_filled_fraction": exit_fill[2] if exit_fill else None,
+                    "entry_fill": float(entry_fill.average_fill_price) if entry_fill else None,
+                    "entry_taker_fee_usdc": float(entry_fill.fee_usdc)
+                    if entry_fill
+                    else None,
+                    "entry_filled_fraction": entry_fill.filled_fraction if entry_fill else 0.0,
+                    "exit_fill": float(exit_fill.average_fill_price) if exit_fill else None,
+                    "exit_taker_fee_usdc": float(exit_fill.fee_usdc) if exit_fill else None,
+                    "exit_filled_fraction": exit_fill.filled_fraction if exit_fill else 0.0,
                     "p_proxy_pnl": float(proxy_pnl),
                     "depth_pnl": float(depth_pnl) if depth_pnl is not None else None,
                     "p_proxy_optimism": (

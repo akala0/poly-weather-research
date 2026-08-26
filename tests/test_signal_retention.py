@@ -61,6 +61,8 @@ def _snapshot(*, sequence: int = 1, status: str = "warning") -> dict:
         "yes_best_ask": 0.13549,
         "no_best_bid": 0.86451,
         "no_best_ask": 0.87651,
+        "yes_taker_fee_per_share": 0.005857,
+        "no_taker_fee_per_share": 0.005412,
         "no_book_complete": True,
         "no_book_age_minutes": 0.236,
         "physical_margin_f": -2.04,
@@ -79,6 +81,8 @@ def _snapshot(*, sequence: int = 1, status: str = "warning") -> dict:
                 "estimated_fill_no": 0.88749,
                 "slippage_bps_yes": 1234.56,
                 "slippage_bps_no": 2345.67,
+                "taker_fee_per_share_yes": 0.006214,
+                "taker_fee_per_share_no": 0.004993,
                 "filled_fraction_yes": 0.99999,
                 "filled_fraction_no": 1.0,
                 "executable_candidate": "buy_yes",
@@ -154,7 +158,8 @@ def test_normalized_writer_uses_native_columns_and_archive_precision(tmp_path) -
         bucket = warehouse.connection.execute(
             """
             SELECT model_probability, yes_best_bid, physical_margin_f,
-                   fill_yes_50, filled_fraction_yes_50
+                   fill_yes_50, filled_fraction_yes_50,
+                   yes_taker_fee_per_share, taker_fee_per_share_no_50
             FROM signal_bucket_observations
             """
         ).fetchone()
@@ -164,6 +169,8 @@ def test_normalized_writer_uses_native_columns_and_archive_precision(tmp_path) -
             Decimal("-2.0"),
             Decimal("0.145"),
             Decimal("1.0000"),
+            Decimal("0.00586"),
+            Decimal("0.00499"),
         )
         dimension = warehouse.connection.execute(
             "SELECT event_slug, bucket_question, bucket_lower_f, bucket_upper_f FROM bucket_dim"

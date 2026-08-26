@@ -93,7 +93,7 @@ CLOB 通用：9,000 req / 10s。行情相关端点：`/book` 1,500/10s，`/books
 - 404 `No orderbook exists for the requested token id`：token 无订单簿（可能是已结算或从未有流动性），历史回放遇到此类应视为"无深度数据"而非当作 0 流动性
 - 400 系列：payload/参数错误，多为调用方问题
 
-## 9. 手续费（当前仓库用简化 bps 模型，与官方实际公式有出入，需要评估）
+## 9. 手续费（已按官方曲线实现）
 
 官方公式：
 ```
@@ -103,12 +103,12 @@ fee = shares × feeRate × p × (1 - p)
 - Taker 费率按市场类别不同：Weather 类别 taker feeRate = **0.05**（5%），有 25% maker rebate 返还给做市方（不影响 taker 侧成本）
 - 费用在 p=0.5 时最高，向 0/1 两端对称衰减；例如 100 份 @ 0.05 类别、p=0.10 或 0.90 时，taker fee ≈ 100 × 0.05 × 0.10 × 0.90 = **$0.45**；p=0.50 时 ≈ 100 × 0.05 × 0.25 = **$1.25**
 
-**与本仓库现状的差异**：`paper.py:15` 当前用固定 `fee_bps`（默认 0）线性叠加到滑点成本上，即 `estimated_cost = (fee_bps + slippage_bps) / 10000`，是一个与价格无关的固定比例模型。真实费用公式是 `p×(1-p)` 形状，在极端价位（如 NO 侧 p 接近 0.99 时对应的 YES p≈0.01）费用趋近于 0，而不是固定比例。这意味着：
+仓库现已由 `fees.py` 统一实现该曲线。所有主动吃单研究路径默认按 Weather taker 计算；maker 场景可显式表达且费用为 0。滑点仍由真实深度逐档计算，绝不再与手续费合并为固定 bps。公式中的 `p` 始终是实际交易 token 自己的成交价，例如买 NO @0.82 使用 `p=0.82`，不能拿陈旧 YES 价格的补数代替。
 
 - 对尾部桶（YES<1% 或 NO 接近 0.99）套利分析，如果之前用固定 fee_bps 估算过手续费成本，可能**高估**了尾部桶的手续费（真实费用在两端趋近 0）
 - 对中间价位（p≈0.5，比如"邻桶价差"策略里两个概率接近的桶）手续费影响更大，之前若忽略手续费或用统一 bps，可能**低估**了这部分成本
 
-这个差异应该纳入 T3/T8 的成本模型：滑点用真实深度算,手续费应该用 `0.05 × p × (1-p) × shares`（Weather 类别 taker 费率）而不是当前的固定 bps，否则中间价位策略的净收益会被系统性算错。
+费率核对路径为 `poly-weather check-fee-rate TOKEN_ID --condition-id CONDITION_ID`。`GET /fee-rate` 的 `base_fee` 是原始 CLOB 参数，不能直接当作曲线中的 `feeRate`；V2 市场信息的 `fd.r`、`fd.e`、`fd.to` 才能核对当前费率、指数和 taker-only 语义。实测 Weather 市场为 `r=0.05, e=1, to=true`。
 
 ## 10. 结算机制（UMA Optimistic Oracle）
 
@@ -127,8 +127,8 @@ Polymarket 不自行判定结果，通过 UMA 乐观预言机 + `UmaCtfAdapter` 
 |---|---|---|
 | `/book`、`/prices` 是即时盘口，`p` 历史序列不是 | `execution-cost-calibration` 已经在对比 `p` 代理与真实吃单价偏差，方向正确 | 继续按 T1/T3 任务量化 |
 | Market WS `book`+`price_change` 语义 | `market_stream.py` 实现方式与文档一致 | 无需改动 |
-| 手续费公式为 `feeRate × p × (1-p)`，非固定比例 | `paper.py` 用固定 `fee_bps` | **建议按 T3/T8 任务改为按公式计算**，否则中间价位策略成本被低估、尾部桶成本被高估 |
-| Taker 费率 Weather 类别为 5%，Maker 为 0 | 未见区分 maker/taker 的费用逻辑 | 若后续要精细化收益计算，需要区分是主动吃单还是被动挂单成交 |
+| 手续费公式为 `feeRate × p × (1-p)`，非固定比例 | `fees.py` 已统一实现，深度逐档累计后按 5 位 USDC 舍入 | 已对齐 |
+| Taker 费率 Weather 类别为 5%，Maker 为 0 | paper/signal/NO 分析默认 taker，maker 可配置 | 已对齐；研究输出显式记录假设 |
 | 结算走 UMA 2 小时窗口（无争议情况） | README 提到"结算规则解析…改编自 polymarket-tmax-lab" | 与 T6 分析一致，无冲突 |
 | WS 无官方并发订阅上限说明 | HANDOFF 记录 8 城市 176 token 单连接实测稳定 | 无需改动，继续监控 stream-status |
 
@@ -143,4 +143,5 @@ Polymarket 不自行判定结果，通过 UMA 乐观预言机 + `UmaCtfAdapter` 
 - [限流](https://docs.polymarket.com/api-reference/rate-limits)
 - [实时数据（Market WS）](https://docs.polymarket.com/market-data/realtime-data)
 - [手续费](https://docs.polymarket.com/trading/fees)
+- [Token fee-rate](https://docs.polymarket.com/api-reference/market-data/get-fee-rate)
 - [结算机制（Concepts）](https://docs.polymarket.com/concepts/resolution)

@@ -10,7 +10,7 @@ from typing import Any
 
 import duckdb
 
-SIGNAL_SCHEMA_VERSION = 2
+SIGNAL_SCHEMA_VERSION = 3
 
 
 class LegacySignalSchemaError(RuntimeError):
@@ -52,7 +52,7 @@ def create_normalized_signal_schema(
             description VARCHAR NOT NULL
         );
         INSERT INTO signal_schema_metadata
-        VALUES (2, current_timestamp, 'normalized lossless signal snapshots')
+        VALUES (3, current_timestamp, 'normalized signal snapshots with separate fee fields')
         ON CONFLICT DO NOTHING;
 
         CREATE TABLE IF NOT EXISTS calibration_dim (
@@ -163,6 +163,8 @@ def create_normalized_signal_schema(
             yes_best_ask DECIMAL(5, 3),
             no_best_bid DECIMAL(5, 3),
             no_best_ask DECIMAL(5, 3),
+            yes_taker_fee_per_share DECIMAL(7, 5),
+            no_taker_fee_per_share DECIMAL(7, 5),
             no_book_complete BOOLEAN NOT NULL,
             no_book_age_minutes DECIMAL(9, 1),
             physical_margin_f DECIMAL(6, 1),
@@ -178,6 +180,8 @@ def create_normalized_signal_schema(
             fill_no_50 DECIMAL(5, 3),
             slippage_bps_yes_50 DECIMAL(12, 1),
             slippage_bps_no_50 DECIMAL(12, 1),
+            taker_fee_per_share_yes_50 DECIMAL(7, 5),
+            taker_fee_per_share_no_50 DECIMAL(7, 5),
             filled_fraction_yes_50 DECIMAL(5, 4),
             filled_fraction_no_50 DECIMAL(5, 4),
             executable_candidate_50 VARCHAR,
@@ -186,6 +190,8 @@ def create_normalized_signal_schema(
             fill_no_200 DECIMAL(5, 3),
             slippage_bps_yes_200 DECIMAL(12, 1),
             slippage_bps_no_200 DECIMAL(12, 1),
+            taker_fee_per_share_yes_200 DECIMAL(7, 5),
+            taker_fee_per_share_no_200 DECIMAL(7, 5),
             filled_fraction_yes_200 DECIMAL(5, 4),
             filled_fraction_no_200 DECIMAL(5, 4),
             executable_candidate_200 VARCHAR,
@@ -194,6 +200,8 @@ def create_normalized_signal_schema(
             fill_no_1000 DECIMAL(5, 3),
             slippage_bps_yes_1000 DECIMAL(12, 1),
             slippage_bps_no_1000 DECIMAL(12, 1),
+            taker_fee_per_share_yes_1000 DECIMAL(7, 5),
+            taker_fee_per_share_no_1000 DECIMAL(7, 5),
             filled_fraction_yes_1000 DECIMAL(5, 4),
             filled_fraction_no_1000 DECIMAL(5, 4),
             executable_candidate_1000 VARCHAR,
@@ -203,6 +211,26 @@ def create_normalized_signal_schema(
             action VARCHAR NOT NULL,
             PRIMARY KEY (snapshot_id, market_id)
         );
+        """
+    )
+    connection.execute(
+        """
+        ALTER TABLE signal_bucket_observations
+            ADD COLUMN IF NOT EXISTS yes_taker_fee_per_share DECIMAL(7, 5);
+        ALTER TABLE signal_bucket_observations
+            ADD COLUMN IF NOT EXISTS no_taker_fee_per_share DECIMAL(7, 5);
+        ALTER TABLE signal_bucket_observations
+            ADD COLUMN IF NOT EXISTS taker_fee_per_share_yes_50 DECIMAL(7, 5);
+        ALTER TABLE signal_bucket_observations
+            ADD COLUMN IF NOT EXISTS taker_fee_per_share_no_50 DECIMAL(7, 5);
+        ALTER TABLE signal_bucket_observations
+            ADD COLUMN IF NOT EXISTS taker_fee_per_share_yes_200 DECIMAL(7, 5);
+        ALTER TABLE signal_bucket_observations
+            ADD COLUMN IF NOT EXISTS taker_fee_per_share_no_200 DECIMAL(7, 5);
+        ALTER TABLE signal_bucket_observations
+            ADD COLUMN IF NOT EXISTS taker_fee_per_share_yes_1000 DECIMAL(7, 5);
+        ALTER TABLE signal_bucket_observations
+            ADD COLUMN IF NOT EXISTS taker_fee_per_share_no_1000 DECIMAL(7, 5);
         """
     )
     if create_indexes:
@@ -391,6 +419,8 @@ def append_normalized_signal_snapshots(
                     _as_decimal(signal.get("yes_best_ask")),
                     _as_decimal(signal.get("no_best_bid")),
                     _as_decimal(signal.get("no_best_ask")),
+                    _as_decimal(signal.get("yes_taker_fee_per_share")),
+                    _as_decimal(signal.get("no_taker_fee_per_share")),
                     bool(signal.get("no_book_complete")),
                     _as_decimal(signal.get("no_book_age_minutes")),
                     _as_decimal(signal.get("physical_margin_f")),
@@ -437,7 +467,7 @@ def append_normalized_signal_snapshots(
         if bucket_rows:
             connection.executemany(
                 "INSERT INTO signal_bucket_observations VALUES ("
-                + ",".join("?" * 49)
+                + ",".join("?" * 57)
                 + ") ON CONFLICT DO NOTHING",
                 bucket_rows,
             )
@@ -454,6 +484,8 @@ def execution_estimate_columns(estimate: Mapping[str, Any]) -> tuple[Any, ...]:
         _as_decimal(estimate.get("estimated_fill_no")),
         _as_decimal(estimate.get("slippage_bps_yes")),
         _as_decimal(estimate.get("slippage_bps_no")),
+        _as_decimal(estimate.get("taker_fee_per_share_yes")),
+        _as_decimal(estimate.get("taker_fee_per_share_no")),
         _as_decimal(estimate.get("filled_fraction_yes")),
         _as_decimal(estimate.get("filled_fraction_no")),
         estimate.get("executable_candidate"),

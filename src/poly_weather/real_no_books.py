@@ -12,7 +12,7 @@ from statistics import fmean, median
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from poly_weather.execution_cost import estimate_fill_price
+from poly_weather.execution_cost import estimate_execution_cost
 from poly_weather.intraday_reversal import TemperatureObservation
 from poly_weather.no_forward import wilson_interval
 from poly_weather.signal_engine import physical_bucket_state
@@ -119,13 +119,23 @@ def analyze_real_no_books(
             continue
         fills: dict[str, Any] = {}
         for size in sizes_usd:
-            buy = estimate_fill_price(no_asks, size, "buy")
-            sell = estimate_fill_price(no_bids, size, "sell")
+            buy = estimate_execution_cost(no_asks, size, "buy")
+            sell = estimate_execution_cost(no_bids, size, "sell")
             fills[str(size)] = {
-                "buy_no_average": float(buy[0]) if buy else None,
-                "buy_no_filled_fraction": buy[2] if buy else 0.0,
-                "sell_no_average": float(sell[0]) if sell else None,
-                "sell_no_filled_fraction": sell[2] if sell else 0.0,
+                "buy_no_average": float(buy.average_fill_price) if buy else None,
+                "buy_no_taker_fee_usdc": float(buy.fee_usdc) if buy else None,
+                "buy_no_fee_per_share": float(buy.fee_per_share) if buy else None,
+                "buy_no_all_in_per_share": (
+                    float(buy.average_fill_price + buy.fee_per_share) if buy else None
+                ),
+                "buy_no_filled_fraction": buy.filled_fraction if buy else 0.0,
+                "sell_no_average": float(sell.average_fill_price) if sell else None,
+                "sell_no_taker_fee_usdc": float(sell.fee_usdc) if sell else None,
+                "sell_no_fee_per_share": float(sell.fee_per_share) if sell else None,
+                "sell_no_net_per_share": (
+                    float(sell.average_fill_price - sell.fee_per_share) if sell else None
+                ),
+                "sell_no_filled_fraction": sell.filled_fraction if sell else 0.0,
             }
         yes_last = pair["yes"].get("last_trade_price")
         no_proxy = None if yes_last is None else Decimal("1") - Decimal(str(yes_last))
@@ -180,6 +190,13 @@ def analyze_real_no_books(
                     row["buy_no_average"] for row in buy if row["buy_no_average"] is not None
                 )
                 if any(row["buy_no_average"] is not None for row in buy)
+                else None,
+                "mean_buy_no_all_in_per_share": fmean(
+                    row["buy_no_all_in_per_share"]
+                    for row in buy
+                    if row["buy_no_all_in_per_share"] is not None
+                )
+                if any(row["buy_no_all_in_per_share"] is not None for row in buy)
                 else None,
             }
         )
@@ -289,10 +306,15 @@ def analyze_eliminated_no_exit(
         top_ask = _top(no_asks, bids=False)
         fills = {}
         for size in sizes_usd:
-            fill = estimate_fill_price(no_bids, size, "sell")
+            fill = estimate_execution_cost(no_bids, size, "sell")
             fills[str(size)] = {
-                "average": float(fill[0]) if fill else None,
-                "filled_fraction": fill[2] if fill else 0.0,
+                "average": float(fill.average_fill_price) if fill else None,
+                "taker_fee_usdc": float(fill.fee_usdc) if fill else None,
+                "fee_per_share": float(fill.fee_per_share) if fill else None,
+                "net_per_share": (
+                    float(fill.average_fill_price - fill.fee_per_share) if fill else None
+                ),
+                "filled_fraction": fill.filled_fraction if fill else 0.0,
             }
         records_by_market[str(pair["market_slug"])].append(
             {
@@ -373,8 +395,8 @@ def analyze_eliminated_no_exit(
                 "has_depth_within_15m": bool(within_15),
                 "sell_200_at_0_97_within_15m": any(
                     row["fills"]["200"]["filled_fraction"] >= 1
-                    and row["fills"]["200"]["average"] is not None
-                    and row["fills"]["200"]["average"] >= 0.97
+                    and row["fills"]["200"]["net_per_share"] is not None
+                    and row["fills"]["200"]["net_per_share"] >= 0.97
                     for row in within_15
                 ),
             }
@@ -397,10 +419,17 @@ def analyze_eliminated_no_exit(
                 )
                 if any(fill["average"] is not None for fill in fills)
                 else None,
+                "mean_first_exit_net_after_fee": fmean(
+                    fill["net_per_share"]
+                    for fill in fills
+                    if fill["net_per_share"] is not None
+                )
+                if any(fill["net_per_share"] is not None for fill in fills)
+                else None,
                 "at_least_0_97_fully_filled_rate": fmean(
                     fill["filled_fraction"] >= 1
-                    and fill["average"] is not None
-                    and fill["average"] >= 0.97
+                    and fill["net_per_share"] is not None
+                    and fill["net_per_share"] >= 0.97
                     for fill in fills
                 )
                 if fills
@@ -485,8 +514,10 @@ def render_eliminated_exit_report(result: Mapping[str, Any], output_path: Path) 
         f"{pct(result['sell_200_at_0_97_within_15m_rate'])} "
         f"(Wilson 95% {interval(executable_200, covered_15)})",
         "",
-        "| 名义金额 | 桶数 | 首快照完整成交率 | Wilson 95% | 首快照平均卖价 | ≥0.97完整成交率 | Wilson 95% |",
-        "|---:|---:|---:|---:|---:|---:|---:|",
+        "默认按主动吃 bid 的 Weather taker 计算官方手续费；卖出净价=深度均价−手续费/份。",
+        "",
+        "| 名义金额 | 桶数 | 首快照完整成交率 | Wilson 95% | 毛卖价 | 扣费净卖价 | 净价≥0.97完整成交率 | Wilson 95% |",
+        "|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in result["size_summaries"]:
         lines.append(
@@ -494,6 +525,7 @@ def render_eliminated_exit_report(result: Mapping[str, Any], output_path: Path) 
             f"{pct(row['fully_filled_rate_at_first_snapshot'])} | "
             f"{interval(round(row['fully_filled_rate_at_first_snapshot'] * row['market_count']), row['market_count'])} | "
             f"{number(row['mean_first_exit_price'])} | "
+            f"{number(row['mean_first_exit_net_after_fee'])} | "
             f"{pct(row['at_least_0_97_fully_filled_rate'])} | "
             f"{interval(round(row['at_least_0_97_fully_filled_rate'] * row['market_count']), row['market_count'])} |"
         )
@@ -540,14 +572,18 @@ def render_real_no_report(result: Mapping[str, Any], output_path: Path) -> None:
         "",
         "## 深度",
         "",
-        "| 名义金额 | 买 NO 完整成交率 | 卖 NO 完整成交率 | 平均买入价 |",
-        "|---:|---:|---:|---:|",
+        "默认按主动吃单（taker）估算；手续费按每个真实成交档位的 token 自身价格计算，与滑点分列。",
+        "",
+        "| 名义金额 | 买 NO 完整成交率 | 卖 NO 完整成交率 | 深度均价 | 扣费全成本 | 手续费影响/份 |",
+        "|---:|---:|---:|---:|---:|---:|",
     ]
     for row in result["size_summaries"]:
         lines.append(
             f"| ${row['size_usd']:.0f} | {pct(row['buy_no_fully_filled_rate'])} | "
             f"{pct(row['sell_no_fully_filled_rate'])} | "
-            f"{number(row['mean_buy_no_average'])} |"
+            f"{number(row['mean_buy_no_average'])} | "
+            f"{number(row['mean_buy_no_all_in_per_share'])} | "
+            f"{number(row['mean_buy_no_all_in_per_share'] - row['mean_buy_no_average']) if row['mean_buy_no_all_in_per_share'] is not None and row['mean_buy_no_average'] is not None else 'N/A'} |"
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")

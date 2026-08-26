@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from poly_weather.fees import fee_per_share
+
 
 def wilson_interval(successes: int, sample_count: int, *, z: float = 1.95996398454) -> tuple[float, float] | None:
     """Return a two-sided Wilson interval, or None when there is no sample."""
@@ -67,6 +69,12 @@ class NoForwardTracker:
                 key = f"{config.event_slug}|{market.market_id}"
                 position = self.state["positions"].get(key)
                 if signal.get("warming_window_no") and position is None:
+                    entry_no_ask = signal.get("no_best_ask")
+                    entry_fee = (
+                        float(fee_per_share(entry_no_ask))
+                        if entry_no_ask is not None
+                        else None
+                    )
                     position = {
                         "event_slug": config.event_slug,
                         "market_id": market.market_id,
@@ -75,7 +83,15 @@ class NoForwardTracker:
                         "target_date": config.target_date.isoformat(),
                         "no_token_id": no_token,
                         "triggered_at": generated_at.isoformat(),
-                        "entry_no_ask": signal.get("no_best_ask"),
+                        "entry_no_ask": entry_no_ask,
+                        "entry_taker_fee_per_share": entry_fee,
+                        "entry_total_cost_per_share": (
+                            float(entry_no_ask) + entry_fee
+                            if entry_no_ask is not None and entry_fee is not None
+                            else None
+                        ),
+                        "liquidity_role_assumption": "taker",
+                        "market_fee_category": "weather",
                         "milestones": [],
                     }
                     self.state["positions"][key] = position
@@ -149,7 +165,13 @@ class NoForwardTracker:
                 continue
             no_won = no_token == winning
             entry = position.get("entry_no_ask")
-            pnl = (1.0 - float(entry) if no_won else -float(entry)) if entry is not None else None
+            entry_fee = position.get("entry_taker_fee_per_share")
+            pnl = (
+                (1.0 - float(entry) if no_won else -float(entry))
+                - float(entry_fee or 0)
+                if entry is not None
+                else None
+            )
             position["settled_at"] = received_at.isoformat()
             position["no_won"] = no_won
             position["settlement_pnl_per_share"] = pnl
@@ -202,12 +224,31 @@ def forward_summary(data_dir: Path) -> dict[str, Any]:
     triggers = [row for row in rows if row.get("record_type") == "trigger"]
     settlements = [row for row in rows if row.get("record_type") == "settlement"]
     wins = sum(bool(row.get("no_won")) for row in settlements)
+    net_pnls = []
+    for row in settlements:
+        entry = row.get("entry_no_ask")
+        if entry is None:
+            continue
+        entry_fee = row.get("entry_taker_fee_per_share")
+        if entry_fee is None:
+            # Compatibility for forward rows captured before the official fee
+            # curve was implemented. The own NO entry price is preserved.
+            entry_fee = float(fee_per_share(entry))
+        net_pnls.append(
+            (1.0 - float(entry) if row.get("no_won") else -float(entry))
+            - float(entry_fee)
+        )
     return {
         "trigger_count": len(triggers),
         "settled_count": len(settlements),
         "wins": wins,
         "win_rate": wins / len(settlements) if settlements else None,
         "wilson_95": wilson_interval(wins, len(settlements)),
+        "mean_net_pnl_per_share": (
+            sum(net_pnls) / len(net_pnls)
+            if net_pnls
+            else None
+        ),
         "bid_095_count": sum(row.get("record_type") == "bid_reached_0.95" for row in rows),
         "bid_099_count": sum(row.get("record_type") == "bid_reached_0.99" for row in rows),
         "statistically_reliable": len(settlements) >= 30,
@@ -223,6 +264,8 @@ def render_forward_report(summary: dict[str, Any], output_path: Path) -> None:
     win_rate = summary["win_rate"]
     win_rate_text = f"{win_rate:.1%}" if win_rate is not None else "N/A"
     reliability = "可用" if summary["statistically_reliable"] else "统计不可靠（n < 30）"
+    mean_pnl = summary["mean_net_pnl_per_share"]
+    mean_pnl_text = "N/A" if mean_pnl is None else f"{mean_pnl:.4f}"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         "\n".join(
@@ -236,6 +279,9 @@ def render_forward_report(summary: dict[str, Any], output_path: Path) -> None:
                 f"| {summary['trigger_count']} | {summary['settled_count']} | {summary['wins']} | "
                 f"{win_rate_text} | {interval_text} | {summary['bid_095_count']} | "
                 f"{summary['bid_099_count']} | {reliability} |",
+                "",
+                "按 NO 自身入场 ask 扣除 Weather taker 手续费后的平均 "
+                f"P&L/份：{mean_pnl_text}。",
                 "",
                 "`execution_enabled=false`；本报告仅做前向观测，不会产生订单。",
                 "",
