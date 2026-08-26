@@ -38,12 +38,13 @@
 - 官方状态 summary + Atom 每 5 分钟组件级订阅；维护期间不停采集，归档自动标记且分析默认排除。
 - 2026-08-26 CLOB 官方维护 04:00–07:30 UTC，另有本地遥测恢复窗 07:30–07:50:48 UTC；全量流 19,196 条、深度检查点 9,186 条默认排除。
 - 公共 `data-api/trades` 已按 canonical taker 流水接入；22 个已结算事件共 63,534 笔成交，严格截止时刻陈旧度分析已落盘。
+- `analyze-no-entry-accessibility` 已用真实 NO asks/bids 审计 NO≥0.99 尾桶的空盘、近端点、$20–$200 深度和 KLAX/KLGA 时段；默认排除维护/恢复质量窗口，成交价不替代 ask。
 - 链上 SQL 路径已完成只读评估，当前不接入；宏观类别/地址/持仓研究出现明确需求时再启用。
 - `signal_snapshot` 已启用 NTFS 透明压缩并纳入 2 日 gzip/30 日删除；T7 完整订单簿证据由不参与过期的 `no_forward_validation` 独立保留。
 - 当前结论唯一入口为仓库根目录 `CURRENT_CONCLUSIONS.md`；IEM 小时版 `multi_city_certainty_report.md` 已明确废弃。
 - 市场、天气、信号心跳监测与过期阻断。
 - 候选净边际超过 15% 时强制告警并阻止 paper alert。
-- 141 项单元测试及 Ruff 静态检查。
+- 146 项单元测试及 Ruff 静态检查。
 
 ## 当前校准结论
 

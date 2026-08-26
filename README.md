@@ -48,6 +48,7 @@ uv run poly-weather sync-polymarket-status
 uv run poly-weather audit-polymarket-maintenance
 uv run poly-weather collect-public-trades
 uv run poly-weather analyze-public-trades
+uv run poly-weather analyze-no-entry-accessibility
 ```
 
 默认实际结算 registry 为 `configs/settlements.json`。原来的
@@ -89,6 +90,8 @@ uv run poly-weather analyze-public-trades
 `market-stream` 和 `weather-stream` 的 `--runtime 0` 表示持续运行；设置正数可做有限时长烟测。`liquidity-report` 按候选站点时段汇总 spread、$200/$1000 滑点和深度不足比例；热文件运行中读取小型深度检查点侧流，封存数据可用 DuckDB。`execution-cost-calibration` 严格按历史入场/退出截止时刻重放深度，比较 prices-history 的 `p` 代理与真实吃 ask/吃 bid 的偏差。当前 16 笔旧代理交易与 8/22 后深度归档无日期重叠，所以三档仓位均为 N=0，不用假价格补齐。Windows 实例对原始市场 JSONL 目录启用了 NTFS 透明压缩，代码仍读取普通 JSONL；跨平台部署需自行配置等效的压缩和保留策略。`stream-status` 展示 PID、连接、错误、内存队列、数据库队列和落盘计数。
 
 `collect-public-trades` 从免鉴权的 Data API 保存 canonical taker 成交流水；`analyze-public-trades` 对每个 prices-history 点只寻找其时间戳之前的成交，实测陈旧度、NO token 自身成交和 VWAP。成交价绝不是历史 ask/bid，也不能恢复深度；依赖真实入场 ask 或 $200/$1000 滑点的结论继续保持 N/A。
+
+`analyze-no-entry-accessibility` 只用已归档的真实 NO asks/bids 和公开只读数据，审计 NO≥0.99 尾桶为什么无法买入：空 asks、近端点报价、指定 $20/$50/$100/$150/$200 深度不足、`prices-history.p` 与可成交 ask 的差异，以及 KLAX/KLGA 本地时段。维护/恢复质量窗口默认排除；历史 p 和公开成交严格截止到各自 NO 订单簿时刻。成交价不是可成交 ask，输出只用于研究，不产生订单或鉴权路径。
 
 默认实时信号健康闸门为：NWS 数据年龄不超过 75 分钟、METAR 不超过 70 分钟、两源温差不超过 2°F、市场 WebSocket 心跳不超过 1 分钟、天气守护进程心跳不超过 3 分钟、Open-Meteo 网格距离不超过 3 km、候选净边际不超过 15%。主 NOAA、deterministic 预报、守护进程或 CLOB 失效会把信号标记为 `stale`；METAR 交叉检查、盘口不完整或异常边际标记为 `warning`。监测器没有钱包、签名、下单或资金代码路径。
 

@@ -44,6 +44,12 @@ from poly_weather.depth_calibration import (
     render_depth_cost_calibration,
 )
 from poly_weather.domain import CalibrationSample, TruthKind, VerificationStatus
+from poly_weather.entry_accessibility import (
+    analyze_no_entry_accessibility,
+    current_rule_rows,
+    current_tail_rule_targets,
+    render_no_entry_accessibility_report,
+)
 from poly_weather.fees import (
     configured_fee_rate,
     fetch_market_fee_details,
@@ -2208,6 +2214,128 @@ def analyze_real_no_book_command(
             "complement_gap_max": result["complement_gap_max"],
             "proxy_comparable_count": result["proxy_comparable_count"],
             "historical_settled_depth_overlap_count": 0,
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-no-entry-accessibility")
+def analyze_no_entry_accessibility_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    warming_policy_path: Annotated[Path, typer.Option("--warming-policy")] = (
+        DEFAULT_WARMING_POLICY
+    ),
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/no_entry_accessibility_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/no_entry_accessibility_analysis.json"
+    ),
+) -> None:
+    """Explain high-NO entry failures using only real NO depth and public reads."""
+    checkpoint_paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
+    unfiltered_pairs = paired_book_snapshots(
+        checkpoint_paths, exclude_upstream_degraded=False
+    )
+    pairs = paired_book_snapshots(checkpoint_paths)
+    registry = load_settlement_registry(config)
+    metadata = archived_event_metadata(
+        sorted({str(pair["event_slug"]) for pair in pairs}), registry.specs
+    )
+    policy_payload = json.loads(warming_policy_path.read_text(encoding="utf-8"))
+    typical_peak_minutes = {
+        station_id: int(seasons[0]["typical_peak_minutes"])
+        for station_id, value in (policy_payload.get("stations") or {}).items()
+        if isinstance(value, dict)
+        and isinstance(seasons := value.get("seasons"), list)
+        and seasons
+        and isinstance(seasons[0], dict)
+        and seasons[0].get("typical_peak_minutes") is not None
+    }
+    no_rows = [
+        pair["no"]
+        for pair in pairs
+        if isinstance(pair.get("no"), dict) and pair["no"].get("asset_id")
+    ]
+    no_asset_ids = tuple(sorted({str(row["asset_id"]) for row in no_rows}))
+    market_ids = tuple(sorted({str(row["market_id"]) for row in no_rows if row.get("market_id")}))
+    quote_times = [
+        timestamp
+        for pair in pairs
+        if (timestamp := _parse_aware_datetime(str(pair["no"]["_timestamp"]), label="NO book"))
+    ]
+    if not quote_times or not no_asset_ids or not market_ids:
+        raise typer.BadParameter("no eligible NO book records found in checkpoints")
+    public_start = min(quote_times) - timedelta(days=7)
+    public_end = max(quote_times) + timedelta(seconds=1)
+    price_points_by_asset = {asset_id: [] for asset_id in no_asset_ids}
+    with ClobClient() as clob:
+        for start in range(0, len(no_asset_ids), 20):
+            batch = clob.batch_price_history(
+                token_ids=no_asset_ids[start : start + 20],
+                start=public_start,
+                end=public_end,
+                fidelity_minutes=1,
+            )
+            for series in batch.series:
+                price_points_by_asset[series.token_id] = list(series.points)
+    trades_by_asset: dict[str, list[Any]] = {asset_id: [] for asset_id in no_asset_ids}
+    with PolymarketDataClient() as trade_client:
+        for start in range(0, len(market_ids), 20):
+            for trade in trade_client.market_trades(
+                market_ids=market_ids[start : start + 20],
+                start=public_start,
+                end=public_end,
+                taker_only=True,
+            ):
+                if trade.asset_id in trades_by_asset:
+                    trades_by_asset[trade.asset_id].append(trade)
+    rule_targets = current_tail_rule_targets(
+        pairs, event_metadata=metadata, as_of=datetime.now(UTC)
+    )
+    books_by_asset = {}
+    rule_errors: dict[str, str] = {}
+    with ClobClient() as clob:
+        for target in rule_targets:
+            asset_id = str(target["asset_id"])
+            try:
+                books_by_asset[asset_id] = clob.order_book(token_id=asset_id)
+            except (httpx.HTTPError, ValueError) as exc:
+                rule_errors[asset_id] = f"{type(exc).__name__}: {exc}"
+    rules = current_rule_rows(
+        rule_targets, books_by_asset=books_by_asset, errors_by_asset=rule_errors
+    )
+    result = analyze_no_entry_accessibility(
+        pairs,
+        event_metadata=metadata,
+        typical_peak_minutes_by_station=typical_peak_minutes,
+        price_points_by_asset=price_points_by_asset,
+        trades_by_asset=trades_by_asset,
+        current_rules=rules,
+    )
+    result["quality_window_pairs_excluded"] = max(0, len(unfiltered_pairs) - len(pairs))
+    result["public_source_window"] = {
+        "start": public_start.isoformat(),
+        "end": public_end.isoformat(),
+        "price_history_fidelity_minutes": 1,
+        "price_history_asset_count": len(no_asset_ids),
+        "trade_market_count": len(market_ids),
+        "taker_only": True,
+    }
+    render_no_entry_accessibility_report(result, output_path)
+    serializable = {key: value for key, value in result.items() if key != "records"}
+    analysis_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis_path.write_text(
+        json.dumps(serializable, ensure_ascii=False, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "tail_book_snapshot_count": result["tail_book_snapshot_count"],
+            "quality_window_pairs_excluded": result["quality_window_pairs_excluded"],
             "execution_enabled": False,
         }
     )
