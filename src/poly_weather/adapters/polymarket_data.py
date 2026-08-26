@@ -76,6 +76,7 @@ class PolymarketDataClient:
         client: httpx.Client | None = None,
         request_pause_seconds: float = 0.06,
         page_limit: int = 10_000,
+        maximum_offset: int = 10_000,
     ) -> None:
         self._owns_client = client is None
         self._client = client or httpx.Client(
@@ -87,7 +88,10 @@ class PolymarketDataClient:
         self.request_pause_seconds = request_pause_seconds
         if not 1 <= page_limit <= 10_000:
             raise ValueError("Data API trade page limit must be between 1 and 10,000")
+        if maximum_offset < 0 or maximum_offset > 10_000:
+            raise ValueError("Data API trade maximum offset must be between 0 and 10,000")
         self.page_limit = page_limit
+        self.maximum_offset = maximum_offset
 
     def close(self) -> None:
         if self._owns_client:
@@ -123,8 +127,25 @@ class PolymarketDataClient:
             end_epoch=end_epoch,
             taker_only=taker_only,
         )
+        unique: dict[tuple[Any, ...], PublicTrade] = {}
+        for row in rows:
+            trade = parse_public_trade(row)
+            # The endpoint exposes no trade-row ID. For canonical taker-only rows,
+            # this full identity is the strongest lossless boundary available and
+            # removes exact repeats caused by offset/window pagination.
+            key = (
+                trade.transaction_hash,
+                trade.proxy_wallet,
+                trade.asset_id,
+                trade.condition_id,
+                trade.timestamp,
+                trade.side,
+                trade.size,
+                trade.price,
+            )
+            unique.setdefault(key, trade)
         return sorted(
-            (parse_public_trade(row) for row in rows),
+            unique.values(),
             key=lambda item: (item.timestamp, item.transaction_hash, item.asset_id),
         )
 
@@ -136,35 +157,27 @@ class PolymarketDataClient:
         end_epoch: int,
         taker_only: bool,
     ) -> list[dict[str, Any]]:
-        response = None
-        for attempt in range(5):
-            response = self._client.get(
-                "/trades",
-                params={
-                    "eventId": event_id,
-                    "start": start_epoch,
-                    "end": end_epoch,
-                    "limit": self.page_limit,
-                    "offset": 0,
-                    "takerOnly": str(taker_only).lower(),
-                },
+        rows: list[dict[str, Any]] = []
+        offset = 0
+        while True:
+            payload = self._page(
+                event_id=event_id,
+                start_epoch=start_epoch,
+                end_epoch=end_epoch,
+                offset=offset,
+                taker_only=taker_only,
             )
-            if response.status_code != 429 and response.status_code < 500:
+            rows.extend(payload)
+            if len(payload) < self.page_limit:
+                return rows
+            next_offset = offset + self.page_limit
+            if next_offset > self.maximum_offset:
                 break
-            time.sleep(min(8.0, 0.5 * (2**attempt)))
-        assert response is not None
-        response.raise_for_status()
-        payload = response.json()
-        if not isinstance(payload, list):
-            raise ValueError("Data API /trades response is not a list")
-        if self.request_pause_seconds:
-            time.sleep(self.request_pause_seconds)
-        if len(payload) < self.page_limit:
-            return [row for row in payload if isinstance(row, dict)]
+            offset = next_offset
         midpoint = (start_epoch + end_epoch) // 2
         if midpoint <= start_epoch:
             raise ValueError(
-                f"more than {self.page_limit:,} trade rows in one second; cannot paginate safely"
+                f"more than {len(rows):,} trade rows in one second; cannot paginate safely"
             )
         left = self._range(
             event_id=event_id,
@@ -179,3 +192,37 @@ class PolymarketDataClient:
             taker_only=taker_only,
         )
         return left + right
+
+    def _page(
+        self,
+        *,
+        event_id: str,
+        start_epoch: int,
+        end_epoch: int,
+        offset: int,
+        taker_only: bool,
+    ) -> list[dict[str, Any]]:
+        response = None
+        for attempt in range(5):
+            response = self._client.get(
+                "/trades",
+                params={
+                    "eventId": event_id,
+                    "start": start_epoch,
+                    "end": end_epoch,
+                    "limit": self.page_limit,
+                    "offset": offset,
+                    "takerOnly": str(taker_only).lower(),
+                },
+            )
+            if response.status_code != 429 and response.status_code < 500:
+                break
+            time.sleep(min(8.0, 0.5 * (2**attempt)))
+        assert response is not None
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, list):
+            raise ValueError("Data API /trades response is not a list")
+        if self.request_pause_seconds:
+            time.sleep(self.request_pause_seconds)
+        return [row for row in payload if isinstance(row, dict)]
