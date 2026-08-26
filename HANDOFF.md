@@ -2,6 +2,9 @@
 
 更新日期：2026-08-26
 
+> **接手的 AI 助手请先读 [AGENTS.md](AGENTS.md)。** 那里有长期铁律、架构判断、数据源能力边界、
+> 已被推翻的旧结论和当前进度——都是从大量试错中得来的，重犯代价很高。本文件只讲环境安装和运行状态。
+
 结算 registry 的 CLI 默认路径已改为 `configs/settlements.json`；
 `configs/settlements.example.json` 暂时保留相同内容以兼容旧脚本和已有调用。
 常驻进程在启动时已载入 registry，此次文件拆分本身不要求重启。
