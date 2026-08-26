@@ -7,8 +7,13 @@ import math
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from poly_weather.fees import fee_per_share
+from poly_weather.warming_policy import (
+    LEGACY_POLICY_VERSION,
+    WarmingThresholdRegistry,
+)
 
 
 def wilson_interval(successes: int, sample_count: int, *, z: float = 1.95996398454) -> tuple[float, float] | None:
@@ -92,6 +97,22 @@ class NoForwardTracker:
                         ),
                         "liquidity_role_assumption": "taker",
                         "market_fee_category": "weather",
+                        "warming_policy_version": output.get("warming_policy_version"),
+                        "warming_threshold_version": output.get(
+                            "warming_threshold_version"
+                        ),
+                        "warming_season_id": output.get("warming_season_id"),
+                        "warming_season_window_start": output.get(
+                            "warming_season_window_start"
+                        ),
+                        "warming_season_window_end": output.get(
+                            "warming_season_window_end"
+                        ),
+                        "warming_policy_profile": output.get("warming_policy_profile"),
+                        "warming_time_bin": signal.get("warming_time_bin"),
+                        "warming_required_abs_margin_f": signal.get(
+                            "warming_required_abs_margin_f"
+                        ),
                         "milestones": [],
                     }
                     self.state["positions"][key] = position
@@ -106,6 +127,11 @@ class NoForwardTracker:
                                 "warming_rate_f_per_hour"
                             ),
                             "hours_to_typical_peak": output.get("hours_to_typical_peak"),
+                            "typical_peak_local": output.get("typical_peak_local"),
+                            "heat_season_active": output.get("heat_season_active"),
+                            "season_window_active": output.get(
+                                "season_window_active"
+                            ),
                             "no_best_ask": signal.get("no_best_ask"),
                             "execution_estimates": signal.get("execution_estimates"),
                             "no_book": books.get(no_token),
@@ -211,7 +237,12 @@ class NoForwardTracker:
         temporary.replace(self.state_path)
 
 
-def forward_summary(data_dir: Path) -> dict[str, Any]:
+def forward_summary(
+    data_dir: Path,
+    *,
+    warming_policy: WarmingThresholdRegistry | None = None,
+    station_timezones: dict[str, str] | None = None,
+) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     for path in sorted((data_dir / "raw" / "no_forward_validation").glob("*/events.jsonl")):
         for line in path.read_text(encoding="utf-8").splitlines():
@@ -238,6 +269,110 @@ def forward_summary(data_dir: Path) -> dict[str, Any]:
             (1.0 - float(entry) if row.get("no_won") else -float(entry))
             - float(entry_fee)
         )
+    trigger_by_key = {
+        f"{row.get('event_slug')}|{row.get('market_id')}": row for row in triggers
+    }
+    version_rows: dict[str, dict[str, Any]] = {}
+    for trigger in triggers:
+        version = str(
+            trigger.get("warming_threshold_version")
+            or trigger.get("warming_policy_version")
+            or LEGACY_POLICY_VERSION
+        )
+        season_id = str(trigger.get("warming_season_id") or "legacy_august_2026")
+        group = f"{season_id}|{version}"
+        version_rows.setdefault(
+            group,
+            {
+                "season_id": season_id,
+                "threshold_version": version,
+                "triggers": 0,
+                "settlements": 0,
+                "wins": 0,
+            },
+        )
+        version_rows[group]["triggers"] += 1
+    for settlement in settlements:
+        key = f"{settlement.get('event_slug')}|{settlement.get('market_id')}"
+        trigger = trigger_by_key.get(key, settlement)
+        version = str(
+            trigger.get("warming_threshold_version")
+            or trigger.get("warming_policy_version")
+            or LEGACY_POLICY_VERSION
+        )
+        season_id = str(trigger.get("warming_season_id") or "legacy_august_2026")
+        group = f"{season_id}|{version}"
+        version_rows.setdefault(
+            group,
+            {
+                "season_id": season_id,
+                "threshold_version": version,
+                "triggers": 0,
+                "settlements": 0,
+                "wins": 0,
+            },
+        )
+        version_rows[group]["settlements"] += 1
+        version_rows[group]["wins"] += bool(settlement.get("no_won"))
+    for summary in version_rows.values():
+        settled = int(summary["settlements"])
+        won = int(summary["wins"])
+        summary["win_rate"] = won / settled if settled else None
+        summary["wilson_95"] = wilson_interval(won, settled)
+        summary["statistically_reliable"] = settled >= 30
+
+    reclassified: list[dict[str, Any]] = []
+    if warming_policy is not None and station_timezones is not None:
+        for trigger in triggers:
+            station = str(trigger.get("station_id") or "")
+            timezone = station_timezones.get(station)
+            if timezone is None:
+                continue
+            generated_at = datetime.fromisoformat(str(trigger["generated_at"]))
+            local_at = generated_at.astimezone(ZoneInfo(timezone))
+            margin = trigger.get("physical_margin_f")
+            decision = warming_policy.decision(
+                station_id=station,
+                local_at=local_at,
+                physical_margin_f=float(margin) if margin is not None else None,
+            )
+            key = f"{trigger.get('event_slug')}|{trigger.get('market_id')}"
+            reclassified.append(
+                {
+                    "key": key,
+                    "event_slug": trigger.get("event_slug"),
+                    "market_id": trigger.get("market_id"),
+                    "market_slug": trigger.get("market_slug"),
+                    "station_id": station,
+                    "triggered_at": trigger.get("generated_at"),
+                    "legacy_physical_margin_f": margin,
+                    "legacy_hours_to_typical_peak": trigger.get(
+                        "hours_to_typical_peak"
+                    ),
+                    "new_hours_to_typical_peak": decision.hours_to_typical_peak,
+                    "new_time_bin": decision.time_bin,
+                    "new_required_abs_margin_f": decision.required_margin_f,
+                    "new_policy_eligible": decision.physical_margin_passed,
+                    "new_policy_reason": decision.reason,
+                    "new_season_id": decision.season_id,
+                    "new_threshold_version": decision.threshold_version,
+                    "settled": any(
+                        f"{row.get('event_slug')}|{row.get('market_id')}" == key
+                        for row in settlements
+                    ),
+                    "no_won": next(
+                        (
+                            row.get("no_won")
+                            for row in settlements
+                            if f"{row.get('event_slug')}|{row.get('market_id')}" == key
+                        ),
+                        None,
+                    ),
+                }
+            )
+    eligible = [row for row in reclassified if row["new_policy_eligible"]]
+    eligible_settled = [row for row in eligible if row["settled"]]
+    eligible_wins = sum(bool(row["no_won"]) for row in eligible_settled)
     return {
         "trigger_count": len(triggers),
         "settled_count": len(settlements),
@@ -252,6 +387,17 @@ def forward_summary(data_dir: Path) -> dict[str, Any]:
         "bid_095_count": sum(row.get("record_type") == "bid_reached_0.95" for row in rows),
         "bid_099_count": sum(row.get("record_type") == "bid_reached_0.99" for row in rows),
         "statistically_reliable": len(settlements) >= 30,
+        "by_season_and_threshold_version": version_rows,
+        "reclassified_under_current_policy": reclassified,
+        "current_policy_eligible_trigger_count": len(eligible),
+        "current_policy_eligible_settled_count": len(eligible_settled),
+        "current_policy_eligible_wins": eligible_wins,
+        "current_policy_wilson_95": wilson_interval(
+            eligible_wins, len(eligible_settled)
+        ),
+        "current_policy_remaining_settlements_to_30": max(
+            0, 30 - len(eligible_settled)
+        ),
         "execution_enabled": False,
     }
 
@@ -267,9 +413,7 @@ def render_forward_report(summary: dict[str, Any], output_path: Path) -> None:
     mean_pnl = summary["mean_net_pnl_per_share"]
     mean_pnl_text = "N/A" if mean_pnl is None else f"{mean_pnl:.4f}"
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        "\n".join(
-            [
+    lines = [
                 "# NO 侧前向验证增量报告",
                 "",
                 "全部成本与退出只取 NO token 自身真实订单簿，不使用 `1−YES` 或 `p` 代理。",
@@ -285,7 +429,58 @@ def render_forward_report(summary: dict[str, Any], output_path: Path) -> None:
                 "",
                 "`execution_enabled=false`；本报告仅做前向观测，不会产生订单。",
                 "",
+    ]
+    if summary.get("by_season_and_threshold_version"):
+        lines.extend(
+            [
+                "## 按季节与阈值版本分组",
+                "",
+                "| 季节 | 阈值版本 | 触发 | 已结算 | 胜率 | Wilson 95% | 距30 | 可靠性 |",
+                "|---|---|---:|---:|---:|---:|---:|---|",
             ]
-        ),
-        encoding="utf-8",
-    )
+        )
+        for row in summary["by_season_and_threshold_version"].values():
+            rate = row["win_rate"]
+            ci = row["wilson_95"]
+            lines.append(
+                f"| {row['season_id']} | {row['threshold_version']} | "
+                f"{row['triggers']} | {row['settlements']} | "
+                f"{'N/A' if rate is None else f'{rate:.1%}'} | "
+                f"{'N/A' if ci is None else f'{ci[0]:.1%}-{ci[1]:.1%}'} | "
+                f"{max(0, 30 - row['settlements'])} | "
+                f"{'可用' if row['statistically_reliable'] else '统计不可靠（n < 30）'} |"
+            )
+    if summary.get("reclassified_under_current_policy"):
+        lines.extend(
+            [
+                "",
+                "## 旧触发按当前热季阈值追溯",
+                "",
+                "| 触发时刻 | 站点 | 桶 | 新季节 | 旧余量 | 旧距高点 | 新距高点 | 新时段 | 新要求 | 仍触发 | 已结算 |",
+                "|---|---|---|---|---:|---:|---:|---|---:|---|---|",
+            ]
+        )
+        for row in summary["reclassified_under_current_policy"]:
+            lines.append(
+                f"| {row['triggered_at']} | {row['station_id']} | {row['market_slug']} | "
+                f"{row['new_season_id'] or '窗口外'} | {row['legacy_physical_margin_f']} | "
+                f"{row['legacy_hours_to_typical_peak']} | "
+                f"{row['new_hours_to_typical_peak']:.2f} | "
+                f"{row['new_time_bin'] or '禁用'} | "
+                f"{row['new_required_abs_margin_f'] or 'N/A'} | "
+                f"{'是' if row['new_policy_eligible'] else '否'} | "
+                f"{'是' if row['settled'] else '否'} |"
+            )
+        lines.extend(
+            [
+                "",
+                f"当前保守阈值下仍有效触发 {summary['current_policy_eligible_trigger_count']} 条，"
+                f"其中已结算 {summary['current_policy_eligible_settled_count']} 条；"
+                f"距 30 个同口径已结算样本还差 {summary['current_policy_remaining_settlements_to_30']} 条。",
+                "",
+                "所有现有触发均采集于 8 月，只能验证 `heat_2026`。其他季节当前 n=0；"
+                "每个季节必须独立累积 30 个已结算样本，全年约 120 个，禁止跨季合并 Wilson 区间。",
+                "",
+            ]
+        )
+    output_path.write_text("\n".join(lines), encoding="utf-8")

@@ -102,6 +102,12 @@ from poly_weather.signal_engine import (
 from poly_weather.signal_migration import migrate_signal_snapshots_from_jsonl
 from poly_weather.storage import CatalogStore, RawEventArchive
 from poly_weather.temperature import celsius_to_fahrenheit
+from poly_weather.warming_policy import (
+    WarmingThresholdRegistry,
+    build_heat_season_policy_analysis,
+    policy_document,
+    render_heat_season_policy_report,
+)
 from poly_weather.weather_stream import WeatherDaemon, WeatherStation
 from poly_weather.wrh_backfill import (
     WrhBackfillRequest,
@@ -116,6 +122,7 @@ app = typer.Typer(
 
 DEFAULT_CONFIG = Path("configs/settlements.json")
 DEFAULT_DATA_DIR = Path("data")
+DEFAULT_WARMING_POLICY = Path("configs/warming_window_no_thresholds.json")
 
 
 def _emit(payload: object) -> None:
@@ -1730,6 +1737,65 @@ def high_frequency_weather_reanalysis(
     )
 
 
+@app.command("derive-warming-window-policy")
+def derive_warming_window_policy(
+    start_date_text: Annotated[str, typer.Option("--start-date")] = "2024-06-01",
+    end_date_text: Annotated[str, typer.Option("--end-date")] = "2026-08-22",
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/warming_window_threshold_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/warming_window_threshold_analysis.json"
+    ),
+    policy_path: Annotated[Path, typer.Option("--policy-output")] = Path(
+        "configs/warming_window_no_thresholds.json"
+    ),
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Derive station heat-season NO thresholds from post-hoc WRH history."""
+    start_date = _parse_date(start_date_text, label="start date")
+    end_date = _parse_date(end_date_text, label="end date")
+    if end_date < start_date:
+        raise typer.BadParameter("end date must not precede start date")
+    registry = load_settlement_registry(config)
+    specs = [
+        spec
+        for spec in registry.specs
+        if spec.status is VerificationStatus.VERIFIED and spec.station_id and spec.timezone
+    ]
+    result = build_heat_season_policy_analysis(
+        specs,
+        data_dir=data_dir,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    render_heat_season_policy_report(result, output_path)
+    analysis_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    policy = policy_document(result)
+    policy_path.parent.mkdir(parents=True, exist_ok=True)
+    policy_path.write_text(
+        json.dumps(policy, ensure_ascii=False, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "policy_path": str(policy_path.resolve()),
+            "station_count": len(result["stations"]),
+            "recommended_profile": result["recommended_profile"],
+            "collection_mode": result["collection_mode"],
+            "strict_no_lookahead_eligible": False,
+            "execution_enabled": False,
+        }
+    )
+
+
 @app.command("execution-cost-calibration")
 def execution_cost_calibration(
     analysis_path: Annotated[
@@ -1939,13 +2005,28 @@ def analyze_eliminated_no_exit_command(
 @app.command("no-forward-report")
 def no_forward_report(
     data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    warming_policy_path: Annotated[
+        Path, typer.Option("--warming-policy")
+    ] = DEFAULT_WARMING_POLICY,
     output_path: Annotated[
         Path,
         typer.Option("--output", help="Markdown report destination."),
     ] = Path("data/no_forward_validation_report.md"),
 ) -> None:
     """Summarize real-book forward NO triggers without execution or p proxies."""
-    summary = forward_summary(data_dir)
+    registry = load_settlement_registry(config)
+    warming_policy = WarmingThresholdRegistry.from_path(warming_policy_path)
+    station_timezones = {
+        str(spec.station_id): spec.timezone
+        for spec in registry.specs
+        if spec.station_id and spec.timezone
+    }
+    summary = forward_summary(
+        data_dir,
+        warming_policy=warming_policy,
+        station_timezones=station_timezones,
+    )
     render_forward_report(summary, output_path)
     _emit({**summary, "report_path": str(output_path.resolve())})
 
@@ -2309,10 +2390,18 @@ def signal_engine(
         ),
     ] = 30,
     config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    warming_policy_path: Annotated[
+        Path, typer.Option("--warming-policy")
+    ] = DEFAULT_WARMING_POLICY,
     data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
 ) -> None:
     """Run deterministic live probability and read-only edge calculations."""
     registry = load_settlement_registry(config)
+    try:
+        warming_policy = WarmingThresholdRegistry.from_path(warming_policy_path)
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"Cannot load warming-window policy: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
     update_path = data_dir / "runtime" / "signal_config_update.json"
     parsed_specs: list[tuple[str, str]] = []
     expected_sha_by_slug: dict[str, str] | None = None
@@ -2378,6 +2467,7 @@ def signal_engine(
         cost_buffer=Decimal(cost_buffer_text),
         config_update_path=update_path,
         config_loader=load_supervisor_events,
+        warming_policy=warming_policy,
     )
     if initial_generation is not None:
         engine._last_config_generation = initial_generation

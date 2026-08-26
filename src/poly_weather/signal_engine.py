@@ -26,24 +26,14 @@ from poly_weather.modeling import blend_multi_model_forecasts, build_bucket_fore
 from poly_weather.no_forward import NoForwardTracker
 from poly_weather.research_store import ResearchWarehouse
 from poly_weather.temperature import celsius_to_fahrenheit, round_whole_degree
+from poly_weather.warming_policy import (
+    WarmingThresholdRegistry,
+    load_default_warming_policy,
+)
 from poly_weather.weather_provenance import require_realtime_for_no_lookahead
 
 IMPLAUSIBLE_EDGE_THRESHOLD = Decimal("0.15")
 EXECUTION_NOTIONALS_USD = (Decimal("50"), Decimal("200"), Decimal("1000"))
-TYPICAL_SUMMER_PEAK_MINUTES = {
-    "KLAX": 12 * 60 + 53,
-    "KMIA": 13 * 60 + 34,
-    "KLGA": 14 * 60 + 51,
-    "KORD": 14 * 60 + 51,
-    "KHOU": 14 * 60 + 53,
-    "ZUCK": 15 * 60,
-    "ZUUU": 15 * 60,
-    "KATL": 15 * 60 + 52,
-    "KDAL": 15 * 60 + 53,
-    "KSEA": 15 * 60 + 53,
-}
-
-
 def physical_bucket_state(
     observed_high_f: Decimal | None,
     *,
@@ -398,6 +388,7 @@ class LiveSignalEngine:
         config_update_path: Path | None = None,
         config_loader: Callable[[list[dict[str, Any]]], tuple[LiveSignalConfig, ...]]
         | None = None,
+        warming_policy: WarmingThresholdRegistry | None = None,
     ) -> None:
         if not configs:
             raise ValueError("at least one signal config is required")
@@ -408,6 +399,7 @@ class LiveSignalEngine:
         self.cost_buffer = cost_buffer
         self.config_update_path = config_update_path
         self.config_loader = config_loader
+        self.warming_policy = warming_policy or load_default_warming_policy()
         self._last_config_generation: int | None = None
         self.run_id = str(uuid4())
         self.sequence = 0
@@ -799,17 +791,13 @@ class LiveSignalEngine:
         ]
         warming_rate = warming_rate_f_per_hour(observation_rows)
         local_generated = generated_at.astimezone(ZoneInfo(config.timezone))
-        peak_minutes = (
-            TYPICAL_SUMMER_PEAK_MINUTES.get(config.station_id)
-            if local_generated.month in {6, 7, 8}
-            and local_generated.date() == config.target_date
-            else None
+        base_warming_policy = self.warming_policy.decision(
+            station_id=config.station_id,
+            local_at=local_generated,
+            physical_margin_f=None,
         )
-        hours_to_peak = (
-            (peak_minutes - (local_generated.hour * 60 + local_generated.minute)) / 60
-            if peak_minutes is not None
-            else None
-        )
+        peak_minutes = base_warming_policy.typical_peak_minutes
+        hours_to_peak = base_warming_policy.hours_to_typical_peak
         if raw_high is not None and observed_high is not None:
             raw_high = max(raw_high, observed_high)
         calibration = config.calibration
@@ -934,6 +922,11 @@ class LiveSignalEngine:
                     observed_high,
                     upper=raw_probability.bucket.upper_f,
                     unit=raw_probability.bucket.unit,
+                )
+                warming_policy = self.warming_policy.decision(
+                    station_id=config.station_id,
+                    local_at=local_generated,
+                    physical_margin_f=physical_margin_f,
                 )
                 raw_yes_edge = (
                     raw_probability.probability
@@ -1143,14 +1136,30 @@ class LiveSignalEngine:
                             raw_probability.bucket.upper_f is not None
                             and warming_rate is not None
                             and warming_rate > 0.3
-                            and hours_to_peak is not None
-                            and hours_to_peak > 0
-                            and physical_margin_f is not None
-                            and physical_margin_f <= -2.0
+                            and warming_policy.physical_margin_passed
                             and no_ask is not None
                             and no_ask <= Decimal("0.95")
                             and no_book_fresh
                         ),
+                        "warming_policy_version": warming_policy.policy_version,
+                        "warming_threshold_version": warming_policy.threshold_version,
+                        "warming_season_id": warming_policy.season_id,
+                        "warming_season_window_start": (
+                            warming_policy.season_window_start.isoformat()
+                            if warming_policy.season_window_start is not None
+                            else None
+                        ),
+                        "warming_season_window_end": (
+                            warming_policy.season_window_end.isoformat()
+                            if warming_policy.season_window_end is not None
+                            else None
+                        ),
+                        "warming_policy_profile": warming_policy.profile,
+                        "warming_time_bin": warming_policy.time_bin,
+                        "warming_required_abs_margin_f": (
+                            warming_policy.required_margin_f
+                        ),
+                        "warming_policy_reason": warming_policy.reason,
                         "warming_window_no": False,
                         "raw_research_candidate": raw_side,
                         "raw_net_edge_after_buffer": (
@@ -1233,6 +1242,24 @@ class LiveSignalEngine:
             "current_observed_high_f": float(observed_high) if observed_high is not None else None,
             "warming_rate_f_per_hour": warming_rate,
             "hours_to_typical_peak": hours_to_peak,
+            "heat_season_active": base_warming_policy.heat_season_active,
+            "season_window_active": base_warming_policy.season_window_active,
+            "warming_season_id": base_warming_policy.season_id,
+            "warming_threshold_version": base_warming_policy.threshold_version,
+            "warming_season_window_start": (
+                base_warming_policy.season_window_start.isoformat()
+                if base_warming_policy.season_window_start is not None
+                else None
+            ),
+            "warming_season_window_end": (
+                base_warming_policy.season_window_end.isoformat()
+                if base_warming_policy.season_window_end is not None
+                else None
+            ),
+            "warming_policy_enabled": base_warming_policy.enabled,
+            "warming_policy_version": base_warming_policy.policy_version,
+            "warming_policy_profile": base_warming_policy.profile,
+            "warming_policy_reason": base_warming_policy.reason,
             "typical_peak_local": (
                 f"{peak_minutes // 60:02d}:{peak_minutes % 60:02d}"
                 if peak_minutes is not None

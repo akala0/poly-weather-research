@@ -1,0 +1,1539 @@
+{
+  "schema_version": 2,
+  "policy_version": "seasonal-warming-policy-v1-20260826",
+  "recommended_profile": "conservative",
+  "derivation": {
+    "start_date": "2024-06-01",
+    "end_date": "2026-08-22",
+    "collection_mode": "historical_backfill",
+    "candidate_margin_range_f": [
+      -20,
+      -2
+    ],
+    "aggressive_target": "point failure <=10%, Wilson upper <=12.5%",
+    "conservative_target": "point failure <=5%, Wilson upper <=7.5%"
+  },
+  "stations": {
+    "KLGA": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": true,
+          "window_start": "2026-06-01",
+          "window_end": "2026-09-30",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            6,
+            7,
+            8,
+            9
+          ],
+          "typical_peak_minutes": 891,
+          "profiles": {
+            "aggressive": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 2.0,
+                "n": 4596,
+                "failure_count": 267,
+                "failure_rate": 0.058093994778067884,
+                "wilson_95": [
+                  0.051692986704693335,
+                  0.06523309947363021
+                ],
+                "unique_days": 273,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 2.0,
+                "n": 5119,
+                "failure_count": 396,
+                "failure_rate": 0.07735885915217816,
+                "wilson_95": [
+                  0.0703530852647883,
+                  0.08499848382396132
+                ],
+                "unique_days": 291,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 2.0,
+                "n": 11094,
+                "failure_count": 1058,
+                "failure_rate": 0.09536686497205697,
+                "wilson_95": [
+                  0.09004046333522335,
+                  0.10097338982590821
+                ],
+                "unique_days": 316,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 8.0,
+                "n": 7405,
+                "failure_count": 678,
+                "failure_rate": 0.09155975692099932,
+                "wilson_95": [
+                  0.08520102091915421,
+                  0.09834204264602936
+                ],
+                "unique_days": 306,
+                "trigger_frequency_in_candidate_universe": 0.6857751435451009
+              }
+            ],
+            "conservative": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 3.0,
+                "n": 4365,
+                "failure_count": 163,
+                "failure_rate": 0.03734249713631157,
+                "wilson_95": [
+                  0.03211245517666815,
+                  0.043386155136769466
+                ],
+                "unique_days": 273,
+                "trigger_frequency_in_candidate_universe": 0.9497389033942559
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 4.0,
+                "n": 4579,
+                "failure_count": 178,
+                "failure_rate": 0.03887311640096091,
+                "wilson_95": [
+                  0.03365008028281797,
+                  0.04486920999900038
+                ],
+                "unique_days": 291,
+                "trigger_frequency_in_candidate_universe": 0.8945106466106661
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 7.0,
+                "n": 8162,
+                "failure_count": 299,
+                "failure_rate": 0.036633178142612105,
+                "wilson_95": [
+                  0.03277077285192266,
+                  0.04093154697092771
+                ],
+                "unique_days": 316,
+                "trigger_frequency_in_candidate_universe": 0.7357129980169461
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 11.0,
+                "n": 5655,
+                "failure_count": 240,
+                "failure_rate": 0.042440318302387266,
+                "wilson_95": [
+                  0.0374893674986727,
+                  0.04801249049498219
+                ],
+                "unique_days": 306,
+                "trigger_frequency_in_candidate_universe": 0.5237080940914984
+              }
+            ]
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 327,
+            "month_contributions": {
+              "6": {
+                "days": 90,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          }
+        }
+      ]
+    },
+    "KORD": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": true,
+          "window_start": "2026-06-01",
+          "window_end": "2026-08-31",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            6,
+            7,
+            8
+          ],
+          "typical_peak_minutes": 875,
+          "profiles": {
+            "aggressive": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 2.0,
+                "n": 3167,
+                "failure_count": 183,
+                "failure_rate": 0.057783391221976635,
+                "wilson_95": [
+                  0.050179955799962685,
+                  0.06645831313393921
+                ],
+                "unique_days": 192,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 2.0,
+                "n": 3961,
+                "failure_count": 296,
+                "failure_rate": 0.0747286038879071,
+                "wilson_95": [
+                  0.0669453802404221,
+                  0.0833359021284123
+                ],
+                "unique_days": 228,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 2.0,
+                "n": 8928,
+                "failure_count": 807,
+                "failure_rate": 0.09038978494623656,
+                "wilson_95": [
+                  0.08461679558185844,
+                  0.09651510944350283
+                ],
+                "unique_days": 257,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 6.0,
+                "n": 7178,
+                "failure_count": 716,
+                "failure_rate": 0.09974923376985233,
+                "wilson_95": [
+                  0.09302948169871171,
+                  0.10689716205324724
+                ],
+                "unique_days": 257,
+                "trigger_frequency_in_candidate_universe": 0.7903545474565074
+              }
+            ],
+            "conservative": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 3.0,
+                "n": 3006,
+                "failure_count": 109,
+                "failure_rate": 0.03626081170991351,
+                "wilson_95": [
+                  0.03014806958684543,
+                  0.0435572939201132
+                ],
+                "unique_days": 192,
+                "trigger_frequency_in_candidate_universe": 0.949163245974108
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 4.0,
+                "n": 3544,
+                "failure_count": 108,
+                "failure_rate": 0.030474040632054177,
+                "wilson_95": [
+                  0.025303605236446824,
+                  0.03666124335455234
+                ],
+                "unique_days": 228,
+                "trigger_frequency_in_candidate_universe": 0.8947235546579146
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 6.0,
+                "n": 7044,
+                "failure_count": 285,
+                "failure_rate": 0.04045996592844974,
+                "wilson_95": [
+                  0.036103557355054716,
+                  0.045317323374676394
+                ],
+                "unique_days": 257,
+                "trigger_frequency_in_candidate_universe": 0.7889784946236559
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 11.0,
+                "n": 4760,
+                "failure_count": 179,
+                "failure_rate": 0.03760504201680672,
+                "wilson_95": [
+                  0.032562873561513224,
+                  0.0433929410785208
+                ],
+                "unique_days": 257,
+                "trigger_frequency_in_candidate_universe": 0.5241136313587316
+              }
+            ]
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 267,
+            "month_contributions": {
+              "6": {
+                "days": 90,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          }
+        }
+      ]
+    },
+    "KLAX": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": true,
+          "window_start": "2026-07-01",
+          "window_end": "2026-10-31",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            7,
+            8,
+            9,
+            10
+          ],
+          "typical_peak_minutes": 740,
+          "profiles": {
+            "aggressive": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 2.0,
+                "n": 4635,
+                "failure_count": 245,
+                "failure_rate": 0.05285868392664509,
+                "wilson_95": [
+                  0.04677946818608118,
+                  0.059678461709682135
+                ],
+                "unique_days": 277,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 2.0,
+                "n": 5316,
+                "failure_count": 421,
+                "failure_rate": 0.07919488337095561,
+                "wilson_95": [
+                  0.07223582126462516,
+                  0.08676167243290331
+                ],
+                "unique_days": 293,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 4.0,
+                "n": 7068,
+                "failure_count": 631,
+                "failure_rate": 0.08927560837577815,
+                "wilson_95": [
+                  0.08284925667447411,
+                  0.09614817506825991
+                ],
+                "unique_days": 297,
+                "trigger_frequency_in_candidate_universe": 0.8934395145999242
+              }
+            ],
+            "conservative": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 3.0,
+                "n": 4392,
+                "failure_count": 136,
+                "failure_rate": 0.030965391621129327,
+                "wilson_95": [
+                  0.0262381289067554,
+                  0.03651241871984077
+                ],
+                "unique_days": 277,
+                "trigger_frequency_in_candidate_universe": 0.9475728155339805
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 4.0,
+                "n": 4756,
+                "failure_count": 184,
+                "failure_rate": 0.03868797308662742,
+                "wilson_95": [
+                  0.033569011527813886,
+                  0.044551543964978096
+                ],
+                "unique_days": 293,
+                "trigger_frequency_in_candidate_universe": 0.8946576373212942
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 7.0,
+                "n": 5901,
+                "failure_count": 264,
+                "failure_rate": 0.044738179969496694,
+                "wilson_95": [
+                  0.03975320706791514,
+                  0.05031550392621755
+                ],
+                "unique_days": 297,
+                "trigger_frequency_in_candidate_universe": 0.7459233978005309
+              }
+            ]
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 299,
+            "month_contributions": {
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              },
+              "10": {
+                "days": 62,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          }
+        }
+      ]
+    },
+    "KMIA": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": true,
+          "window_start": "2026-05-01",
+          "window_end": "2026-10-31",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "typical_peak_minutes": 775,
+          "profiles": {
+            "aggressive": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 2.0,
+                "n": 6582,
+                "failure_count": 370,
+                "failure_rate": 0.05621391674263142,
+                "wilson_95": [
+                  0.05090385473841765,
+                  0.06204169116816286
+                ],
+                "unique_days": 400,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 2.0,
+                "n": 7337,
+                "failure_count": 607,
+                "failure_rate": 0.08273136159193131,
+                "wilson_95": [
+                  0.0766442244894836,
+                  0.08925521165177044
+                ],
+                "unique_days": 425,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 4.0,
+                "n": 13652,
+                "failure_count": 1204,
+                "failure_rate": 0.08819220627014357,
+                "wilson_95": [
+                  0.0835504886103881,
+                  0.0930656112538072
+                ],
+                "unique_days": 442,
+                "trigger_frequency_in_candidate_universe": 0.8911808864808408
+              }
+            ],
+            "conservative": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 3.0,
+                "n": 6318,
+                "failure_count": 235,
+                "failure_rate": 0.03719531497309275,
+                "wilson_95": [
+                  0.03280319894128039,
+                  0.04214987634654668
+                ],
+                "unique_days": 400,
+                "trigger_frequency_in_candidate_universe": 0.959890610756609
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 4.0,
+                "n": 6538,
+                "failure_count": 224,
+                "failure_rate": 0.034261241970021415,
+                "wilson_95": [
+                  0.03011837697897296,
+                  0.03895108330448491
+                ],
+                "unique_days": 425,
+                "trigger_frequency_in_candidate_universe": 0.891099904593158
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 8.0,
+                "n": 10318,
+                "failure_count": 274,
+                "failure_rate": 0.026555534018220587,
+                "wilson_95": [
+                  0.02362501402261455,
+                  0.02983845574896473
+                ],
+                "unique_days": 442,
+                "trigger_frequency_in_candidate_universe": 0.6735426594425223
+              }
+            ]
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 451,
+            "month_contributions": {
+              "5": {
+                "days": 62,
+                "years": [
+                  2025,
+                  2026
+                ]
+              },
+              "6": {
+                "days": 90,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              },
+              "10": {
+                "days": 62,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          }
+        }
+      ]
+    },
+    "KATL": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": true,
+          "window_start": "2026-05-01",
+          "window_end": "2026-09-30",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "typical_peak_minutes": 915,
+          "profiles": {
+            "aggressive": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 2.0,
+                "n": 5604,
+                "failure_count": 332,
+                "failure_rate": 0.05924339757316203,
+                "wilson_95": [
+                  0.05335908350694251,
+                  0.06573156192673532
+                ],
+                "unique_days": 338,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 2.0,
+                "n": 6443,
+                "failure_count": 542,
+                "failure_rate": 0.08412230327487195,
+                "wilson_95": [
+                  0.07758996287945913,
+                  0.0911502590989002
+                ],
+                "unique_days": 366,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 3.0,
+                "n": 13149,
+                "failure_count": 1303,
+                "failure_rate": 0.09909498821203133,
+                "wilson_95": [
+                  0.09410446698720092,
+                  0.10431968850738653
+                ],
+                "unique_days": 382,
+                "trigger_frequency_in_candidate_universe": 0.955873800523408
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 11.0,
+                "n": 9010,
+                "failure_count": 805,
+                "failure_rate": 0.08934517203107659,
+                "wilson_95": [
+                  0.0836290698887527,
+                  0.09541129444353026
+                ],
+                "unique_days": 385,
+                "trigger_frequency_in_candidate_universe": 0.522712769043337
+              }
+            ],
+            "conservative": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 3.0,
+                "n": 5328,
+                "failure_count": 213,
+                "failure_rate": 0.03997747747747748,
+                "wilson_95": [
+                  0.0350400259800542,
+                  0.04557779848837384
+                ],
+                "unique_days": 338,
+                "trigger_frequency_in_candidate_universe": 0.9507494646680942
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 4.0,
+                "n": 5759,
+                "failure_count": 248,
+                "failure_rate": 0.04306303177635006,
+                "wilson_95": [
+                  0.03811766324380055,
+                  0.04861758054043177
+                ],
+                "unique_days": 366,
+                "trigger_frequency_in_candidate_universe": 0.8938382740959181
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 8.0,
+                "n": 9373,
+                "failure_count": 282,
+                "failure_rate": 0.030086418435932998,
+                "wilson_95": [
+                  0.02681600043557249,
+                  0.03374186025924938
+                ],
+                "unique_days": 382,
+                "trigger_frequency_in_candidate_universe": 0.6813753998255306
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 15.0,
+                "n": 5406,
+                "failure_count": 187,
+                "failure_rate": 0.03459119496855346,
+                "wilson_95": [
+                  0.03004086387614669,
+                  0.0398024876706213
+                ],
+                "unique_days": 385,
+                "trigger_frequency_in_candidate_universe": 0.3136276614260022
+              }
+            ]
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 389,
+            "month_contributions": {
+              "5": {
+                "days": 62,
+                "years": [
+                  2025,
+                  2026
+                ]
+              },
+              "6": {
+                "days": 90,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          }
+        }
+      ]
+    },
+    "KDAL": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": true,
+          "window_start": "2026-05-01",
+          "window_end": "2026-09-30",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "typical_peak_minutes": 935,
+          "profiles": {
+            "aggressive": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 2.0,
+                "n": 6078,
+                "failure_count": 327,
+                "failure_rate": 0.05380059230009872,
+                "wilson_95": [
+                  0.048405002302453634,
+                  0.059759846004567754
+                ],
+                "unique_days": 356,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 2.0,
+                "n": 6521,
+                "failure_count": 548,
+                "failure_rate": 0.08403619076828707,
+                "wilson_95": [
+                  0.07754476805487309,
+                  0.09101740556451174
+                ],
+                "unique_days": 363,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 2.0,
+                "n": 13966,
+                "failure_count": 1379,
+                "failure_rate": 0.09873979664900473,
+                "wilson_95": [
+                  0.09390211465109716,
+                  0.10379815753608937
+                ],
+                "unique_days": 384,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 10.0,
+                "n": 11740,
+                "failure_count": 1169,
+                "failure_rate": 0.0995741056218058,
+                "wilson_95": [
+                  0.09428798244097694,
+                  0.10512219071507822
+                ],
+                "unique_days": 382,
+                "trigger_frequency_in_candidate_universe": 0.5738025415444771
+              }
+            ],
+            "conservative": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 3.0,
+                "n": 5706,
+                "failure_count": 135,
+                "failure_rate": 0.02365930599369085,
+                "wilson_95": [
+                  0.020024581308001287,
+                  0.02793497427609595
+                ],
+                "unique_days": 356,
+                "trigger_frequency_in_candidate_universe": 0.9387956564659428
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 4.0,
+                "n": 5841,
+                "failure_count": 208,
+                "failure_rate": 0.03561034069508646,
+                "wilson_95": [
+                  0.031154859940882997,
+                  0.04067625160913068
+                ],
+                "unique_days": 363,
+                "trigger_frequency_in_candidate_universe": 0.8957215151050453
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 7.0,
+                "n": 10283,
+                "failure_count": 354,
+                "failure_rate": 0.03442575123991053,
+                "wilson_95": [
+                  0.031072090384180254,
+                  0.038127134827005305
+                ],
+                "unique_days": 384,
+                "trigger_frequency_in_candidate_universe": 0.7362881283116139
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 14.0,
+                "n": 7380,
+                "failure_count": 314,
+                "failure_rate": 0.04254742547425474,
+                "wilson_95": [
+                  0.03817561980253085,
+                  0.04739521244575635
+                ],
+                "unique_days": 382,
+                "trigger_frequency_in_candidate_universe": 0.36070381231671556
+              }
+            ]
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 389,
+            "month_contributions": {
+              "5": {
+                "days": 62,
+                "years": [
+                  2025,
+                  2026
+                ]
+              },
+              "6": {
+                "days": 90,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          }
+        }
+      ]
+    },
+    "KHOU": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": true,
+          "window_start": "2026-05-01",
+          "window_end": "2026-09-30",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "typical_peak_minutes": 870,
+          "profiles": {
+            "aggressive": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 2.0,
+                "n": 5592,
+                "failure_count": 363,
+                "failure_rate": 0.06491416309012875,
+                "wilson_95": [
+                  0.058750719397828347,
+                  0.07167496621023135
+                ],
+                "unique_days": 320,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 2.0,
+                "n": 6176,
+                "failure_count": 493,
+                "failure_rate": 0.07982512953367876,
+                "wilson_95": [
+                  0.07332410556421641,
+                  0.08684852433518984
+                ],
+                "unique_days": 349,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 2.0,
+                "n": 13129,
+                "failure_count": 1280,
+                "failure_rate": 0.09749409703709346,
+                "wilson_95": [
+                  0.09253725615662772,
+                  0.10268641016568869
+                ],
+                "unique_days": 373,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 8.0,
+                "n": 6703,
+                "failure_count": 642,
+                "failure_rate": 0.09577800984633746,
+                "wilson_95": [
+                  0.08896270101582007,
+                  0.10305636887391953
+                ],
+                "unique_days": 370,
+                "trigger_frequency_in_candidate_universe": 0.676797253634895
+              }
+            ],
+            "conservative": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 3.0,
+                "n": 5211,
+                "failure_count": 189,
+                "failure_rate": 0.03626943005181347,
+                "wilson_95": [
+                  0.03152525191275583,
+                  0.041696812810769826
+                ],
+                "unique_days": 320,
+                "trigger_frequency_in_candidate_universe": 0.9318669527896996
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 4.0,
+                "n": 5532,
+                "failure_count": 243,
+                "failure_rate": 0.04392624728850325,
+                "wilson_95": [
+                  0.038835072326986936,
+                  0.049650384213714885
+                ],
+                "unique_days": 349,
+                "trigger_frequency_in_candidate_universe": 0.8957253886010362
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 8.0,
+                "n": 8902,
+                "failure_count": 278,
+                "failure_rate": 0.03122893731745675,
+                "wilson_95": [
+                  0.02781305028191534,
+                  0.03504922515935752
+                ],
+                "unique_days": 373,
+                "trigger_frequency_in_candidate_universe": 0.6780409779876609
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 12.0,
+                "n": 4569,
+                "failure_count": 199,
+                "failure_rate": 0.043554388268767785,
+                "wilson_95": [
+                  0.03800978417501352,
+                  0.04986587528953443
+                ],
+                "unique_days": 370,
+                "trigger_frequency_in_candidate_universe": 0.4613287560581583
+              }
+            ]
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 389,
+            "month_contributions": {
+              "5": {
+                "days": 62,
+                "years": [
+                  2025,
+                  2026
+                ]
+              },
+              "6": {
+                "days": 90,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          }
+        }
+      ]
+    },
+    "KSEA": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": true,
+          "window_start": "2026-07-01",
+          "window_end": "2026-09-30",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            7,
+            8,
+            9
+          ],
+          "typical_peak_minutes": 960,
+          "profiles": {
+            "aggressive": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 2.0,
+                "n": 3784,
+                "failure_count": 248,
+                "failure_rate": 0.06553911205073996,
+                "wilson_95": [
+                  0.058086384627013064,
+                  0.07387306094500792
+                ],
+                "unique_days": 216,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 2.0,
+                "n": 4135,
+                "failure_count": 363,
+                "failure_rate": 0.08778718258766627,
+                "wilson_95": [
+                  0.07954000040121738,
+                  0.09679955405677156
+                ],
+                "unique_days": 229,
+                "trigger_frequency_in_candidate_universe": 1.0
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 4.0,
+                "n": 7581,
+                "failure_count": 743,
+                "failure_rate": 0.09800817834058831,
+                "wilson_95": [
+                  0.09151742595487099,
+                  0.10490612052388922
+                ],
+                "unique_days": 236,
+                "trigger_frequency_in_candidate_universe": 0.8937750530535251
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 13.0,
+                "n": 5172,
+                "failure_count": 487,
+                "failure_rate": 0.09416086620262955,
+                "wilson_95": [
+                  0.08649994428557578,
+                  0.10242420777751571
+                ],
+                "unique_days": 235,
+                "trigger_frequency_in_candidate_universe": 0.4196348884381339
+              }
+            ],
+            "conservative": [
+              {
+                "time_bin": "0-1h",
+                "max_hours_to_peak": 1.0,
+                "required_abs_margin_f": 4.0,
+                "n": 3383,
+                "failure_count": 94,
+                "failure_rate": 0.027785988767366245,
+                "wilson_95": [
+                  0.022760393549727927,
+                  0.03388278303625066
+                ],
+                "unique_days": 216,
+                "trigger_frequency_in_candidate_universe": 0.8940274841437632
+              },
+              {
+                "time_bin": "1-2h",
+                "max_hours_to_peak": 2.0,
+                "required_abs_margin_f": 5.0,
+                "n": 3512,
+                "failure_count": 156,
+                "failure_rate": 0.04441913439635535,
+                "wilson_95": [
+                  0.03808866067345197,
+                  0.05174515649947467
+                ],
+                "unique_days": 229,
+                "trigger_frequency_in_candidate_universe": 0.8493349455864571
+              },
+              {
+                "time_bin": "2-4h",
+                "max_hours_to_peak": 4.0,
+                "required_abs_margin_f": 9.0,
+                "n": 5406,
+                "failure_count": 240,
+                "failure_rate": 0.04439511653718091,
+                "wilson_95": [
+                  0.039220496355693496,
+                  0.050216775051178345
+                ],
+                "unique_days": 236,
+                "trigger_frequency_in_candidate_universe": 0.6373496816788493
+              },
+              {
+                "time_bin": ">4h",
+                "max_hours_to_peak": 24.0,
+                "required_abs_margin_f": 18.0,
+                "n": 1981,
+                "failure_count": 94,
+                "failure_rate": 0.04745078243311459,
+                "wilson_95": [
+                  0.038932732364962835,
+                  0.057720558490155505
+                ],
+                "unique_days": 235,
+                "trigger_frequency_in_candidate_universe": 0.16073022312373225
+              }
+            ]
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 237,
+            "month_contributions": {
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          }
+        }
+      ]
+    },
+    "ZUCK": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": false,
+          "window_start": "2026-06-01",
+          "window_end": "2026-09-30",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            6,
+            7,
+            8,
+            9
+          ],
+          "typical_peak_minutes": 900,
+          "profiles": {
+            "aggressive": [],
+            "conservative": []
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 327,
+            "month_contributions": {
+              "6": {
+                "days": 90,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          },
+          "disabled_reason": "hourly WRH observations and zero-percent METAR T-group coverage are insufficient for a comparable intraday threshold derivation"
+        }
+      ]
+    },
+    "ZUUU": {
+      "seasons": [
+        {
+          "season_id": "heat_2026",
+          "threshold_version": "heat-2026-wrh-v1-20260826",
+          "enabled": false,
+          "window_start": "2026-06-01",
+          "window_end": "2026-09-30",
+          "boundaries": "inclusive",
+          "calendar_months": [
+            6,
+            7,
+            8,
+            9
+          ],
+          "typical_peak_minutes": 900,
+          "profiles": {
+            "aggressive": [],
+            "conservative": []
+          },
+          "derivation": {
+            "source_date_start": "2024-06-01",
+            "source_date_end": "2026-08-22",
+            "sample_days": 327,
+            "month_contributions": {
+              "6": {
+                "days": 90,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "7": {
+                "days": 93,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "8": {
+                "days": 84,
+                "years": [
+                  2024,
+                  2025,
+                  2026
+                ]
+              },
+              "9": {
+                "days": 60,
+                "years": [
+                  2024,
+                  2025
+                ]
+              }
+            },
+            "derived_at": "2026-08-26T04:31:03.114767+00:00",
+            "provenance": "historical_backfill",
+            "strict_no_lookahead_eligible": false
+          },
+          "disabled_reason": "hourly WRH observations and zero-percent METAR T-group coverage are insufficient for a comparable intraday threshold derivation"
+        }
+      ]
+    }
+  },
+  "execution_enabled": false
+}
