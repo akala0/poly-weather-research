@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -25,6 +26,20 @@ class QuoteBatch(BaseModel):
     request_url: str
     fetched_at: datetime
     quotes: tuple[MarketQuote, ...]
+    raw: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class OrderBookSnapshot:
+    """One current, public CLOB book including market-rule metadata."""
+
+    token_id: str
+    fetched_at: datetime
+    bids: tuple[tuple[Decimal, Decimal], ...]
+    asks: tuple[tuple[Decimal, Decimal], ...]
+    min_order_size: Decimal
+    tick_size: Decimal
+    last_trade_price: Decimal | None
     raw: dict[str, Any]
 
 
@@ -166,5 +181,56 @@ class ClobClient:
             request_url=str(response.request.url),
             fetched_at=fetched_at,
             quotes=tuple(quotes),
+            raw=payload,
+        )
+
+    def order_book(self, *, token_id: str) -> OrderBookSnapshot:
+        """Fetch one current public book; this method never submits an order.
+
+        ``min_order_size`` and ``tick_size`` are current market metadata.  They
+        are deliberately kept separate from the historical WebSocket archive,
+        whose old frames do not reliably contain ``min_order_size``.
+        """
+        normalized_token = token_id.strip()
+        if not normalized_token:
+            raise ValueError("token_id must not be empty")
+        response = self._client.get("/book", params={"token_id": normalized_token})
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("CLOB order-book response is not an object")
+
+        def levels(name: str) -> tuple[tuple[Decimal, Decimal], ...]:
+            raw_levels = payload.get(name)
+            if not isinstance(raw_levels, list):
+                raise ValueError(f"CLOB order-book response has invalid {name}")
+            parsed: list[tuple[Decimal, Decimal]] = []
+            for row in raw_levels:
+                if not isinstance(row, dict) or "price" not in row or "size" not in row:
+                    raise ValueError(f"CLOB order-book {name} contains an invalid level")
+                price = Decimal(str(row["price"]))
+                size = Decimal(str(row["size"]))
+                if price < 0 or price > 1 or size < 0:
+                    raise ValueError(f"CLOB order-book {name} contains an invalid value")
+                parsed.append((price, size))
+            return tuple(parsed)
+
+        try:
+            min_order_size = Decimal(str(payload["min_order_size"]))
+            tick_size = Decimal(str(payload["tick_size"]))
+        except (KeyError, ValueError) as exc:
+            raise ValueError("CLOB order-book response lacks valid market rules") from exc
+        if min_order_size <= 0 or tick_size <= 0:
+            raise ValueError("CLOB order-book response has non-positive market rules")
+        last_trade = payload.get("last_trade_price")
+        last_trade_price = None if last_trade is None else Decimal(str(last_trade))
+        return OrderBookSnapshot(
+            token_id=str(payload.get("asset_id") or normalized_token),
+            fetched_at=datetime.now(UTC),
+            bids=levels("bids"),
+            asks=levels("asks"),
+            min_order_size=min_order_size,
+            tick_size=tick_size,
+            last_trade_price=last_trade_price,
             raw=payload,
         )

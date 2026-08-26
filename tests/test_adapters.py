@@ -209,6 +209,34 @@ def test_clob_batch_quotes_calculates_midpoint_and_spread() -> None:
     assert batch.quotes[0].spread == Decimal("0.04")
 
 
+def test_clob_order_book_reads_current_market_rules() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/book"
+        assert request.url.params["token_id"] == "no-token"
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "asset_id": "no-token",
+                "bids": [{"price": "0.991", "size": "15"}],
+                "asks": [{"price": "0.999", "size": "20"}],
+                "min_order_size": "5",
+                "tick_size": "0.001",
+                "last_trade_price": "0.995",
+            },
+        )
+
+    http_client = httpx.Client(
+        base_url="https://example.test", transport=httpx.MockTransport(handler)
+    )
+    with ClobClient(client=http_client) as client:
+        book = client.order_book(token_id="no-token")
+
+    assert book.min_order_size == Decimal("5")
+    assert book.tick_size == Decimal("0.001")
+    assert book.asks == ((Decimal("0.999"), Decimal("20")),)
+
+
 def test_aviation_weather_snapshot_parses_metar_and_taf() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.params["ids"] == "KLGA"

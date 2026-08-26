@@ -100,6 +100,79 @@ def estimate_execution_cost(
     )
 
 
+def estimate_execution_by_shares(
+    book_side: Iterable[BookLevel],
+    share_count: Decimal | float | str,
+    side: Literal["buy", "sell"],
+    *,
+    liquidity_role: LiquidityRole | str = LiquidityRole.TAKER,
+    market_category: str = "weather",
+    fee_rate: Decimal | float | str | None = None,
+) -> ExecutionCostEstimate | None:
+    """Walk a book for an exact share quantity instead of a USD notional.
+
+    This is needed to test whether the shares bought at entry can also be
+    liquidated from the opposite side of the same archived book.  It is a
+    depth-cost diagnostic, not a claim that a future exit book will be equal to
+    the entry-time book.
+    """
+    requested_shares = Decimal(str(share_count))
+    if requested_shares <= 0:
+        raise ValueError("share_count must be positive")
+    if side not in {"buy", "sell"}:
+        raise ValueError("side must be 'buy' or 'sell'")
+    role = LiquidityRole(liquidity_role)
+    rate = configured_fee_rate(market_category, override=fee_rate)
+    levels = [
+        (Decimal(str(price)), Decimal(str(size)))
+        for price, size in book_side
+        if Decimal(str(price)) > 0 and Decimal(str(size)) > 0
+    ]
+    if not levels:
+        return None
+    ordered = sorted(levels, key=lambda level: level[0], reverse=side == "sell")
+    top_price = ordered[0][0]
+    remaining_shares = requested_shares
+    filled_usd = Decimal(0)
+    filled_shares = Decimal(0)
+    unrounded_fee = Decimal(0)
+    for price, shares_available in ordered:
+        take_shares = min(remaining_shares, shares_available)
+        filled_usd += price * take_shares
+        filled_shares += take_shares
+        unrounded_fee += trading_fee_usdc(
+            take_shares,
+            price,
+            liquidity_role=role,
+            market_category=market_category,
+            fee_rate=rate,
+            round_to_protocol_precision=False,
+        )
+        remaining_shares -= take_shares
+        if remaining_shares <= 0:
+            break
+    if filled_shares <= 0:
+        return None
+    average_fill_price = filled_usd / filled_shares
+    slippage_vs_top = (
+        average_fill_price - top_price
+        if side == "buy"
+        else top_price - average_fill_price
+    )
+    fee = unrounded_fee.quantize(FEE_PRECISION_USDC, rounding=ROUND_HALF_UP)
+    return ExecutionCostEstimate(
+        average_fill_price=average_fill_price,
+        slippage_vs_top=max(Decimal(0), slippage_vs_top),
+        filled_fraction=float(filled_shares / requested_shares),
+        filled_usd=filled_usd,
+        filled_shares=filled_shares,
+        fee_usdc=fee,
+        fee_per_share=fee / filled_shares,
+        liquidity_role=role,
+        fee_rate=rate,
+    )
+
+
 def estimate_fill_price(
     book_side: Iterable[BookLevel],
     size_usd: Decimal | float | str,

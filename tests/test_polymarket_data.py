@@ -125,3 +125,24 @@ def test_last_trade_at_or_before_never_uses_future_execution() -> None:
 
     assert selected is not None
     assert selected.timestamp == datetime.fromtimestamp(100, tz=UTC)
+
+
+def test_trade_client_queries_comma_separated_market_conditions() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["market"] == "condition-a,condition-b"
+        assert "eventId" not in request.url.params
+        return httpx.Response(200, request=request, json=[_row(1, suffix="market")])
+
+    http_client = httpx.Client(
+        base_url="https://data-api.polymarket.com",
+        transport=httpx.MockTransport(handler),
+    )
+    client = PolymarketDataClient(client=http_client, request_pause_seconds=0)
+
+    trades = client.market_trades(
+        market_ids=("condition-a", "condition-b"),
+        start=datetime.fromtimestamp(0, tz=UTC),
+        end=datetime.fromtimestamp(10, tz=UTC),
+    )
+
+    assert [trade.transaction_hash for trade in trades] == ["tx-market"]

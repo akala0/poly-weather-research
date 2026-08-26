@@ -121,8 +121,57 @@ class PolymarketDataClient:
         end_epoch = int(end.astimezone(UTC).timestamp())
         if end_epoch <= start_epoch:
             raise ValueError("trade range end must be later than start")
+        return self._trades_for_query(
+            query_name="eventId",
+            query_value=str(event_id),
+            start_epoch=start_epoch,
+            end_epoch=end_epoch,
+            taker_only=taker_only,
+        )
+
+    def market_trades(
+        self,
+        *,
+        market_ids: Sequence[str],
+        start: datetime,
+        end: datetime,
+        taker_only: bool = True,
+    ) -> list[PublicTrade]:
+        """Fetch canonical taker executions for one or more condition IDs.
+
+        The public endpoint accepts comma-separated ``market`` condition IDs.
+        Callers should keep batches modest; pagination and time bisection remain
+        per batch and reset offset in each child time window.
+        """
+        unique_market_ids = tuple(
+            dict.fromkeys(market_id.strip() for market_id in market_ids if market_id.strip())
+        )
+        if not unique_market_ids:
+            raise ValueError("at least one market id is required")
+        start_epoch = int(start.astimezone(UTC).timestamp())
+        end_epoch = int(end.astimezone(UTC).timestamp())
+        if end_epoch <= start_epoch:
+            raise ValueError("trade range end must be later than start")
+        return self._trades_for_query(
+            query_name="market",
+            query_value=",".join(unique_market_ids),
+            start_epoch=start_epoch,
+            end_epoch=end_epoch,
+            taker_only=taker_only,
+        )
+
+    def _trades_for_query(
+        self,
+        *,
+        query_name: str,
+        query_value: str,
+        start_epoch: int,
+        end_epoch: int,
+        taker_only: bool,
+    ) -> list[PublicTrade]:
         rows = self._range(
-            event_id=str(event_id),
+            query_name=query_name,
+            query_value=query_value,
             start_epoch=start_epoch,
             end_epoch=end_epoch,
             taker_only=taker_only,
@@ -152,7 +201,8 @@ class PolymarketDataClient:
     def _range(
         self,
         *,
-        event_id: str,
+        query_name: str,
+        query_value: str,
         start_epoch: int,
         end_epoch: int,
         taker_only: bool,
@@ -161,7 +211,8 @@ class PolymarketDataClient:
         offset = 0
         while True:
             payload = self._page(
-                event_id=event_id,
+                query_name=query_name,
+                query_value=query_value,
                 start_epoch=start_epoch,
                 end_epoch=end_epoch,
                 offset=offset,
@@ -180,13 +231,15 @@ class PolymarketDataClient:
                 f"more than {len(rows):,} trade rows in one second; cannot paginate safely"
             )
         left = self._range(
-            event_id=event_id,
+            query_name=query_name,
+            query_value=query_value,
             start_epoch=start_epoch,
             end_epoch=midpoint,
             taker_only=taker_only,
         )
         right = self._range(
-            event_id=event_id,
+            query_name=query_name,
+            query_value=query_value,
             start_epoch=midpoint + 1,
             end_epoch=end_epoch,
             taker_only=taker_only,
@@ -196,7 +249,8 @@ class PolymarketDataClient:
     def _page(
         self,
         *,
-        event_id: str,
+        query_name: str,
+        query_value: str,
         start_epoch: int,
         end_epoch: int,
         offset: int,
@@ -207,7 +261,7 @@ class PolymarketDataClient:
             response = self._client.get(
                 "/trades",
                 params={
-                    "eventId": event_id,
+                    query_name: query_value,
                     "start": start_epoch,
                     "end": end_epoch,
                     "limit": self.page_limit,
