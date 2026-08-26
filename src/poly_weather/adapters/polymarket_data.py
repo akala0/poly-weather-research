@@ -1,0 +1,181 @@
+"""Public, read-only Polymarket Data API trade tape client."""
+
+from __future__ import annotations
+
+import time
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
+
+import httpx
+
+
+@dataclass(frozen=True, slots=True)
+class PublicTrade:
+    proxy_wallet: str
+    asset_id: str
+    condition_id: str
+    event_slug: str
+    market_slug: str
+    outcome: str
+    side: str
+    size: Decimal
+    price: Decimal
+    timestamp: datetime
+    transaction_hash: str
+
+    def as_json(self) -> dict[str, Any]:
+        payload = asdict(self)
+        payload["size"] = str(self.size)
+        payload["price"] = str(self.price)
+        payload["timestamp"] = self.timestamp.isoformat()
+        return payload
+
+
+def parse_public_trade(row: dict[str, Any]) -> PublicTrade:
+    return PublicTrade(
+        proxy_wallet=str(row.get("proxyWallet") or ""),
+        asset_id=str(row["asset"]),
+        condition_id=str(row["conditionId"]),
+        event_slug=str(row["eventSlug"]),
+        market_slug=str(row["slug"]),
+        outcome=str(row["outcome"]),
+        side=str(row["side"]).upper(),
+        size=Decimal(str(row["size"])),
+        price=Decimal(str(row["price"])),
+        timestamp=datetime.fromtimestamp(int(row["timestamp"]), tz=UTC),
+        transaction_hash=str(row["transactionHash"]),
+    )
+
+
+def last_trade_at_or_before(
+    trades: Sequence[PublicTrade],
+    *,
+    asset_id: str,
+    cutoff: datetime,
+) -> PublicTrade | None:
+    """Return only executions observable by ``cutoff``; future rows are ignored."""
+    cutoff_utc = cutoff.astimezone(UTC)
+    eligible = [
+        trade
+        for trade in trades
+        if trade.asset_id == asset_id and trade.timestamp <= cutoff_utc
+    ]
+    return max(eligible, key=lambda item: item.timestamp, default=None)
+
+
+class PolymarketDataClient:
+    """Unauthenticated client for the public Data API; never submits orders."""
+
+    def __init__(
+        self,
+        *,
+        base_url: str = "https://data-api.polymarket.com",
+        client: httpx.Client | None = None,
+        request_pause_seconds: float = 0.06,
+        page_limit: int = 10_000,
+    ) -> None:
+        self._owns_client = client is None
+        self._client = client or httpx.Client(
+            base_url=base_url,
+            timeout=httpx.Timeout(connect=10, read=30, write=10, pool=10),
+            headers={"User-Agent": "poly-weather/0.1 (research; read-only)"},
+            follow_redirects=True,
+        )
+        self.request_pause_seconds = request_pause_seconds
+        if not 1 <= page_limit <= 10_000:
+            raise ValueError("Data API trade page limit must be between 1 and 10,000")
+        self.page_limit = page_limit
+
+    def close(self) -> None:
+        if self._owns_client:
+            self._client.close()
+
+    def __enter__(self) -> PolymarketDataClient:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def event_trades(
+        self,
+        *,
+        event_id: str,
+        start: datetime,
+        end: datetime,
+        taker_only: bool = True,
+    ) -> list[PublicTrade]:
+        """Fetch a complete event tape, bisecting any range that hits the cap.
+
+        The canonical research tape uses ``taker_only=True`` so every match is
+        represented once. ``takerOnly=false`` returns participant-side mirrors
+        that cannot be losslessly collapsed when one order fills many makers.
+        """
+        start_epoch = int(start.astimezone(UTC).timestamp())
+        end_epoch = int(end.astimezone(UTC).timestamp())
+        if end_epoch <= start_epoch:
+            raise ValueError("trade range end must be later than start")
+        rows = self._range(
+            event_id=str(event_id),
+            start_epoch=start_epoch,
+            end_epoch=end_epoch,
+            taker_only=taker_only,
+        )
+        return sorted(
+            (parse_public_trade(row) for row in rows),
+            key=lambda item: (item.timestamp, item.transaction_hash, item.asset_id),
+        )
+
+    def _range(
+        self,
+        *,
+        event_id: str,
+        start_epoch: int,
+        end_epoch: int,
+        taker_only: bool,
+    ) -> list[dict[str, Any]]:
+        response = None
+        for attempt in range(5):
+            response = self._client.get(
+                "/trades",
+                params={
+                    "eventId": event_id,
+                    "start": start_epoch,
+                    "end": end_epoch,
+                    "limit": self.page_limit,
+                    "offset": 0,
+                    "takerOnly": str(taker_only).lower(),
+                },
+            )
+            if response.status_code != 429 and response.status_code < 500:
+                break
+            time.sleep(min(8.0, 0.5 * (2**attempt)))
+        assert response is not None
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, list):
+            raise ValueError("Data API /trades response is not a list")
+        if self.request_pause_seconds:
+            time.sleep(self.request_pause_seconds)
+        if len(payload) < self.page_limit:
+            return [row for row in payload if isinstance(row, dict)]
+        midpoint = (start_epoch + end_epoch) // 2
+        if midpoint <= start_epoch:
+            raise ValueError(
+                f"more than {self.page_limit:,} trade rows in one second; cannot paginate safely"
+            )
+        left = self._range(
+            event_id=event_id,
+            start_epoch=start_epoch,
+            end_epoch=midpoint,
+            taker_only=taker_only,
+        )
+        right = self._range(
+            event_id=event_id,
+            start_epoch=midpoint + 1,
+            end_epoch=end_epoch,
+            taker_only=taker_only,
+        )
+        return left + right

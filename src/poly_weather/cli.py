@@ -25,6 +25,7 @@ from poly_weather.adapters.historical_weather import (
 from poly_weather.adapters.nws import NwsClient
 from poly_weather.adapters.open_meteo import OpenMeteoDeterministicClient
 from poly_weather.adapters.polymarket import GammaClient, is_weather_market
+from poly_weather.adapters.polymarket_data import PolymarketDataClient
 from poly_weather.calibration import (
     evaluate_bucket_skill,
     fit_bias_calibration,
@@ -51,10 +52,17 @@ from poly_weather.high_frequency_audit import (
     build_high_frequency_reanalysis,
     render_high_frequency_reanalysis,
 )
+from poly_weather.intraday_reversal import load_iem_asos_csv
 from poly_weather.liquidity import (
     archived_liquidity_rows,
     archived_liquidity_rows_from_jsonl,
     render_liquidity_report,
+)
+from poly_weather.maintenance_audit import (
+    audit_archive_paths,
+    audit_reconnect_rows,
+    load_reconnect_rows,
+    render_maintenance_audit,
 )
 from poly_weather.market_stream import EventArchivePolicy, MarketWebSocketBot
 from poly_weather.market_supervisor import (
@@ -75,6 +83,12 @@ from poly_weather.no_side_analysis import (
     render_no_proxy_audit,
 )
 from poly_weather.paper import PaperPolicy, make_paper_decision
+from poly_weather.polymarket_status import (
+    PolymarketStatusClient,
+    load_quality_windows,
+    merge_quality_windows,
+    persist_quality_windows,
+)
 from poly_weather.precision_audit import (
     download_iem_precision_rows,
     precision_comparison,
@@ -84,6 +98,7 @@ from poly_weather.precision_audit import (
 from poly_weather.real_no_books import (
     analyze_eliminated_no_exit,
     analyze_real_no_books,
+    archived_event_metadata,
     paired_book_snapshots,
     render_eliminated_exit_report,
     render_real_no_report,
@@ -102,6 +117,12 @@ from poly_weather.signal_engine import (
 from poly_weather.signal_migration import migrate_signal_snapshots_from_jsonl
 from poly_weather.storage import CatalogStore, RawEventArchive
 from poly_weather.temperature import celsius_to_fahrenheit
+from poly_weather.trade_tape_analysis import (
+    analyze_trade_tape_staleness,
+    load_event_trade_tapes,
+    physical_elimination_times,
+    render_trade_tape_report,
+)
 from poly_weather.warming_policy import (
     WarmingThresholdRegistry,
     build_heat_season_policy_analysis,
@@ -1616,6 +1637,9 @@ def liquidity_report(
                     warehouse.connection,
                     start=start,
                     end=end,
+                    quality_windows=load_quality_windows(
+                        data_dir / "runtime" / "polymarket_quality_windows.json"
+                    ),
                 )
             source_used = "duckdb"
         except duckdb.IOException:
@@ -1887,6 +1911,227 @@ def audit_no_proxy(
     )
 
 
+@app.command("sync-polymarket-status")
+def sync_polymarket_status(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Persist official component-level status windows for default analysis exclusion."""
+
+    async def fetch() -> object:
+        client = PolymarketStatusClient()
+        try:
+            return await client.fetch()
+        finally:
+            await client.close()
+
+    snapshot = asyncio.run(fetch())
+    path = data_dir / "runtime" / "polymarket_quality_windows.json"
+    windows = merge_quality_windows(load_quality_windows(path), snapshot.windows)
+    persist_quality_windows(path, windows)
+    _emit(
+        {
+            "quality_windows_path": str(path.resolve()),
+            "page_status": snapshot.page_status,
+            "upstream_maintenance": snapshot.upstream_maintenance,
+            "active_market_data_windows": [
+                row.as_json() for row in snapshot.active_market_data_windows
+            ],
+            "window_count": len(windows),
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("audit-polymarket-maintenance")
+def audit_polymarket_maintenance(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/polymarket_maintenance_audit.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/polymarket_maintenance_audit.json"
+    ),
+) -> None:
+    """Attribute reconnects and archived rows to official CLOB status windows."""
+    windows = load_quality_windows(
+        data_dir / "runtime" / "polymarket_quality_windows.json"
+    )
+    market_windows = tuple(window for window in windows if window.affects_market_data)
+    reconnects = audit_reconnect_rows(
+        load_reconnect_rows(data_dir / "runtime" / "polymarket_ws_reconnects.jsonl"),
+        market_windows,
+    )
+    result = {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "windows": [window.as_json() for window in market_windows],
+        "reconnects": reconnects,
+        "archives": {
+            "full_market_stream": audit_archive_paths(
+                sorted(
+                    (data_dir / "raw" / "polymarket_clob_websocket").glob(
+                        "*/events.jsonl"
+                    )
+                ),
+                market_windows,
+            ),
+            "depth_checkpoints": audit_archive_paths(
+                sorted(
+                    (data_dir / "raw" / "polymarket_book_checkpoints").glob(
+                        "*/events.jsonl"
+                    )
+                ),
+                market_windows,
+            ),
+        },
+        "execution_enabled": False,
+    }
+    render_maintenance_audit(result, output_path)
+    analysis_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "officially_attributed_reconnect_count": reconnects[
+                "officially_attributed_reconnect_count"
+            ],
+            "legacy_unattributed_reconnect_count": reconnects[
+                "legacy_unattributed_reconnect_count"
+            ],
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("collect-public-trades")
+def collect_public_trades(
+    catalog_path: Annotated[Path, typer.Option("--catalog")] = Path(
+        "data/settled_markets.json"
+    ),
+    histories_dir: Annotated[Path, typer.Option("--histories-dir")] = Path(
+        "data/historical_prices"
+    ),
+    output_dir: Annotated[Path, typer.Option("--output-dir")] = Path(
+        "data/public_trades"
+    ),
+) -> None:
+    """Archive canonical public taker-side executions for the settled-event study."""
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    histories = load_history_directory(histories_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summaries = []
+    with PolymarketDataClient() as client:
+        for event in catalog.get("events") or ():
+            event_slug = str(event["event_slug"])
+            history = histories[event_slug]
+            timestamps = [
+                int(point["t"])
+                for market in history.get("markets") or ()
+                for point in market.get("history") or ()
+            ]
+            if not timestamps:
+                continue
+            start = datetime.fromtimestamp(0, tz=UTC)
+            end = datetime.fromtimestamp(max(timestamps), tz=UTC) + timedelta(days=1)
+            trades = client.event_trades(
+                event_id=str(event["event_id"]),
+                start=start,
+                end=end,
+                taker_only=True,
+            )
+            payload = {
+                "fetched_at": datetime.now(UTC).isoformat(),
+                "source": "https://data-api.polymarket.com/trades",
+                "event_id": str(event["event_id"]),
+                "event_slug": event_slug,
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                "taker_only": True,
+                "tape_semantics": (
+                    "one taker-side row per execution; takerOnly=false is intentionally "
+                    "avoided because participant mirrors cannot be losslessly deduplicated"
+                ),
+                "trade_count": len(trades),
+                "trades": [trade.as_json() for trade in trades],
+            }
+            destination = output_dir / f"{event_slug}.json"
+            destination.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            summaries.append(
+                {
+                    "event_slug": event_slug,
+                    "trade_count": len(trades),
+                    "path": str(destination.resolve()),
+                }
+            )
+    _emit(
+        {
+            "event_count": len(summaries),
+            "trade_count": sum(row["trade_count"] for row in summaries),
+            "events": summaries,
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-public-trades")
+def analyze_public_trades(
+    catalog_path: Annotated[Path, typer.Option("--catalog")] = Path(
+        "data/settled_markets.json"
+    ),
+    histories_dir: Annotated[Path, typer.Option("--histories-dir")] = Path(
+        "data/historical_prices"
+    ),
+    trades_dir: Annotated[Path, typer.Option("--trades-dir")] = Path(
+        "data/public_trades"
+    ),
+    observations_dir: Annotated[Path, typer.Option("--observations-dir")] = Path(
+        "data/hourly_obs"
+    ),
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/public_trade_tape_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/public_trade_tape_analysis.json"
+    ),
+) -> None:
+    """Measure prices-history staleness against actual prior public executions."""
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    stations = {str(event["station_id"]) for event in catalog.get("events") or ()}
+    observations = {
+        station: load_iem_asos_csv(
+            observations_dir / f"{station}.csv", station_id=station
+        )
+        for station in stations
+        if (observations_dir / f"{station}.csv").exists()
+    }
+    result = analyze_trade_tape_staleness(
+        catalog,
+        histories_by_event=load_history_directory(histories_dir),
+        trades_by_event=load_event_trade_tapes(trades_dir),
+        elimination_times=physical_elimination_times(catalog, observations),
+    )
+    render_trade_tape_report(result, output_path)
+    analysis_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "event_count": result["event_count"],
+            "prices_history_sample_count": result["prices_history_sample_count"],
+            "last_trade_age_p90_minutes": result["last_trade_age_p90_minutes"],
+            "execution_enabled": False,
+        }
+    )
+
+
 @app.command("audit-temperature-precision")
 def audit_temperature_precision(
     start_date_text: Annotated[str, typer.Option("--start-date")] = "2024-06-01",
@@ -1932,8 +2177,27 @@ def analyze_real_no_book_command(
 ) -> None:
     """Analyze executable NO quotes from archived full-depth checkpoints."""
     paths = sorted((data_dir / "raw" / "polymarket_book_checkpoints").glob("*/events.jsonl"))
+    unfiltered_pairs = paired_book_snapshots(paths, exclude_upstream_degraded=False)
     pairs = paired_book_snapshots(paths)
+    unfiltered_result = analyze_real_no_books(unfiltered_pairs)
     result = analyze_real_no_books(pairs)
+    result["upstream_degraded_pairs_excluded"] = max(
+        0, len(unfiltered_pairs) - len(pairs)
+    )
+    result["unfiltered_summary"] = {
+        key: unfiltered_result[key]
+        for key in (
+            "paired_snapshot_count",
+            "usable_snapshot_count",
+            "complement_gap_max",
+            "complement_gap_over_2c_rate",
+            "complement_gap_over_2c_wilson_low",
+            "complement_gap_over_2c_wilson_high",
+            "mean_no_ask_minus_proxy",
+            "mean_no_bid_minus_proxy",
+            "size_summaries",
+        )
+    }
     render_real_no_report(result, output_path)
     _emit(
         {
@@ -1958,43 +2222,69 @@ def analyze_eliminated_no_exit_command(
 ) -> None:
     """Measure real NO bid exit depth after irreversible physical elimination."""
     registry = load_settlement_registry(config)
-    update = _read_json_with_retry(data_dir / "runtime" / "signal_config_update.json")
-    metadata = {}
-    observations = {}
-    for event in update.get("events") or []:
-        spec = registry.by_key(str(event["settlement_key"]))
-        if spec.station_id not in {"KLAX", "KLGA"} or not spec.timezone:
-            continue
-        event_slug = str(event["event_slug"])
-        metadata[event_slug] = {
-            "station_id": spec.station_id,
-            "timezone": spec.timezone,
-            "target_date": str(event["target_date"]),
-        }
-        target = date.fromisoformat(str(event["target_date"]))
-        if spec.station_id not in observations:
-            rows = download_iem_precision_rows(
-                station_id=spec.station_id,
-                timezone=spec.timezone,
-                start_date=target,
-                end_date=target + timedelta(days=1),
-            )
-            observations[spec.station_id] = temperature_observations_from_precision_rows(
-                rows, station_id=spec.station_id
-            )
     paths = sorted((data_dir / "raw" / "polymarket_book_checkpoints").glob("*/events.jsonl"))
+    unfiltered_pairs = paired_book_snapshots(paths, exclude_upstream_degraded=False)
     pairs = paired_book_snapshots(paths)
+    archived_slugs = sorted({str(pair["event_slug"]) for pair in unfiltered_pairs})
+    all_metadata = archived_event_metadata(archived_slugs, registry.specs)
+    metadata = {
+        slug: value
+        for slug, value in all_metadata.items()
+        if value["station_id"] in {"KLAX", "KLGA"}
+    }
+    dates_by_station: dict[str, list[date]] = {}
+    timezone_by_station: dict[str, str] = {}
+    for value in metadata.values():
+        station_id = value["station_id"]
+        dates_by_station.setdefault(station_id, []).append(
+            date.fromisoformat(value["target_date"])
+        )
+        timezone_by_station[station_id] = value["timezone"]
+    observations = {}
+    for station_id, targets in dates_by_station.items():
+        rows = download_iem_precision_rows(
+            station_id=station_id,
+            timezone=timezone_by_station[station_id],
+            start_date=min(targets),
+            end_date=max(targets) + timedelta(days=1),
+        )
+        observations[station_id] = temperature_observations_from_precision_rows(
+            rows, station_id=station_id
+        )
+    unfiltered_result = analyze_eliminated_no_exit(
+        unfiltered_pairs,
+        event_metadata=metadata,
+        observations_by_station=observations,
+    )
     result = analyze_eliminated_no_exit(
         pairs,
         event_metadata=metadata,
         observations_by_station=observations,
     )
+    result["upstream_degraded_pairs_excluded"] = max(
+        0, len(unfiltered_pairs) - len(pairs)
+    )
+    result["unfiltered_eliminated_market_count"] = unfiltered_result[
+        "eliminated_market_count"
+    ]
+    result["unfiltered_summary"] = {
+        key: unfiltered_result[key]
+        for key in (
+            "eliminated_market_count",
+            "bid_0_95_reached_rate",
+            "bid_0_98_reached_rate",
+            "depth_within_15m_coverage_rate",
+            "sell_200_at_0_97_within_15m_rate",
+        )
+    }
     render_eliminated_exit_report(result, output_path)
     _emit(
         {
             "report_path": str(output_path.resolve()),
             "eliminated_market_count": result["eliminated_market_count"],
             "stations": result["stations"],
+            "archived_event_count": len(archived_slugs),
+            "matched_scope_event_count": len(metadata),
             "settled_event_count": 0,
             "partial_forward_day": True,
             "execution_enabled": False,

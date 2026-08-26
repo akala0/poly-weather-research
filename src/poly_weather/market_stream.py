@@ -5,7 +5,7 @@ import json
 import random
 import time
 from collections import deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, date, datetime
 from datetime import time as datetime_time
 from decimal import Decimal
@@ -16,6 +16,16 @@ from zoneinfo import ZoneInfo
 
 from websockets.asyncio.client import connect
 
+from poly_weather.polymarket_status import (
+    STATUS_POLL_SECONDS,
+    PolymarketStatusClient,
+    PolymarketStatusSnapshot,
+    UpstreamQualityWindow,
+    load_quality_windows,
+    merge_quality_windows,
+    persist_quality_windows,
+    quality_window_at,
+)
 from poly_weather.research_store import ResearchWarehouse
 from poly_weather.retention import disk_capacity_status
 
@@ -41,6 +51,8 @@ class StreamRecord:
     bids: tuple[dict[str, str], ...] | None
     asks: tuple[dict[str, str], ...] | None
     book_complete: bool
+    upstream_status: str
+    upstream_incident_id: str | None
     raw: dict[str, Any]
 
 
@@ -203,6 +215,8 @@ class MarketStreamSink:
                 "bids": record.bids,
                 "asks": record.asks,
                 "book_complete": record.book_complete,
+                "upstream_status": record.upstream_status,
+                "upstream_incident_id": record.upstream_incident_id,
                 "raw": record.raw,
             }
             handle = self._handle(received.date().isoformat())
@@ -241,6 +255,8 @@ class MarketWebSocketBot:
         flush_interval_seconds: float = 0.25,
         queue_size: int = 50_000,
         max_message_size_bytes: int = DEFAULT_MAX_WS_MESSAGE_SIZE,
+        status_poll_seconds: float = STATUS_POLL_SECONDS,
+        status_client: PolymarketStatusClient | None = None,
     ) -> None:
         if not asset_slugs:
             raise ValueError("at least one asset id is required")
@@ -256,6 +272,9 @@ class MarketWebSocketBot:
         if max_message_size_bytes < 1024 * 1024:
             raise ValueError("market websocket max message size cannot be below 1 MiB")
         self.max_message_size_bytes = max_message_size_bytes
+        if status_poll_seconds < 60:
+            raise ValueError("Polymarket status polling cannot be more frequent than 60 seconds")
+        self.status_poll_seconds = status_poll_seconds
         self.queue: asyncio.Queue[StreamRecord] = asyncio.Queue(maxsize=queue_size)
         self.database_queue: asyncio.Queue[list[StreamRecord]] = asyncio.Queue(maxsize=200)
         self.subscription_queue: asyncio.Queue[SubscriptionCommand] = asyncio.Queue()
@@ -273,6 +292,14 @@ class MarketWebSocketBot:
         self.sequence = 0
         self.status_path = data_dir / "runtime" / "polymarket_ws_status.json"
         self.reconnect_log_path = data_dir / "runtime" / "polymarket_ws_reconnects.jsonl"
+        self.status_history_path = data_dir / "runtime" / "polymarket_status_history.jsonl"
+        self.quality_windows_path = data_dir / "runtime" / "polymarket_quality_windows.json"
+        self.status_client = status_client or PolymarketStatusClient()
+        self._owns_status_client = status_client is None
+        self.quality_windows = load_quality_windows(self.quality_windows_path)
+        self.upstream_snapshot: PolymarketStatusSnapshot | None = None
+        self.upstream_status_error: str | None = None
+        self._last_upstream_history_signature: str | None = None
         self._initialize_reconnect_log()
         self.sink = MarketStreamSink(data_dir=data_dir, run_id=self.run_id)
         self.last_database_maintenance = time.monotonic()
@@ -378,6 +405,10 @@ class MarketWebSocketBot:
         self._write_status()
 
     async def run(self, *, runtime_seconds: float = 0) -> StreamMetrics:
+        # Fetch before writers start so the first archived frame is correctly
+        # tagged and the quality dimension can be updated without sharing the
+        # DuckDB connection across worker threads.
+        await self._refresh_upstream_status(persist_database=True)
         self.sink.warehouse.start_market_stream_run(
             run_id=self.run_id,
             started_at=datetime.now(UTC),
@@ -390,6 +421,9 @@ class MarketWebSocketBot:
         )
         status_heartbeat = asyncio.create_task(
             self._status_heartbeat(), name="market-stream-status-heartbeat"
+        )
+        upstream_monitor = asyncio.create_task(
+            self._upstream_status_monitor(), name="polymarket-upstream-status-monitor"
         )
         deadline = time.monotonic() + runtime_seconds if runtime_seconds > 0 else None
         backoff = 1.0
@@ -424,7 +458,8 @@ class MarketWebSocketBot:
                 return_exceptions=True,
             )
             status_heartbeat.cancel()
-            await asyncio.gather(status_heartbeat, return_exceptions=True)
+            upstream_monitor.cancel()
+            await asyncio.gather(status_heartbeat, upstream_monitor, return_exceptions=True)
             background_errors = [
                 result for result in writer_results if isinstance(result, BaseException)
             ]
@@ -436,6 +471,8 @@ class MarketWebSocketBot:
                 metrics=asdict(self.metrics),
             )
             self.sink.close()
+            if self._owns_status_client:
+                await self.status_client.close()
             if background_errors:
                 raise RuntimeError("market stream background writer failed") from background_errors[
                     0
@@ -453,6 +490,7 @@ class MarketWebSocketBot:
         self.metrics.last_error = error
         self.metrics.last_error_fingerprint = error
         self.metrics.reconnects += 1
+        active_window = self._active_quality_window(datetime.now(UTC))
         reconnect_event = {
             "run_id": self.run_id,
             "observed_at": datetime.now(UTC).isoformat(),
@@ -461,6 +499,8 @@ class MarketWebSocketBot:
             "successful_connections": self.metrics.connections,
             "asset_count": len(self.asset_slugs),
             "event_count": len(self.event_counts),
+            "upstream_status": self._quality_status(active_window),
+            "upstream_incident_id": active_window.incident_id if active_window else None,
         }
         self.metrics.reconnect_history.append(reconnect_event)
         self.metrics.reconnect_history[:] = self.metrics.reconnect_history[-100:]
@@ -478,7 +518,13 @@ class MarketWebSocketBot:
             failure == error for _, failure in self.reconnect_failures
         )
         self.metrics.same_error_reconnects_5m = same_error_count
-        if same_error_count >= RECONNECT_LOOP_THRESHOLD:
+        if active_window is not None:
+            # Repeated reconnects during an acknowledged upstream maintenance or
+            # market-data incident are expected degradation, not a deterministic
+            # local configuration loop.  Preserve every reconnect and keep trying.
+            self.metrics.deterministic_reconnect_fault = None
+            self.metrics.state = "upstream_maintenance_reconnecting"
+        elif same_error_count >= RECONNECT_LOOP_THRESHOLD:
             if "message too big" in error.casefold() or "1009" in error:
                 fault = "message_too_big"
                 self.metrics.state = "faulted_message_too_big"
@@ -496,7 +542,11 @@ class MarketWebSocketBot:
         self.metrics.last_error_fingerprint = None
         self.metrics.same_error_reconnects_5m = 0
         self.metrics.deterministic_reconnect_fault = None
-        self.metrics.state = "connected"
+        self.metrics.state = (
+            "upstream_maintenance"
+            if self._active_quality_window(datetime.now(UTC)) is not None
+            else "connected"
+        )
 
     def _websocket_connect_options(self) -> dict[str, Any]:
         return {
@@ -769,8 +819,90 @@ class MarketWebSocketBot:
             bids=bids,
             asks=asks,
             book_complete=state.complete,
+            upstream_status=self._quality_status(
+                self._active_quality_window(
+                    datetime.fromtimestamp(received_at_ns / 1_000_000_000, tz=UTC)
+                )
+            ),
+            upstream_incident_id=(
+                window.incident_id
+                if (
+                    window := self._active_quality_window(
+                        datetime.fromtimestamp(received_at_ns / 1_000_000_000, tz=UTC)
+                    )
+                )
+                else None
+            ),
             raw=raw,
         )
+
+    @staticmethod
+    def _quality_status(window: UpstreamQualityWindow | None) -> str:
+        if window is None:
+            return "normal"
+        return (
+            "upstream_maintenance"
+            if "maintenance" in window.incident_type.casefold()
+            else "upstream_incident"
+        )
+
+    def _active_quality_window(self, timestamp: datetime) -> UpstreamQualityWindow | None:
+        return quality_window_at(self.quality_windows, timestamp)
+
+    async def _upstream_status_monitor(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                await asyncio.wait_for(
+                    self.stop_event.wait(), timeout=self.status_poll_seconds
+                )
+            except TimeoutError:
+                pass
+            if self.stop_event.is_set():
+                break
+            await self._refresh_upstream_status(persist_database=False)
+            self._write_status()
+
+    async def _refresh_upstream_status(self, *, persist_database: bool) -> None:
+        try:
+            snapshot = await self.status_client.fetch()
+            self.quality_windows = merge_quality_windows(
+                self.quality_windows, snapshot.windows
+            )
+            self.upstream_snapshot = replace(snapshot, windows=self.quality_windows)
+            self.upstream_status_error = None
+            persist_quality_windows(self.quality_windows_path, self.quality_windows)
+            if persist_database:
+                self.sink.warehouse.upsert_market_data_quality_windows(snapshot.windows)
+            self._append_upstream_status_history(snapshot)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            # Status telemetry must never stop the irreplaceable order-book
+            # collector. Keep the last known windows fail-closed.
+            self.upstream_status_error = f"{type(exc).__name__}: {exc}"
+
+    def _append_upstream_status_history(self, snapshot: PolymarketStatusSnapshot) -> None:
+        active = [window.as_json() for window in snapshot.active_market_data_windows]
+        signature = json.dumps(
+            {"page_status": snapshot.page_status, "active": active},
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        if signature == self._last_upstream_history_signature:
+            return
+        self._last_upstream_history_signature = signature
+        self.status_history_path.parent.mkdir(parents=True, exist_ok=True)
+        row = {
+            "checked_at": snapshot.checked_at.isoformat(),
+            "page_status": snapshot.page_status,
+            "page_message": snapshot.page_message,
+            "upstream_maintenance": snapshot.upstream_maintenance,
+            "active_market_data_windows": active,
+        }
+        with self.status_history_path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+            handle.write("\n")
 
     async def _writer(self) -> None:
         try:
@@ -789,7 +921,7 @@ class MarketWebSocketBot:
                         batch.append(self.queue.get_nowait())
                     except asyncio.QueueEmpty:
                         break
-                # Initial snapshots for 176 assets are large. Keep filesystem JSON
+                # Initial snapshots for hundreds of assets are large. Keep filesystem JSON
                 # encoding and flushing off the receive loop so WebSocket heartbeats
                 # and frames continue to be serviced during bursty writes.
                 await asyncio.to_thread(self.sink.write_raw, batch)
@@ -855,6 +987,7 @@ class MarketWebSocketBot:
         if time.monotonic() - self.last_disk_status_at >= 60:
             self.disk_status_cache = disk_capacity_status(self.data_dir)
             self.last_disk_status_at = time.monotonic()
+        active_window = self._active_quality_window(datetime.now(UTC))
         payload = {
             **asdict(self.metrics),
             "pid": __import__("os").getpid(),
@@ -873,6 +1006,22 @@ class MarketWebSocketBot:
             "reconnect_loop_window_seconds": RECONNECT_LOOP_WINDOW_SECONDS,
             "reconnect_loop_threshold": RECONNECT_LOOP_THRESHOLD,
             "reconnect_log_path": str(self.reconnect_log_path.resolve()),
+            "upstream_maintenance": active_window is not None,
+            "upstream_status": self._quality_status(active_window),
+            "upstream_incident_id": active_window.incident_id if active_window else None,
+            "upstream_incident_title": active_window.title if active_window else None,
+            "upstream_affected_components": (
+                list(active_window.affected_components) if active_window else []
+            ),
+            "upstream_status_checked_at": (
+                self.upstream_snapshot.checked_at.isoformat()
+                if self.upstream_snapshot is not None
+                else None
+            ),
+            "upstream_status_error": self.upstream_status_error,
+            "upstream_status_history_path": str(self.status_history_path.resolve()),
+            "upstream_quality_windows_path": str(self.quality_windows_path.resolve()),
+            "upstream_status_poll_seconds": self.status_poll_seconds,
             "read_only": True,
             "retention": {
                 "raw_market_days": 30,

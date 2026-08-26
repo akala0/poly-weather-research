@@ -6,7 +6,7 @@ import json
 import re
 import statistics
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime, time
 from decimal import Decimal
 from pathlib import Path
@@ -14,6 +14,10 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from poly_weather.execution_cost import estimate_fill_price
+from poly_weather.polymarket_status import (
+    load_quality_windows,
+    market_record_is_analysis_eligible,
+)
 
 _EVENT_CITY = re.compile(r"^highest-temperature-in-(?P<city>.+)-on-[a-z]+-\d{1,2}-\d{4}$")
 
@@ -117,6 +121,7 @@ def archived_liquidity_rows(
     *,
     start: datetime | None = None,
     end: datetime | None = None,
+    quality_windows: Sequence[Any] = (),
 ) -> list[dict[str, Any]]:
     clauses = ["event_type IN ('book', 'price_change')"]
     parameters: list[Any] = []
@@ -128,12 +133,23 @@ def archived_liquidity_rows(
         parameters.append(end.astimezone(UTC))
     query = f"""
         SELECT received_at, market_slug, asset_id, event_type, raw_json,
-               bids_json, asks_json
+               bids_json, asks_json, COALESCE(upstream_status, 'normal')
         FROM market_stream_events
         WHERE {" AND ".join(clauses)}
         ORDER BY received_at, run_id, sequence
     """
-    return _replay_liquidity_events(connection.execute(query, parameters).fetchall())
+    eligible = []
+    for row in connection.execute(query, parameters).fetchall():
+        timestamp = row[0]
+        if not isinstance(timestamp, datetime):
+            timestamp = datetime.fromisoformat(str(timestamp))
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+        if market_record_is_analysis_eligible(
+            {"upstream_status": row[7]}, timestamp.astimezone(UTC), quality_windows
+        ):
+            eligible.append(row[:7])
+    return _replay_liquidity_events(eligible)
 
 
 def _decoded_levels(value: Any) -> dict[Decimal, Decimal] | None:
@@ -232,6 +248,9 @@ def archived_liquidity_rows_from_jsonl(
     start_utc = start.astimezone(UTC) if start is not None else None
     end_utc = end.astimezone(UTC) if end is not None else None
     events: list[tuple[Any, ...]] = []
+    quality_windows = load_quality_windows(
+        data_dir / "runtime" / "polymarket_quality_windows.json"
+    )
     checkpoint_root = data_dir / "raw" / "polymarket_book_checkpoints"
     full_archive_root = data_dir / "raw" / "polymarket_clob_websocket"
     archive_root = (
@@ -248,6 +267,10 @@ def archived_liquidity_rows_from_jsonl(
                 if received_at.tzinfo is None:
                     received_at = received_at.replace(tzinfo=UTC)
                 received_at = received_at.astimezone(UTC)
+                if not market_record_is_analysis_eligible(
+                    record, received_at, quality_windows
+                ):
+                    continue
                 if end_utc is not None and received_at >= end_utc:
                     continue
                 if record.get("event_type") not in {"book", "price_change"}:

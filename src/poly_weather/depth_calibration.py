@@ -13,6 +13,10 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from poly_weather.execution_cost import estimate_execution_cost
+from poly_weather.polymarket_status import (
+    load_quality_windows,
+    market_record_is_analysis_eligible,
+)
 
 
 @dataclass(frozen=True)
@@ -46,6 +50,9 @@ def replay_books_at_or_before(
     positions = {asset_id: 0 for asset_id in cutoffs}
     states: dict[str, dict[str, Any]] = {}
     output: dict[tuple[str, datetime], DepthSnapshot | None] = {}
+    quality_windows = load_quality_windows(
+        data_dir / "runtime" / "polymarket_quality_windows.json"
+    )
 
     def capture_before(asset_id: str, timestamp: datetime) -> None:
         asset_cutoffs = cutoffs[asset_id]
@@ -65,6 +72,8 @@ def replay_books_at_or_before(
                     asset_id = str(row.get("asset_id") or "")
                     timestamp = datetime.fromisoformat(str(row["received_at"])).astimezone(UTC)
                 except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                    continue
+                if not market_record_is_analysis_eligible(row, timestamp, quality_windows):
                     continue
                 if asset_id not in cutoffs:
                     continue

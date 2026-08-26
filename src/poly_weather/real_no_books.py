@@ -3,19 +3,90 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from statistics import fmean, median
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from poly_weather.domain import SettlementSpec
 from poly_weather.execution_cost import estimate_execution_cost
 from poly_weather.intraday_reversal import TemperatureObservation
 from poly_weather.no_forward import wilson_interval
+from poly_weather.polymarket_status import (
+    load_quality_windows,
+    market_record_is_analysis_eligible,
+)
 from poly_weather.signal_engine import physical_bucket_state
+
+_EVENT_DATE_SUFFIX = re.compile(
+    r"-on-(?P<month>[a-z]+)-(?P<day>\d{1,2})-(?P<year>\d{4})$"
+)
+_MONTHS = {
+    name: number
+    for number, name in enumerate(
+        (
+            "january",
+            "february",
+            "march",
+            "april",
+            "may",
+            "june",
+            "july",
+            "august",
+            "september",
+            "october",
+            "november",
+            "december",
+        ),
+        start=1,
+    )
+}
+
+
+def archived_event_metadata(
+    event_slugs: Sequence[str],
+    settlement_specs: Sequence[SettlementSpec],
+) -> dict[str, dict[str, str]]:
+    """Rebuild verified event metadata from immutable archive identities.
+
+    Unknown or ambiguous slugs fail closed.  In particular, this deliberately does
+    not depend on the supervisor's rotating current-event configuration.
+    """
+    output: dict[str, dict[str, str]] = {}
+    for event_slug in sorted(set(event_slugs)):
+        matches = [
+            spec
+            for spec in settlement_specs
+            if re.fullmatch(spec.market_slug_pattern, event_slug) is not None
+            and spec.station_id
+            and spec.timezone
+        ]
+        date_match = _EVENT_DATE_SUFFIX.search(event_slug)
+        if len(matches) != 1 or date_match is None:
+            continue
+        month = _MONTHS.get(date_match.group("month"))
+        if month is None:
+            continue
+        try:
+            target_date = date(
+                int(date_match.group("year")),
+                month,
+                int(date_match.group("day")),
+            )
+        except ValueError:
+            continue
+        spec = matches[0]
+        output[event_slug] = {
+            "station_id": str(spec.station_id),
+            "timezone": str(spec.timezone),
+            "target_date": target_date.isoformat(),
+        }
+    return output
 
 
 def _levels(rows: Any) -> tuple[tuple[str, str], ...]:
@@ -42,9 +113,15 @@ def paired_book_snapshots(
     *,
     minimum_interval: timedelta = timedelta(minutes=5),
     maximum_side_age: timedelta = timedelta(minutes=5),
+    exclude_upstream_degraded: bool = True,
 ) -> list[dict[str, Any]]:
     """Pair YES/NO books without using a future update from either side."""
     rows: list[dict[str, Any]] = []
+    quality_windows = ()
+    if checkpoint_paths:
+        quality_windows = load_quality_windows(
+            checkpoint_paths[0].parents[3] / "runtime" / "polymarket_quality_windows.json"
+        )
     for path in checkpoint_paths:
         if not path.exists():
             continue
@@ -54,6 +131,10 @@ def paired_book_snapshots(
                     row = json.loads(line)
                     timestamp = datetime.fromisoformat(str(row["received_at"])).astimezone(UTC)
                 except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                    continue
+                if exclude_upstream_degraded and not market_record_is_analysis_eligible(
+                    row, timestamp, quality_windows
+                ):
                     continue
                 if row.get("book_complete") and isinstance(row.get("bids"), list) and isinstance(
                     row.get("asks"), list
@@ -173,19 +254,39 @@ def analyze_real_no_books(
     for size in sizes_usd:
         key = str(size)
         buy = [row["fills"][key] for row in records]
+        buy_successes = sum(row["buy_no_filled_fraction"] >= 1 for row in buy)
+        sell_successes = sum(row["sell_no_filled_fraction"] >= 1 for row in buy)
+        buy_interval = wilson_interval(buy_successes, len(buy)) if buy else None
+        sell_interval = wilson_interval(sell_successes, len(buy)) if buy else None
         size_summaries.append(
             {
                 "size_usd": float(size),
+                "sample_count": len(buy),
+                "buy_no_fully_filled_count": buy_successes,
                 "buy_no_fully_filled_rate": fmean(
                     row["buy_no_filled_fraction"] >= 1 for row in buy
                 )
                 if buy
                 else None,
+                "buy_no_fully_filled_wilson_low": (
+                    buy_interval[0] if buy_interval else None
+                ),
+                "buy_no_fully_filled_wilson_high": (
+                    buy_interval[1] if buy_interval else None
+                ),
+                "sell_no_fully_filled_count": sell_successes,
                 "sell_no_fully_filled_rate": fmean(
                     row["sell_no_filled_fraction"] >= 1 for row in buy
                 )
                 if buy
                 else None,
+                "sell_no_fully_filled_wilson_low": (
+                    sell_interval[0] if sell_interval else None
+                ),
+                "sell_no_fully_filled_wilson_high": (
+                    sell_interval[1] if sell_interval else None
+                ),
+                "statistically_unreliable": len(buy) < 30,
                 "mean_buy_no_average": fmean(
                     row["buy_no_average"] for row in buy if row["buy_no_average"] is not None
                 )
@@ -200,6 +301,10 @@ def analyze_real_no_books(
                 else None,
             }
         )
+    over_2c_count = sum(gap > 0.02 for gap in complement_gaps)
+    over_2c_interval = (
+        wilson_interval(over_2c_count, len(complement_gaps)) if complement_gaps else None
+    )
     return {
         "generated_at": datetime.now(UTC).isoformat(),
         "paired_snapshot_count": len(pairs),
@@ -213,6 +318,14 @@ def analyze_real_no_books(
         "complement_gap_over_2c_rate": fmean(gap > 0.02 for gap in complement_gaps)
         if complement_gaps
         else None,
+        "complement_gap_over_2c_count": over_2c_count,
+        "complement_gap_sample_count": len(complement_gaps),
+        "complement_gap_over_2c_wilson_low": (
+            over_2c_interval[0] if over_2c_interval else None
+        ),
+        "complement_gap_over_2c_wilson_high": (
+            over_2c_interval[1] if over_2c_interval else None
+        ),
         "proxy_comparable_count": len(proxy_rows),
         "mean_no_ask_minus_proxy": fmean(row["no_ask_minus_proxy"] for row in proxy_rows)
         if proxy_rows
@@ -495,14 +608,51 @@ def render_eliminated_exit_report(result: Mapping[str, Any], output_path: Path) 
         if row["has_depth_within_15m"]
     )
 
+    def summary_rate(name: str, *, clean_successes: int) -> tuple[str, str]:
+        unfiltered = result.get("unfiltered_summary", {})
+        unfiltered_count = int(
+            unfiltered.get("eliminated_market_count", market_count)
+        )
+        unfiltered_rate = unfiltered.get(name)
+        unfiltered_successes = (
+            round(float(unfiltered_rate) * unfiltered_count)
+            if unfiltered_rate is not None
+            else 0
+        )
+        return (
+            f"{pct(unfiltered_rate)} ({interval(unfiltered_successes, unfiltered_count)})",
+            f"{pct(result[name])} ({interval(clean_successes, market_count)})",
+        )
+
+    bid_095_compare = summary_rate(
+        "bid_0_95_reached_rate", clean_successes=reached_095
+    )
+    bid_098_compare = summary_rate(
+        "bid_0_98_reached_rate", clean_successes=reached_098
+    )
+    coverage_compare = summary_rate(
+        "depth_within_15m_coverage_rate", clean_successes=covered_15
+    )
+
     lines = [
         "# 已出局桶 NO 退出可行性",
         "",
         "使用高频 METAR T 组重放物理日高；每个市场快照只使用其时刻之前的观测，",
         "并且只在物理出局之后评估真实 NO bids。",
-        "当前只有 8/24 部分前向日，尚无已结算深度重叠样本。",
+        "当前仍是未结算的前向归档样本，尚无已结算深度重叠样本。",
         "",
+        "- 默认排除官方 CLOB WebSocket 维护/故障窗口；"
+        f"相对未过滤输入减少 {result.get('upstream_degraded_pairs_excluded', 0)} 个配对快照，"
+        f"出局桶 {result.get('unfiltered_eliminated_market_count', result['eliminated_market_count'])}→{result['eliminated_market_count']}。",
         f"- 已观察出局桶：{result['eliminated_market_count']}",
+        f"- 可靠性：{'统计不可靠（n < 30）' if market_count < 30 else '可用'}。",
+        "",
+        "| T6 指标 | 未过滤 (Wilson 95%) | 默认排除后 (Wilson 95%) |",
+        "|---|---:|---:|",
+        f"| NO bid≥0.95 | {bid_095_compare[0]} | {bid_095_compare[1]} |",
+        f"| NO bid≥0.98 | {bid_098_compare[0]} | {bid_098_compare[1]} |",
+        f"| 15分钟深度覆盖 | {coverage_compare[0]} | {coverage_compare[1]} |",
+        "",
         f"- NO bid 达到 0.95：{pct(result['bid_0_95_reached_rate'])} "
         f"(Wilson 95% {interval(reached_095, market_count)})",
         f"- NO bid 达到 0.98：{pct(result['bid_0_98_reached_rate'])} "
@@ -546,6 +696,9 @@ def render_real_no_report(result: Mapping[str, Any], output_path: Path) -> None:
     def pct(value: Any) -> str:
         return "N/A" if value is None else f"{float(value):.1%}"
 
+    def interval(low: Any, high: Any) -> str:
+        return "N/A" if low is None or high is None else f"{pct(low)}–{pct(high)}"
+
     lines = [
         "# NO 侧真实 bid/ask 与深度报告",
         "",
@@ -554,14 +707,26 @@ def render_real_no_report(result: Mapping[str, Any], output_path: Path) -> None:
         "## 覆盖",
         "",
         f"- 配对快照：{result['paired_snapshot_count']}；可用：{result['usable_snapshot_count']}",
+        "- 默认排除官方 CLOB WebSocket 维护/故障窗口；"
+        f"相对未过滤输入减少 {result.get('upstream_degraded_pairs_excluded', 0)} 个配对快照。",
         f"- 事件：{result['event_count']}；二元桶：{result['market_count']}",
         "- 22 个已结算事件与深度归档重叠：0，因此历史真实执行收益为 N/A。",
+        "",
+        "### 维护窗口剔除差异",
+        "",
+        "| 指标 | 未过滤 | 默认排除后 |",
+        "|---|---:|---:|",
+        f"| 配对快照 | {result.get('unfiltered_summary', {}).get('paired_snapshot_count', result['paired_snapshot_count'])} | {result['paired_snapshot_count']} |",
+        f"| 可用快照 | {result.get('unfiltered_summary', {}).get('usable_snapshot_count', result['usable_snapshot_count'])} | {result['usable_snapshot_count']} |",
+        f"| 互补差最大值 | {number(result.get('unfiltered_summary', {}).get('complement_gap_max'))} | {number(result['complement_gap_max'])} |",
+        f"| NO ask−(1−YES last) | {number(result.get('unfiltered_summary', {}).get('mean_no_ask_minus_proxy'))} | {number(result['mean_no_ask_minus_proxy'])} |",
         "",
         "## YES/NO 双侧一致性",
         "",
         f"- 互补价差绝对值 p50：{number(result['complement_gap_p50'])}",
         f"- 最大值：{number(result['complement_gap_max'])}",
-        f"- 超过 2¢ 比例：{pct(result['complement_gap_over_2c_rate'])}",
+        f"- 超过 2¢ 比例：{pct(result['complement_gap_over_2c_rate'])} "
+        f"(Wilson 95% {interval(result.get('complement_gap_over_2c_wilson_low'), result.get('complement_gap_over_2c_wilson_high'))})",
         "- 检验式：NO ask + YES bid = 1；YES ask + NO bid = 1。",
         "",
         "## 1-p 与真实 NO 盘口",
@@ -574,16 +739,19 @@ def render_real_no_report(result: Mapping[str, Any], output_path: Path) -> None:
         "",
         "默认按主动吃单（taker）估算；手续费按每个真实成交档位的 token 自身价格计算，与滑点分列。",
         "",
-        "| 名义金额 | 买 NO 完整成交率 | 卖 NO 完整成交率 | 深度均价 | 扣费全成本 | 手续费影响/份 |",
-        "|---:|---:|---:|---:|---:|---:|",
+        "| 名义金额 | 买 NO 完整成交率 (Wilson 95%) | 卖 NO 完整成交率 (Wilson 95%) | 深度均价 | 扣费全成本 | 手续费影响/份 | 可靠性 |",
+        "|---:|---:|---:|---:|---:|---:|---|",
     ]
     for row in result["size_summaries"]:
         lines.append(
-            f"| ${row['size_usd']:.0f} | {pct(row['buy_no_fully_filled_rate'])} | "
-            f"{pct(row['sell_no_fully_filled_rate'])} | "
+            f"| ${row['size_usd']:.0f} | {pct(row['buy_no_fully_filled_rate'])} "
+            f"({interval(row['buy_no_fully_filled_wilson_low'], row['buy_no_fully_filled_wilson_high'])}) | "
+            f"{pct(row['sell_no_fully_filled_rate'])} "
+            f"({interval(row['sell_no_fully_filled_wilson_low'], row['sell_no_fully_filled_wilson_high'])}) | "
             f"{number(row['mean_buy_no_average'])} | "
             f"{number(row['mean_buy_no_all_in_per_share'])} | "
-            f"{number(row['mean_buy_no_all_in_per_share'] - row['mean_buy_no_average']) if row['mean_buy_no_all_in_per_share'] is not None and row['mean_buy_no_average'] is not None else 'N/A'} |"
+            f"{number(row['mean_buy_no_all_in_per_share'] - row['mean_buy_no_average']) if row['mean_buy_no_all_in_per_share'] is not None and row['mean_buy_no_average'] is not None else 'N/A'} | "
+            f"{'n<30，统计不可靠' if row['statistically_unreliable'] else '可用'} |"
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")

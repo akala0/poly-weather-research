@@ -126,10 +126,26 @@ class ResearchWarehouse:
                 bids_json VARCHAR,
                 asks_json VARCHAR,
                 book_complete BOOLEAN NOT NULL DEFAULT FALSE,
+                upstream_status VARCHAR NOT NULL DEFAULT 'normal',
+                upstream_incident_id VARCHAR,
                 PRIMARY KEY (run_id, sequence)
             );
             CREATE INDEX IF NOT EXISTS market_stream_asset_time_idx
                 ON market_stream_events(asset_id, received_at);
+            CREATE TABLE IF NOT EXISTS market_data_quality_windows (
+                incident_id VARCHAR PRIMARY KEY,
+                title VARCHAR NOT NULL,
+                incident_type VARCHAR NOT NULL,
+                start_at TIMESTAMPTZ NOT NULL,
+                end_at TIMESTAMPTZ,
+                affected_components_json VARCHAR NOT NULL,
+                affects_market_data BOOLEAN NOT NULL,
+                affects_trading BOOLEAN NOT NULL,
+                status VARCHAR NOT NULL,
+                source_url VARCHAR NOT NULL,
+                default_excluded BOOLEAN NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS weather_stream_runs (
                 run_id VARCHAR PRIMARY KEY,
                 started_at TIMESTAMPTZ NOT NULL,
@@ -177,6 +193,14 @@ class ResearchWarehouse:
             ALTER TABLE market_stream_events
             ADD COLUMN IF NOT EXISTS book_complete BOOLEAN DEFAULT FALSE
             """
+        )
+        self.connection.execute(
+            "ALTER TABLE market_stream_events "
+            "ADD COLUMN IF NOT EXISTS upstream_status VARCHAR DEFAULT 'normal'"
+        )
+        self.connection.execute(
+            "ALTER TABLE market_stream_events "
+            "ADD COLUMN IF NOT EXISTS upstream_incident_id VARCHAR"
         )
         self.connection.execute(
             "ALTER TABLE calibration_samples "
@@ -433,8 +457,10 @@ class ResearchWarehouse:
                 raw_json,
                 bids_json,
                 asks_json,
-                book_complete
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                book_complete,
+                upstream_status,
+                upstream_incident_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (run_id, sequence) DO NOTHING
             """,
             [
@@ -463,8 +489,57 @@ class ResearchWarehouse:
                         else None
                     ),
                     record.book_complete,
+                    record.upstream_status,
+                    record.upstream_incident_id,
                 )
                 for record in rows
+            ],
+        )
+        return len(rows)
+
+    def upsert_market_data_quality_windows(self, windows: Iterable[Any]) -> int:
+        import json
+
+        rows = list(windows)
+        if not rows:
+            return 0
+        now = datetime.now(UTC)
+        self.connection.executemany(
+            """
+            INSERT INTO market_data_quality_windows (
+                incident_id, title, incident_type, start_at, end_at,
+                affected_components_json, affects_market_data, affects_trading,
+                status, source_url, default_excluded, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (incident_id) DO UPDATE SET
+                title=excluded.title,
+                incident_type=excluded.incident_type,
+                start_at=excluded.start_at,
+                end_at=excluded.end_at,
+                affected_components_json=excluded.affected_components_json,
+                affects_market_data=excluded.affects_market_data,
+                affects_trading=excluded.affects_trading,
+                status=excluded.status,
+                source_url=excluded.source_url,
+                default_excluded=excluded.default_excluded,
+                updated_at=excluded.updated_at
+            """,
+            [
+                (
+                    row.incident_id,
+                    row.title,
+                    row.incident_type,
+                    row.start_at,
+                    row.end_at,
+                    json.dumps(row.affected_components, separators=(",", ":")),
+                    row.affects_market_data,
+                    row.affects_trading,
+                    row.status,
+                    row.source_url,
+                    row.default_excluded,
+                    now,
+                )
+                for row in rows
             ],
         )
         return len(rows)
