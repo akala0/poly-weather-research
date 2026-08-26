@@ -107,6 +107,14 @@ from poly_weather.price_band_accessibility import (
     analyze_price_band_accessibility,
     render_price_band_accessibility_report,
 )
+from poly_weather.price_path_analysis import (
+    CONTROL_BANDS,
+    PRIMARY_BANDS,
+    analyze_price_paths,
+    compact_no_book_pairs,
+    load_archived_weather_observations,
+    render_price_path_report,
+)
 from poly_weather.real_no_books import (
     analyze_eliminated_no_exit,
     analyze_real_no_books,
@@ -2405,6 +2413,110 @@ def analyze_price_band_accessibility_command(
             "analysis_path": str(analysis_path.resolve()),
             "paired_snapshot_count": result["paired_snapshot_count"],
             "analyzable_snapshot_count": result["analyzable_snapshot_count"],
+            "quality_window_pairs_excluded": result["quality_window_pairs_excluded"],
+            "data_cutoff": result["data_cutoff"],
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-price-paths")
+def analyze_price_paths_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    warming_policy_path: Annotated[Path, typer.Option("--warming-policy")] = (
+        DEFAULT_WARMING_POLICY
+    ),
+    settled_catalog_path: Annotated[
+        Path, typer.Option("--settled-catalog", help="Settled event catalog for overlap accounting.")
+    ] = Path("data/settled_markets.json"),
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/price_path_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/price_path_analysis.json"
+    ),
+) -> None:
+    """Measure target price paths after fully executable $200 NO entries."""
+    checkpoint_paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
+    unfiltered_pair_count = len(
+        paired_book_snapshots(
+            checkpoint_paths, exclude_upstream_degraded=False
+        )
+    )
+    pairs = paired_book_snapshots(checkpoint_paths)
+    pairs = compact_no_book_pairs(pairs)
+    if not pairs:
+        raise typer.BadParameter("no eligible paired order-book records found in checkpoints")
+    registry = load_settlement_registry(config)
+    metadata = archived_event_metadata(
+        sorted({str(pair["event_slug"]) for pair in pairs}), registry.specs
+    )
+    station_ids = sorted({str(value["station_id"]) for value in metadata.values()})
+    weather_paths = jsonl_archive_paths(data_dir / "raw" / "weather_daemon")
+    observations = load_archived_weather_observations(
+        weather_paths, station_ids=station_ids
+    )
+    policy_payload = json.loads(warming_policy_path.read_text(encoding="utf-8"))
+    typical_peak_minutes = {
+        station_id: int(seasons[0]["typical_peak_minutes"])
+        for station_id, value in (policy_payload.get("stations") or {}).items()
+        if isinstance(value, dict)
+        and isinstance(seasons := value.get("seasons"), list)
+        and seasons
+        and isinstance(seasons[0], dict)
+        and seasons[0].get("typical_peak_minutes") is not None
+    }
+    settled_slugs: list[str] = []
+    settlement_ends: dict[str, datetime] = {}
+    if settled_catalog_path.exists():
+        settled_payload = json.loads(settled_catalog_path.read_text(encoding="utf-8"))
+        for event in settled_payload.get("events") or ():
+            event_slug = str(event.get("event_slug") or "")
+            if not event_slug:
+                continue
+            settled_slugs.append(event_slug)
+            end_at = _parse_aware_datetime(str(event.get("end_date")), label="settlement end") if event.get("end_date") else None
+            if end_at is not None:
+                settlement_ends[event_slug] = end_at
+    result = analyze_price_paths(
+        pairs,
+        event_metadata=metadata,
+        observations_by_station=observations,
+        typical_peak_minutes_by_station=typical_peak_minutes,
+        settled_event_slugs=settled_slugs,
+        settlement_end_by_event=settlement_ends,
+        entry_bands_by_station={
+            station: (
+                (PRIMARY_BANDS[station],)
+                if station in PRIMARY_BANDS
+                else CONTROL_BANDS
+            )
+            for station in station_ids
+        },
+    )
+    result["quality_window_pairs_excluded"] = max(
+        0, unfiltered_pair_count - result["paired_snapshot_count"]
+    )
+    result["quality_window"] = (
+        "official maintenance/failure plus measured recovery windows loaded by paired_book_snapshots"
+    )
+    render_price_path_report(result, output_path)
+    serializable = {key: value for key, value in result.items() if key != "records"}
+    analysis_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis_path.write_text(
+        json.dumps(serializable, ensure_ascii=False, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "paired_snapshot_count": result["paired_snapshot_count"],
+            "usable_entry_count": result["usable_entry_count"],
+            "settled_depth_event_count": result["settlement_overlap"][
+                "settled_depth_event_count"
+            ],
             "quality_window_pairs_excluded": result["quality_window_pairs_excluded"],
             "data_cutoff": result["data_cutoff"],
             "execution_enabled": False,

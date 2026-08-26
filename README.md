@@ -50,6 +50,7 @@ uv run poly-weather collect-public-trades
 uv run poly-weather analyze-public-trades
 uv run poly-weather analyze-no-entry-accessibility
 uv run poly-weather analyze-price-band-accessibility
+uv run poly-weather analyze-price-paths
 ```
 
 默认实际结算 registry 为 `configs/settlements.json`。原来的
@@ -95,6 +96,8 @@ uv run poly-weather analyze-price-band-accessibility
 `analyze-no-entry-accessibility` 只用已归档的真实 NO asks/bids 和公开只读数据，审计 NO≥0.99 尾桶为什么无法买入：空 asks、近端点报价、指定 $20/$50/$100/$150/$200 深度不足、`prices-history.p` 与可成交 ask 的差异，以及 KLAX/KLGA 本地时段。维护/恢复质量窗口默认排除；历史 p 和公开成交严格截止到各自 NO 订单簿时刻。成交价不是可成交 ask，输出只用于研究，不产生订单或鉴权路径。
 
 `analyze-price-band-accessibility` 按真实 NO best ask 分析 `<0.30` 到 `≥0.99` 价格带，比较 $20–$200 的 NO 买入与等价 YES 卖出深度，并给出双边滑点、实际成交手续费、同簿往返成本门槛和本地时段分层。空 asks 不用 p/midpoint/互补价填补；主表仅用严格此前最后真实 ask 作 cohort 标签并保留年龄。成交价不是可成交 ask，结果仍是只读纸面研究。
+
+`analyze-price-paths` 在真实 NO ask 的 $200 深度完整成交后，按严格晚于入场时刻的同一 NO token bid 追踪 +5/+10/+13/+20¢ 目标，区分目标触达、物理出局跳空、完整窗口未达标和数据截断；同时报告 $200 未来深度是否能完整承接、物理余量层、典型高点联合分层、最低出局前 bid 与 −5% 止损带。天气输入只读取原始 WRH 归档的 source/receipt 均不晚于入场的观测；成交价不是可成交 ask/bid，也不使用 midpoint、`p` 或 `1−YES`。
 
 默认实时信号健康闸门为：NWS 数据年龄不超过 75 分钟、METAR 不超过 70 分钟、两源温差不超过 2°F、市场 WebSocket 心跳不超过 1 分钟、天气守护进程心跳不超过 3 分钟、Open-Meteo 网格距离不超过 3 km、候选净边际不超过 15%。主 NOAA、deterministic 预报、守护进程或 CLOB 失效会把信号标记为 `stale`；METAR 交叉检查、盘口不完整或异常边际标记为 `warning`。监测器没有钱包、签名、下单或资金代码路径。
 
