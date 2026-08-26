@@ -103,6 +103,10 @@ from poly_weather.precision_audit import (
     render_precision_audit,
     temperature_observations_from_precision_rows,
 )
+from poly_weather.price_band_accessibility import (
+    analyze_price_band_accessibility,
+    render_price_band_accessibility_report,
+)
 from poly_weather.real_no_books import (
     analyze_eliminated_no_exit,
     analyze_real_no_books,
@@ -2336,6 +2340,73 @@ def analyze_no_entry_accessibility_command(
             "analysis_path": str(analysis_path.resolve()),
             "tail_book_snapshot_count": result["tail_book_snapshot_count"],
             "quality_window_pairs_excluded": result["quality_window_pairs_excluded"],
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-price-band-accessibility")
+def analyze_price_band_accessibility_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    warming_policy_path: Annotated[Path, typer.Option("--warming-policy")] = (
+        DEFAULT_WARMING_POLICY
+    ),
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/price_band_accessibility_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/price_band_accessibility_analysis.json"
+    ),
+) -> None:
+    """Compare true NO ask bands with the equivalent YES-sell depth path."""
+    checkpoint_paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
+    unfiltered_pairs = paired_book_snapshots(
+        checkpoint_paths, exclude_upstream_degraded=False
+    )
+    pairs = paired_book_snapshots(checkpoint_paths)
+    if not pairs:
+        raise typer.BadParameter("no eligible paired order-book records found in checkpoints")
+    registry = load_settlement_registry(config)
+    metadata = archived_event_metadata(
+        sorted({str(pair["event_slug"]) for pair in pairs}), registry.specs
+    )
+    policy_payload = json.loads(warming_policy_path.read_text(encoding="utf-8"))
+    typical_peak_minutes = {
+        station_id: int(seasons[0]["typical_peak_minutes"])
+        for station_id, value in (policy_payload.get("stations") or {}).items()
+        if isinstance(value, dict)
+        and isinstance(seasons := value.get("seasons"), list)
+        and seasons
+        and isinstance(seasons[0], dict)
+        and seasons[0].get("typical_peak_minutes") is not None
+    }
+    result = analyze_price_band_accessibility(
+        pairs,
+        event_metadata=metadata,
+        typical_peak_minutes_by_station=typical_peak_minutes,
+    )
+    result["quality_window_pairs_excluded"] = max(
+        0, len(unfiltered_pairs) - len(pairs)
+    )
+    result["quality_window"] = (
+        "official maintenance/failure plus measured recovery windows loaded by paired_book_snapshots"
+    )
+    render_price_band_accessibility_report(result, output_path)
+    serializable = {key: value for key, value in result.items() if key != "records"}
+    analysis_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis_path.write_text(
+        json.dumps(serializable, ensure_ascii=False, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "paired_snapshot_count": result["paired_snapshot_count"],
+            "analyzable_snapshot_count": result["analyzable_snapshot_count"],
+            "quality_window_pairs_excluded": result["quality_window_pairs_excluded"],
+            "data_cutoff": result["data_cutoff"],
             "execution_enabled": False,
         }
     )
