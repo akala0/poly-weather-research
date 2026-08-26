@@ -316,6 +316,11 @@ JJA（6/7/8 月）是气象学惯例，不是各城市实际热季。按固定�
 
 高 NO 尾桶的“进不了场”已用真实深度单独审计（不是收益或定价结论）：质量窗口排除后的 34,408 个 NO≥0.99 快照中，真实 NO asks 为空 60.3%（Wilson 95% 59.8%–60.9%）；KLAX/KLGA 分别为 59.3%/66.1%。原始摘要 `best_ask=1.000` 且实际 asks 阶梯为空占 58.3%，所以不能把该摘要字段当卖单。$20/$200 的完整买入率为 KLAX 37.7%/26.8%、KLGA 32.4%/23.1%；没有任何无条件可进场的仓位。仅可把 $20 作为满足真实 ask、非近端点、完整深度和 p90 成本闸门后的纸面研究上限，`execution_enabled` 仍为 false。详见 `data/no_entry_accessibility_report.md`。
 
+中间 NO 价位可达性已用排除质量窗后的 55,466 个配对完成：真实 ask 分箱同时保留同期空盘与严格此前 ask cohort，
+并比较 $20/$50/$100/$150/$200 的 NO 买入和 YES 卖出路径。KLAX 的平衡候选为 0.70–0.85，KLGA 为 0.50–0.70；
+这只是可达性筛选，不是盈利结论。当前簿 hurdle 是成本门槛，不能替代未来价差或逆转风险。成交价不是可成交 ask，
+报告为 `data/price_band_accessibility_report.md`，命令为 `analyze-price-band-accessibility`。
+
 ### 6.2 前向样本进度（主要卡点）
 
 季节阈值重定后**时钟归零**：
@@ -352,7 +357,7 @@ T8 双侧分层、T10 动态加仓、T11 邻桶价差都缺"已结算结果 × �
 
 （本机 `uv` 不在 PATH，直接用 venv 里的 python）
 
-- 当前基线：**146 passed**，Ruff 全绿
+- 当前基线：**148 passed**，Ruff 全绿
 - 提交前确认无密钥进入版本控制。注意 `adapters/wrh.py` 会从 weather.gov 抓公开 Synoptic token——必须是运行时动态获取，不能硬编码或写进配置
 - `data/` 保持在 `.gitignore` 里
 - 不要 push 到远端，除非用户明确要求
