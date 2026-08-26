@@ -117,7 +117,8 @@ def load_iem_asos_csv(path: Path, *, station_id: str) -> list[TemperatureObserva
     return sorted(observations, key=lambda item: item.valid)
 
 
-def _bucket_key(value_f: float, *, unit: str, width: int) -> int:
+def temperature_bucket_key(value_f: float, *, unit: str, width: int) -> int:
+    """Map a Fahrenheit observation to the configured settlement bucket."""
     if unit == "fahrenheit" and width == 2:
         return two_degree_bucket_lower(value_f)
     value = Decimal(str(value_f))
@@ -127,6 +128,11 @@ def _bucket_key(value_f: float, *, unit: str, width: int) -> int:
         raise ValueError(f"unsupported temperature unit: {unit}")
     rounded = int(round_whole_degree(value))
     return (rounded // width) * width
+
+
+# Backward-compatible private alias for callers/tests written before the
+# multi-source historical comparison exposed this as a shared primitive.
+_bucket_key = temperature_bucket_key
 
 
 def daily_reversals(

@@ -42,6 +42,15 @@ from poly_weather.depth_calibration import (
     render_depth_cost_calibration,
 )
 from poly_weather.domain import CalibrationSample, TruthKind, VerificationStatus
+from poly_weather.fees import (
+    configured_fee_rate,
+    fetch_market_fee_details,
+    fetch_token_fee_rate_bps,
+)
+from poly_weather.high_frequency_audit import (
+    build_high_frequency_reanalysis,
+    render_high_frequency_reanalysis,
+)
 from poly_weather.liquidity import (
     archived_liquidity_rows,
     archived_liquidity_rows_from_jsonl,
@@ -105,7 +114,7 @@ app = typer.Typer(
     help="Research, replay, and non-executable paper decisions for Polymarket weather markets.",
 )
 
-DEFAULT_CONFIG = Path("configs/settlements.example.json")
+DEFAULT_CONFIG = Path("configs/settlements.json")
 DEFAULT_DATA_DIR = Path("data")
 
 
@@ -1001,7 +1010,12 @@ def paper_decision(
     decision_time_text: Annotated[str, typer.Argument(help="ISO-8601 decision time.")],
     calibration_sample_count: Annotated[int, typer.Option(min=0)] = 0,
     min_net_edge_text: Annotated[str, typer.Option("--min-net-edge")] = "0.03",
-    fee_bps: Annotated[int, typer.Option(min=0, max=10_000)] = 0,
+    liquidity_role: Annotated[str, typer.Option(help="taker (default) or maker")] = "taker",
+    market_category: Annotated[str, typer.Option(help="Fee schedule category.")] = "weather",
+    fee_rate_text: Annotated[
+        str | None,
+        typer.Option("--fee-rate", help="Optional offline-verified fee-rate override."),
+    ] = None,
     slippage_bps: Annotated[int, typer.Option(min=0, max=10_000)] = 50,
     max_price_age_minutes: Annotated[int, typer.Option(min=1)] = 90,
     max_notional_text: Annotated[str, typer.Option("--max-notional")] = "25",
@@ -1014,8 +1028,10 @@ def paper_decision(
         model_probability = Decimal(model_probability_text)
         policy = PaperPolicy(
             min_net_edge=Decimal(min_net_edge_text),
-            fee_bps=fee_bps,
-            slippage_bps=slippage_bps,
+            liquidity_role=liquidity_role,
+            market_category=market_category,
+            fee_rate_override=(Decimal(fee_rate_text) if fee_rate_text is not None else None),
+            assumed_slippage_bps=slippage_bps,
             max_price_age=timedelta(minutes=max_price_age_minutes),
             max_notional_usd=Decimal(max_notional_text),
         )
@@ -1043,6 +1059,10 @@ def paper_decision(
             index for index, outcome in enumerate(market.outcomes) if outcome.casefold() == "yes"
         )
         yes_token = market.clob_token_ids[yes_index]
+        no_index = next(
+            index for index, outcome in enumerate(market.outcomes) if outcome.casefold() == "no"
+        )
+        no_token = market.clob_token_ids[no_index]
     except (StopIteration, IndexError) as exc:
         typer.echo("Market has no aligned Yes token.", err=True)
         raise typer.Exit(code=2) from exc
@@ -1062,12 +1082,18 @@ def paper_decision(
                 err=True,
             )
             raise typer.Exit(code=2)
+        no_price_point = warehouse.price_at_or_before(
+            token_id=no_token,
+            decision_time=decision_time,
+            max_age=policy.max_price_age,
+        )
         decision = make_paper_decision(
             event_id=event.event_id,
             event_slug=event.event_slug,
             market_id=market.market_id,
             market_slug=market.slug,
             price_point=price_point,
+            no_price_point=no_price_point,
             decision_time=decision_time,
             model_probability=model_probability,
             signal_contract_verified=signal_verification.tradeable,
@@ -1086,6 +1112,67 @@ def paper_decision(
         }
     )
     _emit(payload)
+
+
+@app.command("check-fee-rate")
+def check_fee_rate(
+    token_id: Annotated[str, typer.Argument(help="Public CLOB token ID.")],
+    condition_id: Annotated[
+        str | None,
+        typer.Option("--condition-id", help="Condition ID for authoritative V2 fd parameters."),
+    ] = None,
+    market_category: Annotated[str, typer.Option(help="Configured fee category.")] = "weather",
+) -> None:
+    """Compare configured research fees with public CLOB /fee-rate metadata."""
+
+    async def fetch() -> tuple[int, dict[str, object] | None]:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=10, read=30, write=30, pool=30),
+            headers={"User-Agent": "poly-weather/0.1 (research; read-only)"},
+        ) as client:
+            base_fee = await fetch_token_fee_rate_bps(client, token_id)
+            details = (
+                await fetch_market_fee_details(client, condition_id, token_id)
+                if condition_id is not None
+                else None
+            )
+            return base_fee, details
+
+    try:
+        configured = configured_fee_rate(market_category)
+        base_fee_bps, details = asyncio.run(fetch())
+    except (httpx.HTTPError, ValueError) as exc:
+        typer.echo(f"Fee-rate verification failed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    observed_rate = details.get("rate") if details is not None else None
+    exponent = details.get("exponent") if details is not None else None
+    taker_only = details.get("taker_only") if details is not None else None
+    _emit(
+        {
+            "token_id": token_id,
+            "market_category": market_category,
+            "configured_taker_fee_rate": str(configured),
+            "clob_base_fee_bps": base_fee_bps,
+            "base_fee_note": (
+                "order/fee-bearing parameter; not the p*(1-p) curve rate"
+            ),
+            "clob_fee_rate": str(observed_rate) if observed_rate is not None else None,
+            "clob_fee_exponent": exponent,
+            "clob_taker_only": taker_only,
+            "matches_configured_curve": (
+                observed_rate == configured and exponent == 1 and taker_only is True
+                if details is not None
+                else None
+            ),
+            "sources": [
+                "GET https://clob.polymarket.com/fee-rate?token_id=...",
+                "GET https://clob.polymarket.com/clob-markets/{condition_id}"
+                if condition_id is not None
+                else None,
+            ],
+            "read_only": True,
+        }
+    )
 
 
 @app.command("monitor")
@@ -1591,6 +1678,54 @@ def multi_city_certainty_report(
             "downloads": downloads,
             "rows": rows,
             "no_lookahead": True,
+        }
+    )
+
+
+@app.command("high-frequency-weather-reanalysis")
+def high_frequency_weather_reanalysis(
+    start_date_text: Annotated[str, typer.Option("--start-date")] = "2024-06-01",
+    end_date_text: Annotated[str, typer.Option("--end-date")] = "2026-08-22",
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/high_frequency_weather_reanalysis.md"
+    ),
+    json_path: Annotated[Path, typer.Option("--json-output")] = Path(
+        "data/high_frequency_weather_reanalysis.json"
+    ),
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+) -> None:
+    """Compare IEM hourly features with post-hoc WRH high-frequency history."""
+    start_date = _parse_date(start_date_text, label="start date")
+    end_date = _parse_date(end_date_text, label="end date")
+    if end_date < start_date:
+        raise typer.BadParameter("end date must not precede start date")
+    registry = load_settlement_registry(config)
+    specs = [
+        spec
+        for spec in registry.specs
+        if spec.status is VerificationStatus.VERIFIED and spec.station_id and spec.timezone
+    ]
+    result = build_high_frequency_reanalysis(
+        specs,
+        data_dir=data_dir,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    render_high_frequency_reanalysis(result, output_path)
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "json_path": str(json_path.resolve()),
+            "station_count": len(result["stations"]),
+            "collection_mode": result["collection_mode"],
+            "strict_no_lookahead_eligible": False,
+            "execution_enabled": False,
         }
     )
 

@@ -41,6 +41,10 @@ uv run poly-weather execution-cost-calibration
 uv run poly-weather multi-city-certainty-report --refresh
 ```
 
+默认实际结算 registry 为 `configs/settlements.json`。原来的
+`configs/settlements.example.json` 继续作为兼容镜像保留；旧命令显式传入该路径仍可运行。
+换机部署应复制实际配置文件，不要把 `.example` 文件误当作唯一运行配置。
+
 默认数据写入 `data/`：原始事件位于 `data/raw/`，标准化目录位于 `data/catalog.sqlite3`。
 
 `forecast-buckets` 使用 Open-Meteo deterministic 单值日最高温和无前视历史校准的残差标准差，通过 Normal CDF 计算每个温度分桶的概率。历史目标日只允许使用 `lead_days>=1`；`lead_days=0` 已确认包含目标日内更新。只有与目标事件完全匹配且已核验的 settlement entry 才可能通过规则闸门；美国八城与重庆、成都模板均有 2026-08-24 证据快照，单位和桶宽也是严格比较项。

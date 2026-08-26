@@ -1,13 +1,19 @@
 import asyncio
 import json
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 import httpx
 import pytest
 
 from poly_weather.adapters.wrh import WrhTimeseriesClient
 from poly_weather.weather_provenance import require_realtime_for_no_lookahead
-from poly_weather.wrh_backfill import WrhBackfillRequest, realtime_wrh_points_many
+from poly_weather.wrh_backfill import (
+    WrhBackfillRequest,
+    cache_wrh_temperature_history,
+    partition_wrh_backfill_range,
+    realtime_wrh_points_many,
+)
 
 
 def test_wrh_backfill_rejects_more_than_30_calendar_days() -> None:
@@ -27,6 +33,70 @@ def test_wrh_backfill_rejects_more_than_30_calendar_days() -> None:
     )
     with pytest.raises(ValueError, match="cannot exceed 30 calendar days"):
         refused.utc_interval()
+
+
+def test_long_range_is_partitioned_below_public_limit() -> None:
+    requests = partition_wrh_backfill_range(
+        station_id="KLGA",
+        timezone="America/New_York",
+        start_date=date(2026, 6, 1),
+        end_date=date(2026, 8, 20),
+    )
+    assert len(requests) == 3
+    assert all((row.end_date - row.start_date).days + 1 <= 29 for row in requests)
+
+
+def test_temperature_only_cache_keeps_historical_provenance(tmp_path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/apiKey.js"):
+            return httpx.Response(200, request=request, text="var mesoToken = 'abc123';")
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "STATION": [
+                    {
+                        "OBSERVATIONS": {
+                            "date_time": ["2026-08-24T12:00:00Z"],
+                            "air_temp_set_1": [77.54],
+                        }
+                    }
+                ]
+            },
+        )
+
+    async def fetch() -> dict:
+        original = httpx.AsyncClient
+
+        class MockClient(httpx.AsyncClient):
+            def __init__(self, *args, **kwargs):
+                kwargs["transport"] = httpx.MockTransport(handler)
+                super().__init__(*args, **kwargs)
+
+        httpx.AsyncClient = MockClient
+        try:
+            return await cache_wrh_temperature_history(
+                [
+                    WrhBackfillRequest(
+                        station_id="KLGA",
+                        timezone="America/New_York",
+                        start_date=date(2026, 8, 24),
+                        end_date=date(2026, 8, 24),
+                    )
+                ],
+                data_dir=tmp_path,
+            )
+        finally:
+            httpx.AsyncClient = original
+
+    result = asyncio.run(fetch())
+    row = json.loads(Path(result["results"][0]["path"]).read_text(encoding="utf-8"))
+    assert row["collection_mode"] == "historical_backfill"
+    assert row["temperature_only"] is True
+    assert list(row["payload"]["STATION"][0]["OBSERVATIONS"]) == [
+        "date_time",
+        "air_temp_set_1",
+    ]
 
 
 def test_wrh_history_uses_explicit_range_instead_of_recent() -> None:

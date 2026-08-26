@@ -2,6 +2,10 @@
 
 更新日期：2026-08-24
 
+结算 registry 的 CLI 默认路径已改为 `configs/settlements.json`；
+`configs/settlements.example.json` 暂时保留相同内容以兼容旧脚本和已有调用。
+常驻进程在启动时已载入 registry，此次文件拆分本身不要求重启。
+
 ## 项目定位与安全边界
 
 这是一个仍在开发中的 Polymarket 天气市场研究系统，不是可投入资金的交易机器人。当前只访问公开的 Polymarket、NOAA/NWS、NOAA Aviation Weather Center、NOAA NCEI 和 Open-Meteo 接口。仓库中没有钱包适配器、私钥读取、签名、下单、撤单或转账功能；实时信号的所有 `action` 都被硬编码为 `skip`。
@@ -43,7 +47,7 @@ P0 验证确认 Previous Runs `lead_days=0` 含目标日内模型更新，不能
 ## 尚未完成
 
 1. 联合历史回放：需要使用 Single Runs 固定初始化时间，把当时已发布的 deterministic 跑次与 CLOB 盘口严格按时间对齐；Previous Runs lead 1 仍不是完整的单一 vintage。
-2. 成交可实现性：完整深度吃单成本已经估算，但仍未模拟挂单排队、短时撤单和真实手续费；现有结论仍不能视作可执行收益。
+2. 成交可实现性：完整深度吃单成本和 Weather 官方 taker 手续费曲线已经分别估算，但仍未模拟挂单排队和短时撤单；现有结论仍不能视作可执行收益。
 3. 多日、多城市泛化：8 城市行情采集已启动，但新增六城的结算 registry 仍是 `unverified`，且尚未积累足够已结算样本。
 4. 自动市场轮换：每日新事件仍需要发现、核验并更新运行参数。
 5. Wunderground 最终结算差异审计：实时信号使用同机场 NOAA 数据，但最终仍应记录官方页面值并比较差异。

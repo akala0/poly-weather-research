@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -42,6 +43,150 @@ class WrhBackfillRequest:
             self.end_date + timedelta(days=1), datetime_time.min, tzinfo=zone
         )
         return start.astimezone(UTC), (exclusive_end - timedelta(seconds=1)).astimezone(UTC)
+
+
+def partition_wrh_backfill_range(
+    *,
+    station_id: str,
+    timezone: str,
+    start_date: date,
+    end_date: date,
+    days_per_request: int = 29,
+) -> list[WrhBackfillRequest]:
+    """Partition a long range without ever exceeding the public 30-day limit."""
+    if end_date < start_date:
+        raise ValueError("WRH backfill end date cannot precede start date")
+    if not 1 <= days_per_request <= 29:
+        raise ValueError("days_per_request must be between 1 and 29")
+    requests = []
+    cursor = start_date
+    while cursor <= end_date:
+        chunk_end = min(end_date, cursor + timedelta(days=days_per_request - 1))
+        requests.append(
+            WrhBackfillRequest(
+                station_id=station_id,
+                timezone=timezone,
+                start_date=cursor,
+                end_date=chunk_end,
+            )
+        )
+        cursor = chunk_end + timedelta(days=1)
+    return requests
+
+
+async def cache_wrh_temperature_history(
+    requests: list[WrhBackfillRequest],
+    *,
+    data_dir: Path,
+    max_concurrency: int = 4,
+) -> dict[str, Any]:
+    """Cache only timestamp/temperature arrays for large historical reanalysis.
+
+    The full backfill path remains available when a normalized DuckDB copy and
+    all response fields are needed. This lean path preserves the same explicit
+    post-hoc provenance while avoiding multi-year duplication of unrelated
+    cloud, wind, and pressure arrays.
+    """
+    if not requests:
+        raise ValueError("at least one WRH backfill request is required")
+    if max_concurrency < 1:
+        raise ValueError("max_concurrency must be positive")
+    for request in requests:
+        request.utc_interval()
+    semaphore = asyncio.Semaphore(max_concurrency)
+    timeout = httpx.Timeout(90, connect=20, read=90, write=30, pool=90)
+
+    async with httpx.AsyncClient(
+        timeout=timeout,
+        limits=httpx.Limits(
+            max_connections=max_concurrency,
+            max_keepalive_connections=max_concurrency,
+        ),
+        headers={"User-Agent": "poly-weather/0.1 (historical research; read-only)"},
+        follow_redirects=True,
+    ) as http:
+        client = WrhTimeseriesClient(http)
+
+        async def fetch(request: WrhBackfillRequest) -> dict[str, Any]:
+            station = request.station_id.upper()
+            directory = data_dir / "raw" / "wrh_history_batches" / station
+            prefix = f"{request.start_date}_{request.end_date}_"
+            existing = sorted(directory.glob(f"{prefix}*.json"))
+            if existing:
+                return {
+                    "station_id": station,
+                    "start_date": request.start_date.isoformat(),
+                    "end_date": request.end_date.isoformat(),
+                    "status": "cached",
+                    "path": str(existing[-1].resolve()),
+                }
+            start, end = request.utc_interval()
+            history = None
+            last_error: Exception | None = None
+            for attempt in range(4):
+                try:
+                    async with semaphore:
+                        history = await client.history(station, start=start, end=end)
+                    break
+                except httpx.HTTPError as exc:
+                    last_error = exc
+                    if attempt == 3:
+                        raise
+                    await asyncio.sleep(0.5 * (2**attempt))
+            if history is None:
+                raise RuntimeError("WRH history retry loop ended without a result") from last_error
+            path = directory / f"{prefix}temperature_only.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "collection_mode": HISTORICAL_BACKFILL,
+                "station_id": station,
+                "timezone": request.timezone,
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                "request_url": _redact_token(history.request_url),
+                "qc_status": "preliminary_and_subject_to_post_hoc_qc",
+                "temperature_only": True,
+                "payload": {
+                    "STATION": [
+                        {
+                            "OBSERVATIONS": {
+                                "date_time": [
+                                    row.observed_at.isoformat().replace("+00:00", "Z")
+                                    for row in history.observations
+                                ],
+                                "air_temp_set_1": [
+                                    float(row.temperature_f) for row in history.observations
+                                ],
+                            }
+                        }
+                    ]
+                },
+            }
+            temporary = path.with_suffix(".tmp")
+            temporary.write_text(
+                json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                encoding="utf-8",
+            )
+            temporary.replace(path)
+            return {
+                "station_id": station,
+                "start_date": request.start_date.isoformat(),
+                "end_date": request.end_date.isoformat(),
+                "status": "fetched",
+                "observation_count": len(history.observations),
+                "path": str(path.resolve()),
+            }
+
+        results = await asyncio.gather(*(fetch(request) for request in requests))
+    return {
+        "collection_mode": HISTORICAL_BACKFILL,
+        "request_count": len(results),
+        "fetched_count": sum(row["status"] == "fetched" for row in results),
+        "cached_count": sum(row["status"] == "cached" for row in results),
+        "observation_count": sum(int(row.get("observation_count") or 0) for row in results),
+        "results": results,
+        "execution_enabled": False,
+    }
 
 
 def _redact_token(url: str) -> str:

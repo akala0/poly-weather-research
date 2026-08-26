@@ -27,3 +27,9 @@ def test_example_registry_has_only_evidence_verified_cities_enabled() -> None:
         "ZUCK",
         "ZUUU",
     }
+
+
+def test_runtime_and_compatibility_registries_match() -> None:
+    runtime = load_settlement_registry(Path("configs/settlements.json"))
+    compatibility = load_settlement_registry(Path("configs/settlements.example.json"))
+    assert runtime == compatibility

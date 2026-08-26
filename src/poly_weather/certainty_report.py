@@ -82,8 +82,11 @@ def _first_threshold(curve: dict[Any, list[Any]], threshold: float) -> str:
     return "未达到"
 
 
-def station_certainty_summary(spec: SettlementSpec, csv_path: Path) -> dict[str, Any]:
-    observations = load_iem_asos_csv(csv_path, station_id=spec.station_id or spec.key)
+def station_certainty_summary_from_observations(
+    spec: SettlementSpec,
+    observations: list[Any],
+) -> dict[str, Any]:
+    """Summarize historical features from an explicitly selected observation series."""
     summer = [item for item in observations if item.valid.month in {6, 7, 8}]
     curve = certainty_curve_points(
         summer,
@@ -119,6 +122,11 @@ def station_certainty_summary(spec: SettlementSpec, csv_path: Path) -> dict[str,
         "p90_remaining_warming_f": percentile(remaining, 0.90) if remaining else None,
         "reversal_sample_count": len(remaining),
     }
+
+
+def station_certainty_summary(spec: SettlementSpec, csv_path: Path) -> dict[str, Any]:
+    observations = load_iem_asos_csv(csv_path, station_id=spec.station_id or spec.key)
+    return station_certainty_summary_from_observations(spec, observations)
 
 
 def render_certainty_summary_report(rows: list[dict[str, Any]], output_path: Path) -> None:
