@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "description": "Empirical market-data quality windows that supplement, never rewrite, official status history.",
+  "windows": [
+    {
+      "incident_id": "observed-recovery-2026-08-26-clob",
+      "title": "Observed post-maintenance CLOB recovery degradation",
+      "incident_type": "observed_recovery_degradation",
+      "start_at": "2026-08-26T07:30:00+00:00",
+      "end_at": "2026-08-26T07:50:48+00:00",
+      "affected_components": [
+        "Clob Websocket"
+      ],
+      "affects_market_data": true,
+      "affects_trading": false,
+      "status": "completed",
+      "source_url": "data/runtime/polymarket_ws_reconnects.jsonl",
+      "default_excluded": true,
+      "provenance": "observed_telemetry",
+      "latest_update_at": "2026-08-26T07:50:48+00:00",
+      "latest_update_state": "Recovered",
+      "latest_update_message": "Official maintenance completed at 07:30 UTC, but eight silence-watchdog reconnects continued from 07:35:19 through 07:45:47. The window ends after five consecutive minutes without another reconnect. Received checkpoint books remained complete; archive cadence prevents using row counts alone as a depth-recovery boundary."
+    }
+  ]
+}

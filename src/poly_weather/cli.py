@@ -26,6 +26,7 @@ from poly_weather.adapters.nws import NwsClient
 from poly_weather.adapters.open_meteo import OpenMeteoDeterministicClient
 from poly_weather.adapters.polymarket import GammaClient, is_weather_market
 from poly_weather.adapters.polymarket_data import PolymarketDataClient
+from poly_weather.archive_io import jsonl_archive_paths
 from poly_weather.calibration import (
     evaluate_bucket_skill,
     fit_bias_calibration,
@@ -85,6 +86,7 @@ from poly_weather.no_side_analysis import (
 from poly_weather.paper import PaperPolicy, make_paper_decision
 from poly_weather.polymarket_status import (
     PolymarketStatusClient,
+    load_quality_overrides,
     load_quality_windows,
     merge_quality_windows,
     persist_quality_windows,
@@ -1926,7 +1928,10 @@ def sync_polymarket_status(
 
     snapshot = asyncio.run(fetch())
     path = data_dir / "runtime" / "polymarket_quality_windows.json"
-    windows = merge_quality_windows(load_quality_windows(path), snapshot.windows)
+    windows = merge_quality_windows(
+        merge_quality_windows(load_quality_windows(path), load_quality_overrides()),
+        snapshot.windows,
+    )
     persist_quality_windows(path, windows)
     _emit(
         {
@@ -1967,18 +1972,14 @@ def audit_polymarket_maintenance(
         "reconnects": reconnects,
         "archives": {
             "full_market_stream": audit_archive_paths(
-                sorted(
-                    (data_dir / "raw" / "polymarket_clob_websocket").glob(
-                        "*/events.jsonl"
-                    )
+                jsonl_archive_paths(
+                    data_dir / "raw" / "polymarket_clob_websocket"
                 ),
                 market_windows,
             ),
             "depth_checkpoints": audit_archive_paths(
-                sorted(
-                    (data_dir / "raw" / "polymarket_book_checkpoints").glob(
-                        "*/events.jsonl"
-                    )
+                jsonl_archive_paths(
+                    data_dir / "raw" / "polymarket_book_checkpoints"
                 ),
                 market_windows,
             ),
@@ -2176,7 +2177,7 @@ def analyze_real_no_book_command(
     ),
 ) -> None:
     """Analyze executable NO quotes from archived full-depth checkpoints."""
-    paths = sorted((data_dir / "raw" / "polymarket_book_checkpoints").glob("*/events.jsonl"))
+    paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
     unfiltered_pairs = paired_book_snapshots(paths, exclude_upstream_degraded=False)
     pairs = paired_book_snapshots(paths)
     unfiltered_result = analyze_real_no_books(unfiltered_pairs)
@@ -2222,7 +2223,7 @@ def analyze_eliminated_no_exit_command(
 ) -> None:
     """Measure real NO bid exit depth after irreversible physical elimination."""
     registry = load_settlement_registry(config)
-    paths = sorted((data_dir / "raw" / "polymarket_book_checkpoints").glob("*/events.jsonl"))
+    paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
     unfiltered_pairs = paired_book_snapshots(paths, exclude_upstream_degraded=False)
     pairs = paired_book_snapshots(paths)
     archived_slugs = sorted({str(pair["event_slug"]) for pair in unfiltered_pairs})
@@ -2552,7 +2553,9 @@ def migrate_signal_schema(
 ) -> None:
     """Vectorize all raw signal JSONL into the normalized candidate schema."""
     source_root = data_dir / "raw" / "signal_snapshot"
-    paths = sorted(source_root.glob("*/events.jsonl"))
+    paths = sorted(
+        (*source_root.glob("*/events.jsonl"), *source_root.glob("*/events.jsonl.gz"))
+    )
     destination = target_path or data_dir / "signal_stream.candidate.duckdb"
     report = migrate_signal_snapshots_from_jsonl(
         paths,

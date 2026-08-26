@@ -1,3 +1,4 @@
+import gzip
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,6 +38,18 @@ def test_real_book_pairing_never_uses_future_side(tmp_path: Path) -> None:
     assert pairs[0]["observed_at"] == datetime(2026, 8, 24, 12, 1, tzinfo=UTC)
     result = analyze_real_no_books(pairs)
     assert result["complement_gap_max"] == 0.0
+
+
+def test_real_book_pairing_reads_retention_gzip(tmp_path: Path) -> None:
+    path = tmp_path / "events.jsonl.gz"
+    rows = [
+        _row("2026-08-24T12:00:00+00:00", "Yes", "0.03", "0.04"),
+        _row("2026-08-24T12:01:00+00:00", "No", "0.96", "0.97"),
+    ]
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        handle.write("\n".join(json.dumps(row) for row in rows) + "\n")
+
+    assert len(paired_book_snapshots([path])) == 1
 
 
 def test_real_book_pairing_excludes_legacy_rows_by_official_window(tmp_path: Path) -> None:

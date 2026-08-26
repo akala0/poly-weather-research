@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 from copy import deepcopy
 from datetime import UTC, datetime
@@ -285,6 +286,21 @@ def test_vectorized_candidate_migration_is_lossless_and_idempotent(tmp_path) -> 
         ).fetchone()[0] == 2
     finally:
         connection.close()
+
+
+def test_signal_migration_reads_retention_gzip_without_precision_loss(tmp_path) -> None:
+    row = _snapshot()
+    source = tmp_path / "events.jsonl.gz"
+    serializable = {**row, "generated_at": row["generated_at"].isoformat()}
+    with gzip.open(source, "wt", encoding="utf-8") as handle:
+        handle.write(json.dumps(serializable, separators=(",", ":")) + "\n")
+    target = tmp_path / "signal_stream.candidate.duckdb"
+
+    result = migrate_signal_snapshots_from_jsonl([source], target_path=target)
+    sample = verify_sample_reconstruction([source], candidate_path=target, per_file=1)
+
+    assert result["candidate"]["snapshot_count"] == 1
+    assert sample["mismatch_count"] == 0
 
 
 def test_migration_refuses_online_database_name(tmp_path) -> None:

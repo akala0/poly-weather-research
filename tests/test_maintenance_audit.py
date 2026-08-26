@@ -43,8 +43,35 @@ def test_reconnect_audit_attributes_exact_rows_but_not_legacy_count() -> None:
     )
 
     assert result["officially_attributed_reconnect_count"] == 1
+    assert result["observed_recovery_attributed_reconnect_count"] == 0
     assert result["unattributed_exact_reconnect_count"] == 1
     assert result["legacy_unattributed_reconnect_count"] == 28
     legacy = result["legacy_summaries"][0]
     assert legacy["overlapping_official_windows"][0]["overlap_seconds"] == 600
     assert "unrecoverable_exact_times" in legacy["attribution"]
+
+
+def test_reconnect_audit_distinguishes_observed_recovery_window() -> None:
+    observed = UpstreamQualityWindow(
+        incident_id="observed-recovery",
+        title="Observed recovery degradation",
+        incident_type="observed_recovery_degradation",
+        start_at=datetime(2026, 8, 26, 7, 30, tzinfo=UTC),
+        end_at=datetime(2026, 8, 26, 7, 51, tzinfo=UTC),
+        affected_components=("Clob Websocket",),
+        affects_market_data=True,
+        affects_trading=False,
+        status="completed",
+        source_url="data/runtime/polymarket_ws_reconnects.jsonl",
+        default_excluded=True,
+        provenance="observed_telemetry",
+    )
+
+    result = audit_reconnect_rows(
+        [{"observed_at": "2026-08-26T07:45:47+00:00", "error": "silence"}],
+        [_window(), observed],
+    )
+
+    assert result["officially_attributed_reconnect_count"] == 0
+    assert result["observed_recovery_attributed_reconnect_count"] == 1
+    assert result["unattributed_exact_reconnect_count"] == 0

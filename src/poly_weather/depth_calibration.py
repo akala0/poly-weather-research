@@ -12,6 +12,7 @@ from statistics import fmean
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from poly_weather.archive_io import jsonl_archive_paths, open_jsonl_text
 from poly_weather.execution_cost import estimate_execution_cost
 from poly_weather.polymarket_status import (
     load_quality_windows,
@@ -64,8 +65,8 @@ def replay_books_at_or_before(
         positions[asset_id] = position
 
     archive_root = data_dir / "raw" / "polymarket_clob_websocket"
-    for path in sorted(archive_root.glob("*/events.jsonl")):
-        with path.open("r", encoding="utf-8") as handle:
+    for path in jsonl_archive_paths(archive_root):
+        with open_jsonl_text(path) as handle:
             for line in handle:
                 try:
                     row = json.loads(line)

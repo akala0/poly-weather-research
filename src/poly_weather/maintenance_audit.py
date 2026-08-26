@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from poly_weather.archive_io import open_jsonl_text
 from poly_weather.polymarket_status import UpstreamQualityWindow, quality_window_at
 
 
@@ -70,12 +71,23 @@ def audit_reconnect_rows(
                 "error": row.get("error"),
                 "incident_id": window.incident_id if window else None,
                 "incident_title": window.title if window else None,
+                "provenance": window.provenance if window else None,
             }
         )
     attributed = sum(row["incident_id"] is not None for row in exact)
+    official_attributed = sum(
+        row["incident_id"] is not None and row["provenance"] == "official_status"
+        for row in exact
+    )
+    observed_attributed = sum(
+        row["incident_id"] is not None and row["provenance"] != "official_status"
+        for row in exact
+    )
     return {
         "exact_reconnect_count": len(exact),
-        "officially_attributed_reconnect_count": attributed,
+        "quality_window_attributed_reconnect_count": attributed,
+        "officially_attributed_reconnect_count": official_attributed,
+        "observed_recovery_attributed_reconnect_count": observed_attributed,
         "unattributed_exact_reconnect_count": len(exact) - attributed,
         "legacy_unattributed_reconnect_count": sum(
             row["reconnect_count"] for row in legacy
@@ -89,7 +101,7 @@ def load_reconnect_rows(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     rows = []
-    with path.open(encoding="utf-8") as handle:
+    with open_jsonl_text(path) as handle:
         for line in handle:
             try:
                 value = json.loads(line)
@@ -112,7 +124,7 @@ def audit_archive_paths(
     for path in paths:
         if not path.exists():
             continue
-        with path.open(encoding="utf-8") as handle:
+        with open_jsonl_text(path) as handle:
             for line in handle:
                 total += 1
                 try:
@@ -133,6 +145,7 @@ def audit_archive_paths(
         "path_count": len(paths),
         "record_count": total,
         "records_in_official_windows": in_window,
+        "records_in_quality_windows": in_window,
         "explicitly_tagged_records": explicitly_tagged,
         "legacy_untagged_records_excluded_by_time_dimension": legacy_untagged,
         "malformed_record_count": malformed,
@@ -141,19 +154,20 @@ def audit_archive_paths(
 
 def render_maintenance_audit(result: Mapping[str, Any], output_path: Path) -> None:
     lines = [
-        "# Polymarket 上游维护窗口审计",
+        "# Polymarket 上游质量窗口审计",
         "",
-        "官方状态按组件解析；只有影响 CLOB WebSocket 的窗口默认从深度分析排除。",
+        "官方状态按组件解析；另保留有本地精确遥测证据的恢复期窗口。只有影响 CLOB WebSocket 的窗口默认从深度分析排除。",
         "维护期间仍持续采集，标记不会停止 WebSocket。",
         "",
-        "## 官方质量窗口",
+        "## 质量窗口",
         "",
-        "| 事件 | 开始 UTC | 结束 UTC | 状态 | 组件 | 最新更新 |",
-        "|---|---|---|---|---|---|",
+        "| 事件 | 依据 | 开始 UTC | 结束 UTC | 状态 | 组件 | 最新更新 |",
+        "|---|---|---|---|---|---|---|",
     ]
     for window in result["windows"]:
         lines.append(
-            f"| {window['title']} | {window['start_at']} | "
+            f"| {window['title']} | {window.get('provenance', 'official_status')} | "
+            f"{window['start_at']} | "
             f"{window['end_at'] or '仍在进行'} | {window['status']} | "
             f"{', '.join(window['affected_components'])} | "
             f"{window.get('latest_update_message') or 'N/A'} |"
@@ -166,6 +180,7 @@ def render_maintenance_audit(result: Mapping[str, Any], output_path: Path) -> No
             "",
             f"- 有精确时间的重连：{reconnects['exact_reconnect_count']}；"
             f"对上官方窗口：{reconnects['officially_attributed_reconnect_count']}；"
+            f"对上观测恢复窗口：{reconnects['observed_recovery_attributed_reconnect_count']}；"
             f"无法归因：{reconnects['unattributed_exact_reconnect_count']}。",
             f"- 旧版仅保留汇总、无逐次时间的重连："
             f"{reconnects['legacy_unattributed_reconnect_count']}。",
@@ -176,7 +191,7 @@ def render_maintenance_audit(result: Mapping[str, Any], output_path: Path) -> No
     ]
     if unattributed_exact:
         lines.append(
-            "- 精确时间已知但官方无法归因的区间："
+            "- 精确时间已知但质量窗口无法归因的区间："
             f"{unattributed_exact[0]['observed_at']}–"
             f"{unattributed_exact[-1]['observed_at']}；"
             "保留为未归因上游异常，不擅自延长官方维护窗口。"
@@ -194,7 +209,7 @@ def render_maintenance_audit(result: Mapping[str, Any], output_path: Path) -> No
     lines.extend(["", "## 归档标记覆盖", ""])
     for name, row in result["archives"].items():
         lines.append(
-            f"- {name}: 官方窗口内 {row['records_in_official_windows']} 条；"
+            f"- {name}: 质量窗口内 {row['records_in_quality_windows']} 条；"
             f"显式标记 {row['explicitly_tagged_records']}；"
             f"旧记录按时间维度默认排除 {row['legacy_untagged_records_excluded_by_time_dimension']}。"
         )

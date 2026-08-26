@@ -13,6 +13,7 @@ from statistics import fmean, median
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from poly_weather.archive_io import open_jsonl_text
 from poly_weather.domain import SettlementSpec
 from poly_weather.execution_cost import estimate_execution_cost
 from poly_weather.intraday_reversal import TemperatureObservation
@@ -125,7 +126,7 @@ def paired_book_snapshots(
     for path in checkpoint_paths:
         if not path.exists():
             continue
-        with path.open(encoding="utf-8") as handle:
+        with open_jsonl_text(path) as handle:
             for line in handle:
                 try:
                     row = json.loads(line)
@@ -641,7 +642,7 @@ def render_eliminated_exit_report(result: Mapping[str, Any], output_path: Path) 
         "并且只在物理出局之后评估真实 NO bids。",
         "当前仍是未结算的前向归档样本，尚无已结算深度重叠样本。",
         "",
-        "- 默认排除官方 CLOB WebSocket 维护/故障窗口；"
+        "- 默认排除 CLOB WebSocket 官方维护/故障及实测恢复期质量窗口；"
         f"相对未过滤输入减少 {result.get('upstream_degraded_pairs_excluded', 0)} 个配对快照，"
         f"出局桶 {result.get('unfiltered_eliminated_market_count', result['eliminated_market_count'])}→{result['eliminated_market_count']}。",
         f"- 已观察出局桶：{result['eliminated_market_count']}",
@@ -707,12 +708,12 @@ def render_real_no_report(result: Mapping[str, Any], output_path: Path) -> None:
         "## 覆盖",
         "",
         f"- 配对快照：{result['paired_snapshot_count']}；可用：{result['usable_snapshot_count']}",
-        "- 默认排除官方 CLOB WebSocket 维护/故障窗口；"
+        "- 默认排除 CLOB WebSocket 官方维护/故障及实测恢复期质量窗口；"
         f"相对未过滤输入减少 {result.get('upstream_degraded_pairs_excluded', 0)} 个配对快照。",
         f"- 事件：{result['event_count']}；二元桶：{result['market_count']}",
         "- 22 个已结算事件与深度归档重叠：0，因此历史真实执行收益为 N/A。",
         "",
-        "### 维护窗口剔除差异",
+        "### 质量窗口剔除差异",
         "",
         "| 指标 | 未过滤 | 默认排除后 |",
         "|---|---:|---:|",

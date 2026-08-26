@@ -21,6 +21,7 @@ from poly_weather.polymarket_status import (
     PolymarketStatusClient,
     PolymarketStatusSnapshot,
     UpstreamQualityWindow,
+    load_quality_overrides,
     load_quality_windows,
     merge_quality_windows,
     persist_quality_windows,
@@ -296,7 +297,10 @@ class MarketWebSocketBot:
         self.quality_windows_path = data_dir / "runtime" / "polymarket_quality_windows.json"
         self.status_client = status_client or PolymarketStatusClient()
         self._owns_status_client = status_client is None
-        self.quality_windows = load_quality_windows(self.quality_windows_path)
+        self.quality_windows = merge_quality_windows(
+            load_quality_windows(self.quality_windows_path),
+            load_quality_overrides(),
+        )
         self.upstream_snapshot: PolymarketStatusSnapshot | None = None
         self.upstream_status_error: str | None = None
         self._last_upstream_history_signature: str | None = None

@@ -21,6 +21,9 @@ import httpx
 
 STATUS_BASE_URL = "https://status.polymarket.com"
 STATUS_POLL_SECONDS = 5 * 60
+QUALITY_OVERRIDES_PATH = (
+    Path(__file__).resolve().parents[2] / "configs" / "polymarket_quality_overrides.json"
+)
 MARKET_DATA_COMPONENTS = frozenset({"clob websocket"})
 TRADING_COMPONENTS = frozenset({"trading api (clob)"})
 
@@ -43,6 +46,7 @@ class UpstreamQualityWindow:
     status: str
     source_url: str
     default_excluded: bool
+    provenance: str = "official_status"
     latest_update_at: datetime | None = None
     latest_update_state: str | None = None
     latest_update_message: str | None = None
@@ -182,6 +186,7 @@ def parse_status_atom(
                 status=status,
                 source_url=source_url,
                 default_excluded=affects_market_data and status in {"active", "completed"},
+                provenance="official_status",
                 latest_update_at=(
                     _update_timestamp(latest_match, reference=start_at)
                     if latest_match is not None
@@ -253,6 +258,7 @@ def load_quality_windows(path: Path) -> tuple[UpstreamQualityWindow, ...]:
             status=str(row.get("status") or "unknown"),
             source_url=str(row.get("source_url") or ""),
             default_excluded=bool(row.get("default_excluded", True)),
+            provenance=str(row.get("provenance") or "official_status"),
             latest_update_at=(
                 _utc(str(row["latest_update_at"])) if row.get("latest_update_at") else None
             ),
@@ -267,6 +273,11 @@ def load_quality_windows(path: Path) -> tuple[UpstreamQualityWindow, ...]:
         )
         for row in rows or ()
     )
+
+
+def load_quality_overrides() -> tuple[UpstreamQualityWindow, ...]:
+    """Load tracked empirical windows that supplement, never rewrite, official history."""
+    return load_quality_windows(QUALITY_OVERRIDES_PATH)
 
 
 def persist_quality_windows(path: Path, windows: tuple[UpstreamQualityWindow, ...]) -> None:

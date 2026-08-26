@@ -12,6 +12,12 @@ import duckdb
 
 from poly_weather.signal_schema import signal_schema_is_normalized
 
+RAW_RETENTION_SOURCES = (
+    "polymarket_clob_websocket",
+    "polymarket_book_checkpoints",
+    "signal_snapshot",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class RetentionConfig:
@@ -34,7 +40,7 @@ def _assert_within(path: Path, root: Path) -> None:
     resolved = path.resolve()
     resolved_root = root.resolve()
     if resolved == resolved_root or resolved_root not in resolved.parents:
-        raise ValueError(f"retention target escapes market raw root: {resolved}")
+        raise ValueError(f"retention target escapes configured raw root: {resolved}")
 
 
 def file_storage_bytes(path: Path) -> tuple[int, int]:
@@ -78,12 +84,12 @@ def apply_market_retention(
     config: RetentionConfig | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    """Compress and expire only raw Polymarket streams; aggregates are untouched."""
+    """Compress/expire configured raw streams; aggregates and T7 evidence are untouched."""
     config = config or RetentionConfig()
     current_date = (now or datetime.now(UTC)).astimezone(UTC).date()
     compressed: list[str] = []
     deleted: list[str] = []
-    for source in ("polymarket_clob_websocket", "polymarket_book_checkpoints"):
+    for source in RAW_RETENTION_SOURCES:
         root = data_dir / "raw" / source
         if not root.exists():
             continue
@@ -126,6 +132,10 @@ def apply_market_retention(
         "compressed": compressed,
         "deleted": deleted,
         "aggregate_data_retained": True,
+        "raw_retention_sources": list(RAW_RETENTION_SOURCES),
+        "t7_evidence_tree_retained": str(
+            (data_dir / "raw" / "no_forward_validation").resolve()
+        ),
         "signal_database": signal_database,
     }
 

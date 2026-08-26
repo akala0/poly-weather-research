@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 from collections.abc import Iterable
@@ -10,6 +11,10 @@ from typing import Any
 import duckdb
 
 from poly_weather.signal_schema import SIGNAL_SCHEMA_VERSION, create_signal_indexes
+
+
+def _open_binary(path: Path) -> Any:
+    return gzip.open(path, "rb") if path.suffix == ".gz" else path.open("rb")
 
 
 def _sql_string(value: str) -> str:
@@ -407,7 +412,7 @@ def hash_tree(root: Path) -> dict[str, str]:
 def _edge_rows(path: Path, count: int) -> list[dict[str, Any]]:
     first: list[bytes] = []
     last: list[bytes] = []
-    with path.open("rb") as handle:
+    with _open_binary(path) as handle:
         for line in handle:
             if not line.strip():
                 continue
@@ -551,7 +556,7 @@ def extract_signal_jsonl_after(
     bytes_written = 0
     with temporary.open("wb") as target:
         for path in paths:
-            with path.open("rb") as source:
+            with _open_binary(path) as source:
                 for line in source:
                     start = line.find(marker)
                     if start < 0 or not line.endswith(b"\n"):

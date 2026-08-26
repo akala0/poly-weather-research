@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from poly_weather.archive_io import jsonl_archive_paths, open_jsonl_text
 from poly_weather.execution_cost import estimate_fill_price
 from poly_weather.polymarket_status import (
     load_quality_windows,
@@ -253,11 +254,9 @@ def archived_liquidity_rows_from_jsonl(
     )
     checkpoint_root = data_dir / "raw" / "polymarket_book_checkpoints"
     full_archive_root = data_dir / "raw" / "polymarket_clob_websocket"
-    archive_root = (
-        checkpoint_root if any(checkpoint_root.glob("*/events.jsonl")) else full_archive_root
-    )
-    for path in sorted(archive_root.glob("*/events.jsonl")):
-        with path.open("r", encoding="utf-8") as handle:
+    archive_root = checkpoint_root if jsonl_archive_paths(checkpoint_root) else full_archive_root
+    for path in jsonl_archive_paths(archive_root):
+        with open_jsonl_text(path) as handle:
             for line in handle:
                 try:
                     record = json.loads(line)
