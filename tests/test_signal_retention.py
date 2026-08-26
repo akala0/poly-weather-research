@@ -14,7 +14,10 @@ from poly_weather.signal_migration import (
     migrate_signal_snapshots_from_jsonl,
     verify_sample_reconstruction,
 )
-from poly_weather.signal_schema import LegacySignalSchemaError
+from poly_weather.signal_schema import (
+    LegacySignalSchemaError,
+    create_normalized_signal_schema,
+)
 from poly_weather.temperature import celsius_to_fahrenheit, round_whole_degree
 
 
@@ -181,6 +184,47 @@ def test_normalized_writer_uses_native_columns_and_archive_precision(tmp_path) -
     assert row == original
 
 
+def test_writer_uses_column_names_after_v2_fee_column_migration(tmp_path) -> None:
+    """ALTER-added fee columns may be physically last in an existing v2 DB."""
+    with ResearchWarehouse(tmp_path / "signals.duckdb") as warehouse:
+        connection = warehouse.connection
+        connection.execute("DROP INDEX signal_bucket_market_time_idx")
+        columns = [
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info('signal_bucket_observations')"
+            ).fetchall()
+            if "taker_fee" not in row[1]
+        ]
+        connection.execute(
+            "CREATE TABLE signal_bucket_v2 AS SELECT "
+            + ",".join(columns)
+            + " FROM signal_bucket_observations"
+        )
+        connection.execute("DROP TABLE signal_bucket_observations")
+        connection.execute(
+            "ALTER TABLE signal_bucket_v2 RENAME TO signal_bucket_observations"
+        )
+        connection.execute(
+            "CREATE UNIQUE INDEX signal_bucket_pk_simulation "
+            "ON signal_bucket_observations(snapshot_id, market_id)"
+        )
+        create_normalized_signal_schema(connection)
+
+        assert warehouse.append_signal_snapshots([_snapshot()]) == 1
+        stored = connection.execute(
+            """
+            SELECT margin_tier, eliminated, yes_taker_fee_per_share,
+                   taker_fee_per_share_no_50
+            FROM signal_bucket_observations
+            """
+        ).fetchone()
+        assert stored == (
+            "-3..-2F",
+            False,
+            Decimal("0.00586"),
+            Decimal("0.00499"),
+        )
 def test_archive_quantization_does_not_change_settlement_rounding_path(tmp_path) -> None:
     row = _snapshot()
     source_c = Decimal("25.55")

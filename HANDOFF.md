@@ -1,6 +1,6 @@
 # Poly Weather 开发交接说明
 
-更新日期：2026-08-24
+更新日期：2026-08-26
 
 结算 registry 的 CLI 默认路径已改为 `configs/settlements.json`；
 `configs/settlements.example.json` 暂时保留相同内容以兼容旧脚本和已有调用。
@@ -53,6 +53,40 @@ P0 验证确认 Previous Runs `lead_days=0` 含目标日内模型更新，不能
 5. Wunderground 最终结算差异审计：实时信号使用同机场 NOAA 数据，但最终仍应记录官方页面值并比较差异。
 6. 告警渠道、服务管理、开机自启、进程自动拉起与磁盘保留策略。
 7. 真实资金执行明确不在当前范围内。
+
+## 已知缺口：天气 HTTP 连接池仍靠 containment
+
+天气进程的 httpx/httpcore 池计数泄漏**尚未根治**。长时实测确认：
+httpcore 记录的连接数会在连接错误后高于进程真实 TCP 连接数；此前 5.198 小时内差值单调升至 21，
+而等待队列始终为 0。控制流检查同时推翻了“外层 `asyncio.wait_for` 取消请求”这个最初假设。
+
+当前措施是 containment，不得写成“已修复”：请求并发受限；每 60 秒记录池/TCP 双口径；
+差值达到 10 会标记 `degraded`，连续 3 个采样达到阈值时，在所有请求槽排空后重建 HTTP client。
+`weather_daemon_status.json` 的 `http_pool_health.rebuild_count`、`last_rebuild_at` 和
+`last_rebuild_reason` 必须持续可观测。2026-08-26 已实际触发过 1 次自愈：差值 18 连续 3 个样本。
+
+环境使用 httpx 0.28.1 / httpcore 1.0.9。上游已知存在相同故障家族：连接错误可毒化池，
+以及代理 CONNECT/TLS 失败留下不可复用的 zombie connection。相关 httpcore 修复截至本说明仍在审查中：
+
+- https://github.com/encode/httpcore/issues/550
+- https://github.com/encode/httpcore/pull/1071
+- https://github.com/encode/httpcore/pull/1084
+
+这与本项目使用 `AsyncHTTPProxy` 且泄漏紧随连接错误的证据高度一致，但尚不能证明是完全相同的上游路径。
+不要关闭诊断或自愈，也不要仅靠扩大 `max_connections`。待上游发布修复后，应先在隔离环境升级并重跑超过 5 小时的对照验证。
+
+## 季节化 warming_window_no 状态
+
+`warming_window_no` 的阈值由 `configs/warming_window_no_thresholds.json` 提供，结构是
+`station_id -> seasons[]`。当前只启用了每站第 1 个实例 `heat_2026`；窗口首尾日均包含。
+窗口外、窗口重叠、站点缺配置或时间档无验证规则时一律 fail-closed，绝不能借用邻季阈值。
+ZUCK/ZUUU 因每天约 24 条观测且 METAR T 组覆盖为 0，当前季节仍禁用。
+
+前向样本必须记录 `warming_season_id` 与 `warming_threshold_version`，按季节独立计算 Wilson 区间；
+30 个已结算样本的门槛也是每季独立。当前历史前向样本全部来自 8 月，只能验证 `heat_2026`。
+将来若扩展全年，约需 30 x 4 = 120 个季节样本。新增下一季的固定流程是：提出气候机制候选窗口、
+逐月同质性检验、推导“余量 x 距高点时间”联合阈值、追加季节配置、独立前向验证；
+信号引擎不应为新季节改代码。非热季诊断已写入 `data/warming_window_threshold_report.md`，但尚未启用。
 
 ## 新电脑安装
 

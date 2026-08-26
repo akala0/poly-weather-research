@@ -273,11 +273,43 @@ class MarketWebSocketBot:
         self.sequence = 0
         self.status_path = data_dir / "runtime" / "polymarket_ws_status.json"
         self.reconnect_log_path = data_dir / "runtime" / "polymarket_ws_reconnects.jsonl"
+        self._initialize_reconnect_log()
         self.sink = MarketStreamSink(data_dir=data_dir, run_id=self.run_id)
         self.last_database_maintenance = time.monotonic()
         self.last_disk_status_at = 0.0
         self.disk_status_cache: dict[str, Any] = {}
         self.reconnect_failures: deque[tuple[float, str]] = deque(maxlen=100)
+
+    def _initialize_reconnect_log(self) -> None:
+        """Make forensic logging visible and preserve unattributed legacy counts."""
+        self.reconnect_log_path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.reconnect_log_path.exists() and self.status_path.exists():
+            try:
+                previous = json.loads(self.status_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                previous = {}
+            reconnects = int(previous.get("reconnects") or 0)
+            if reconnects > 0:
+                legacy = {
+                    "record_type": "legacy_unattributed_summary",
+                    "observed_at": datetime.now(UTC).isoformat(),
+                    "previous_run_id": previous.get("run_id"),
+                    "reconnect_count": reconnects,
+                    "previous_started_at": previous.get("started_at"),
+                    "previous_last_event_at": previous.get("last_event_at"),
+                    "reason": (
+                        "unrecoverable: previous runtime retained only transient "
+                        "last_error and did not persist per-reconnect causes"
+                    ),
+                }
+                with self.reconnect_log_path.open(
+                    "a", encoding="utf-8", newline="\n"
+                ) as handle:
+                    handle.write(
+                        json.dumps(legacy, ensure_ascii=False, separators=(",", ":"))
+                    )
+                    handle.write("\n")
+        self.reconnect_log_path.touch(exist_ok=True)
 
     async def subscribe_assets(
         self,

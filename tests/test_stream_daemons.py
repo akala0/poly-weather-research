@@ -247,6 +247,44 @@ def test_reconnect_loop_window_excludes_old_identical_failures(tmp_path) -> None
         bot.sink.close()
 
 
+def test_market_reconnect_log_preserves_unattributed_legacy_count(tmp_path) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir(parents=True)
+    (runtime / "polymarket_ws_status.json").write_text(
+        json.dumps(
+            {
+                "run_id": "old-run",
+                "started_at": "2026-08-25T00:00:00+00:00",
+                "last_event_at": "2026-08-25T01:00:00+00:00",
+                "reconnects": 28,
+            }
+        ),
+        encoding="utf-8",
+    )
+    bot = MarketWebSocketBot(asset_slugs={"yes": "bucket:Yes"}, data_dir=tmp_path)
+    try:
+        rows = [
+            json.loads(line)
+            for line in bot.reconnect_log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        assert rows == [
+            {
+                "record_type": "legacy_unattributed_summary",
+                "observed_at": rows[0]["observed_at"],
+                "previous_run_id": "old-run",
+                "reconnect_count": 28,
+                "previous_started_at": "2026-08-25T00:00:00+00:00",
+                "previous_last_event_at": "2026-08-25T01:00:00+00:00",
+                "reason": (
+                    "unrecoverable: previous runtime retained only transient "
+                    "last_error and did not persist per-reconnect causes"
+                ),
+            }
+        ]
+    finally:
+        bot.sink.close()
+
+
 def test_weather_daemon_fetches_normalized_noaa_and_aviation_events(tmp_path) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.host == "api.weather.gov":
