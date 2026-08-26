@@ -12,7 +12,12 @@ from poly_weather.market_stream import (
     EventArchivePolicy,
     MarketWebSocketBot,
 )
-from poly_weather.weather_stream import WeatherDaemon, WeatherStation
+from poly_weather.weather_stream import (
+    HTTP_POOL_ACCOUNTING_GAP_DEGRADED_THRESHOLD,
+    WeatherDaemon,
+    WeatherStation,
+    _http_pool_diagnostics,
+)
 
 
 def test_book_state_replaces_and_applies_level_changes() -> None:
@@ -205,6 +210,19 @@ def test_repeated_message_too_big_failures_latch_explicit_fault(tmp_path) -> Non
         assert bot.metrics.state == "faulted_message_too_big"
         assert bot.metrics.same_error_reconnects_5m == 5
         assert bot.metrics.deterministic_reconnect_fault == "message_too_big"
+        assert [row["reconnect_number"] for row in bot.metrics.reconnect_history] == [
+            1,
+            2,
+            3,
+            4,
+            5,
+        ]
+        persisted = [
+            json.loads(line)
+            for line in bot.reconnect_log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        assert persisted[-1]["error"] == error
+        assert persisted[-1]["asset_count"] == 1
 
         # A TCP/WebSocket handshake alone must not clear a deterministic fault;
         # only a successfully received market-data frame does.
@@ -212,6 +230,8 @@ def test_repeated_message_too_big_failures_latch_explicit_fault(tmp_path) -> Non
         assert bot.metrics.state == "connected"
         assert bot.metrics.same_error_reconnects_5m == 0
         assert bot.metrics.deterministic_reconnect_fault is None
+        # A healthy frame clears only the active fault, never the forensic log.
+        assert len(bot.metrics.reconnect_history) == 5
     finally:
         bot.sink.close()
 
@@ -457,3 +477,80 @@ def test_weather_status_reports_degraded_and_stalled(tmp_path) -> None:
         assert status["base_state"] == "running"
     finally:
         daemon.sink.close()
+
+
+def test_weather_http_pool_diagnostics_include_proxy_mounts() -> None:
+    async def inspect_client() -> dict[str, object]:
+        async with httpx.AsyncClient(
+            limits=httpx.Limits(max_connections=80, max_keepalive_connections=40)
+        ) as client:
+            return _http_pool_diagnostics(client)
+
+    diagnostics = asyncio.run(inspect_client())
+    assert diagnostics["supported"] is True
+    pools = diagnostics["pools"]
+    assert isinstance(pools, list)
+    assert pools
+    assert all("requests_queued" in pool for pool in pools)
+    assert all("connections_connecting" in pool for pool in pools)
+
+
+def test_weather_pool_accounting_gap_marks_running_daemon_degraded(tmp_path) -> None:
+    daemon = WeatherDaemon(station_id="KLGA", data_dir=tmp_path)
+    try:
+        now = datetime.now(UTC).isoformat()
+        daemon.metrics.state = "running"
+        daemon.metrics.requests = 10
+        daemon.metrics.last_successful_request_at = now
+        daemon.metrics.last_new_observation_at = now
+        daemon.http_pool_health = {
+            "sampled_at": now,
+            "pool": {"connections_total": 12},
+            "process_tcp": {"established": 2},
+            "connection_accounting_gap": HTTP_POOL_ACCOUNTING_GAP_DEGRADED_THRESHOLD,
+        }
+        daemon._write_status()
+        status = json.loads(daemon.status_path.read_text(encoding="utf-8"))
+        assert status["state"] == "degraded"
+        assert status["base_state"] == "running"
+        assert status["http_pool_health"]["connection_accounting_gap"] == 10
+    finally:
+        daemon.sink.close()
+
+
+def test_weather_http_client_uses_explicit_timeouts() -> None:
+    client = WeatherDaemon._new_http_client()
+    try:
+        assert client.timeout.connect == 10
+        assert client.timeout.read == 30
+        assert client.timeout.write == 30
+        assert client.timeout.pool == 30
+    finally:
+        asyncio.run(client.aclose())
+
+
+def test_weather_pool_rebuild_swaps_client_after_requests_drain(
+    tmp_path, monkeypatch
+) -> None:
+    async def rebuild() -> None:
+        daemon = WeatherDaemon(station_id="KLGA", data_dir=tmp_path)
+        old = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200)))
+        new = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200)))
+        daemon.http_client = old
+        daemon.wrh_client = WrhTimeseriesClient(old)
+        monkeypatch.setattr(daemon, "_new_http_client", lambda: new)
+        try:
+            await daemon._rebuild_http_client(reason="test accounting gap")
+            assert old.is_closed
+            assert daemon.http_client is new
+            assert daemon.wrh_client is not None
+            assert daemon.wrh_client.client is new
+            assert daemon.http_pool_rebuild_count == 1
+            assert daemon.last_http_pool_rebuild_reason == "test accounting gap"
+        finally:
+            await new.aclose()
+            daemon.http_client = None
+            daemon.wrh_client = None
+            daemon.sink.close()
+
+    asyncio.run(rebuild())

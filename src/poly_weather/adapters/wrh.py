@@ -49,8 +49,11 @@ class WrhTimeseriesClient:
             if self._token is not None:
                 return self._token
             response = await self.client.get("https://www.weather.gov/source/wrh/apiKey.js")
-            response.raise_for_status()
-            match = _TOKEN.search(response.text)
+            try:
+                response.raise_for_status()
+                match = _TOKEN.search(response.text)
+            finally:
+                await response.aclose()
             if match is None:
                 raise ValueError("weather.gov WRH public Synoptic token not found")
             self._token = match.group("token")
@@ -125,9 +128,12 @@ class WrhTimeseriesClient:
                 "obtimezone": "utc",
             },
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+            payload = response.json()
+        finally:
+            await response.aclose()
         self._primed_stations.add(normalized_station)
-        payload = response.json()
         if not isinstance(payload, dict):
             raise ValueError(f"WRH returned a non-object payload for {station_id}")
         usable = self._observations(
@@ -176,8 +182,11 @@ class WrhTimeseriesClient:
                 "obtimezone": "utc",
             },
         )
-        response.raise_for_status()
-        payload = response.json()
+        try:
+            response.raise_for_status()
+            payload = response.json()
+        finally:
+            await response.aclose()
         if not isinstance(payload, dict):
             raise ValueError(f"WRH returned a non-object payload for {station_id}")
         observations = self._observations(

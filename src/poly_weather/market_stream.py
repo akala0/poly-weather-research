@@ -114,6 +114,7 @@ class StreamMetrics:
     last_error_fingerprint: str | None = None
     same_error_reconnects_5m: int = 0
     deterministic_reconnect_fault: str | None = None
+    reconnect_history: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -271,6 +272,7 @@ class MarketWebSocketBot:
         }
         self.sequence = 0
         self.status_path = data_dir / "runtime" / "polymarket_ws_status.json"
+        self.reconnect_log_path = data_dir / "runtime" / "polymarket_ws_reconnects.jsonl"
         self.sink = MarketStreamSink(data_dir=data_dir, run_id=self.run_id)
         self.last_database_maintenance = time.monotonic()
         self.last_disk_status_at = 0.0
@@ -419,6 +421,23 @@ class MarketWebSocketBot:
         self.metrics.last_error = error
         self.metrics.last_error_fingerprint = error
         self.metrics.reconnects += 1
+        reconnect_event = {
+            "run_id": self.run_id,
+            "observed_at": datetime.now(UTC).isoformat(),
+            "error": error,
+            "reconnect_number": self.metrics.reconnects,
+            "successful_connections": self.metrics.connections,
+            "asset_count": len(self.asset_slugs),
+            "event_count": len(self.event_counts),
+        }
+        self.metrics.reconnect_history.append(reconnect_event)
+        self.metrics.reconnect_history[:] = self.metrics.reconnect_history[-100:]
+        self.reconnect_log_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.reconnect_log_path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(
+                json.dumps(reconnect_event, ensure_ascii=False, separators=(",", ":"))
+            )
+            handle.write("\n")
         self.reconnect_failures.append((now, error))
         cutoff = now - RECONNECT_LOOP_WINDOW_SECONDS
         while self.reconnect_failures and self.reconnect_failures[0][0] < cutoff:
@@ -821,6 +840,7 @@ class MarketWebSocketBot:
             "max_message_size_bytes": self.max_message_size_bytes,
             "reconnect_loop_window_seconds": RECONNECT_LOOP_WINDOW_SECONDS,
             "reconnect_loop_threshold": RECONNECT_LOOP_THRESHOLD,
+            "reconnect_log_path": str(self.reconnect_log_path.resolve()),
             "read_only": True,
             "retention": {
                 "raw_market_days": 30,

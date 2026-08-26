@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import subprocess
 import time
 from collections import deque
 from collections.abc import Awaitable, Callable, Mapping, Sequence
@@ -25,6 +26,146 @@ from poly_weather.modeling import DEFAULT_MULTI_MODEL_WEIGHTS, blend_multi_model
 from poly_weather.research_store import ResearchWarehouse
 from poly_weather.temperature import fahrenheit_to_celsius
 from poly_weather.weather_provenance import REALTIME, CollectionMode
+
+HTTP_POOL_DIAGNOSTIC_INTERVAL_SECONDS = 30.0
+HTTP_POOL_ACCOUNTING_GAP_DEGRADED_THRESHOLD = 10
+HTTP_POOL_REBUILD_CONSECUTIVE_SAMPLES = 3
+HTTP_REQUEST_CONCURRENCY = 20
+
+
+def _process_tcp_connections(pid: int) -> dict[str, Any]:
+    """Count this process' TCP endpoints without adding a psutil dependency.
+
+    Windows is the production runtime. ``netstat`` is sampled off the event loop
+    by the diagnostics heartbeat, so this command cannot delay weather fetches.
+    """
+    if os.name != "nt":
+        return {
+            "supported": False,
+            "reason": f"TCP process accounting is not implemented for {os.name}",
+        }
+    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        completed = subprocess.run(
+            ["netstat", "-ano", "-p", "tcp"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            creationflags=creation_flags,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return {"supported": False, "reason": f"{type(exc).__name__}: {exc}"}
+
+    states: dict[str, int] = {}
+    total = 0
+    external = 0
+    established = 0
+    for line in completed.stdout.splitlines():
+        parts = line.split()
+        if len(parts) < 5 or parts[0].upper() != "TCP" or parts[-1] != str(pid):
+            continue
+        total += 1
+        state = parts[-2].upper()
+        states[state] = states.get(state, 0) + 1
+        if state == "ESTABLISHED":
+            established += 1
+        remote = parts[2].casefold()
+        is_loopback = remote.startswith("127.") or remote.startswith("[::1]")
+        is_unconnected = remote.startswith("0.0.0.0:") or remote.startswith("[::]:")
+        if not is_loopback and not is_unconnected:
+            external += 1
+    return {
+        "supported": True,
+        "total": total,
+        "established": established,
+        "external": external,
+        "states": states,
+    }
+
+
+def _http_pool_diagnostics(client: httpx.AsyncClient | None) -> dict[str, Any]:
+    """Snapshot all httpcore pools, including environment-proxy mounts.
+
+    This deliberately tolerates httpx/httpcore private-attribute drift. Losing
+    diagnostics must never take down the read-only weather collector.
+    """
+    if client is None:
+        return {"supported": False, "reason": "HTTP client not initialized"}
+    try:
+        transports: list[tuple[str, Any]] = [("default", client._transport)]  # noqa: SLF001
+        for pattern, transport in client._mounts.items():  # noqa: SLF001
+            if transport is not None:
+                transports.append((str(pattern.pattern), transport))
+        seen: set[int] = set()
+        pools: list[dict[str, Any]] = []
+        for name, transport in transports:
+            if id(transport) in seen:
+                continue
+            seen.add(id(transport))
+            pool = getattr(transport, "_pool", None)
+            connections = list(getattr(pool, "_connections", ()))
+            requests = list(getattr(pool, "_requests", ()))
+            infos: dict[str, int] = {}
+            idle = available = closed = active = 0
+            for connection in connections:
+                try:
+                    is_idle = bool(connection.is_idle())
+                    is_available = bool(connection.is_available())
+                    is_closed = bool(connection.is_closed())
+                    idle += is_idle
+                    available += is_available
+                    closed += is_closed
+                    active += not is_idle and not is_closed
+                    info = str(connection.info())
+                except Exception as exc:  # diagnostics only; private API may change
+                    info = f"diagnostic-error:{type(exc).__name__}"
+                state = (
+                    "connecting"
+                    if info == "CONNECTING"
+                    else "failed"
+                    if info == "CONNECTION FAILED"
+                    else "other"
+                )
+                infos[state] = infos.get(state, 0) + 1
+            queued = sum(
+                bool(request.is_queued())
+                for request in requests
+                if callable(getattr(request, "is_queued", None))
+            )
+            pools.append(
+                {
+                    "name": name,
+                    "pool_type": type(pool).__name__ if pool is not None else None,
+                    "max_connections": getattr(pool, "_max_connections", None),
+                    "max_keepalive_connections": getattr(
+                        pool, "_max_keepalive_connections", None
+                    ),
+                    "connections_total": len(connections),
+                    "connections_idle": idle,
+                    "connections_in_use": active,
+                    "connections_available": available,
+                    "connections_closed": closed,
+                    "connections_connecting": infos.get("connecting", 0),
+                    "connections_failed": infos.get("failed", 0),
+                    "requests_total": len(requests),
+                    "requests_queued": queued,
+                    "requests_assigned": len(requests) - queued,
+                }
+            )
+        return {
+            "supported": True,
+            "proxy_mounts_present": any(row["pool_type"] == "AsyncHTTPProxy" for row in pools),
+            "pools": pools,
+            "connections_total": sum(row["connections_total"] for row in pools),
+            "connections_idle": sum(row["connections_idle"] for row in pools),
+            "connections_in_use": sum(row["connections_in_use"] for row in pools),
+            "connections_connecting": sum(row["connections_connecting"] for row in pools),
+            "requests_total": sum(row["requests_total"] for row in pools),
+            "requests_queued": sum(row["requests_queued"] for row in pools),
+        }
+    except Exception as exc:  # diagnostics only; private API may change
+        return {"supported": False, "reason": f"{type(exc).__name__}: {exc}"}
 
 
 @dataclass(slots=True)
@@ -226,7 +367,48 @@ class WeatherDaemon:
             for item in self.stations
         }
         self.status_path = data_dir / "runtime" / "weather_daemon_status.json"
+        self.pool_samples_path = data_dir / "runtime" / "weather_http_pool_samples.jsonl"
+        self.http_client: httpx.AsyncClient | None = None
+        self.wrh_client: WrhTimeseriesClient | None = None
+        self.http_request_slots = asyncio.Semaphore(HTTP_REQUEST_CONCURRENCY)
+        self.http_pool_gap_consecutive_samples = 0
+        self.http_pool_rebuild_count = 0
+        self.last_http_pool_rebuild_at: str | None = None
+        self.last_http_pool_rebuild_reason: str | None = None
+        self.http_pool_health: dict[str, Any] = {
+            "sampled_at": None,
+            "pool": {"supported": False, "reason": "not sampled"},
+            "process_tcp": {"supported": False, "reason": "not sampled"},
+            "connection_accounting_gap": None,
+        }
         self.sink = WeatherStreamSink(data_dir=data_dir, run_id=self.run_id)
+
+    @staticmethod
+    def _new_http_client() -> httpx.AsyncClient:
+        # Keep all four timeout phases explicit. Requests are never wrapped in
+        # an outer wait_for; httpx owns timeout/finally semantics end-to-end.
+        timeout = httpx.Timeout(connect=10, read=30, write=30, pool=30)
+        limits = httpx.Limits(max_connections=80, max_keepalive_connections=40)
+        return httpx.AsyncClient(
+            timeout=timeout,
+            limits=limits,
+            headers={
+                "User-Agent": "poly-weather/0.1 (research; read-only)",
+                "Accept": "application/json, application/geo+json",
+            },
+            follow_redirects=True,
+            http2=False,
+        )
+
+    def _require_http_client(self) -> httpx.AsyncClient:
+        if self.http_client is None:
+            raise RuntimeError("weather HTTP client is not initialized")
+        return self.http_client
+
+    def _require_wrh_client(self) -> WrhTimeseriesClient:
+        if self.wrh_client is None:
+            raise RuntimeError("WRH client is not initialized")
+        return self.wrh_client
 
     def intervals_for_station(self, station: WeatherStation) -> dict[str, float]:
         """Return the fixed realtime schedule selected for one station."""
@@ -255,22 +437,9 @@ class WeatherDaemon:
             started_at=datetime.now(UTC),
             station_id=",".join(station.station_id for station in self.stations),
         )
-        timeout = httpx.Timeout(30, connect=10, pool=30)
-        # Ten stations can schedule WRH, NWS, METAR, TAF, and forecast fetches
-        # together at startup. Keep the client pool above that deterministic burst.
-        limits = httpx.Limits(max_connections=80, max_keepalive_connections=40)
-        headers = {
-            "User-Agent": "poly-weather/0.1 (research; read-only)",
-            "Accept": "application/json, application/geo+json",
-        }
-        async with httpx.AsyncClient(
-            timeout=timeout,
-            limits=limits,
-            headers=headers,
-            follow_redirects=True,
-            http2=False,
-        ) as client:
-            wrh = WrhTimeseriesClient(client)
+        self.http_client = self._new_http_client()
+        self.wrh_client = WrhTimeseriesClient(self.http_client)
+        try:
             workers = []
             for station in self.stations:
                 intervals = self.intervals_for_station(station)
@@ -280,7 +449,9 @@ class WeatherDaemon:
                             name="wrh_timeseries_observation",
                             station_id=station.station_id,
                             interval=intervals["wrh_timeseries_observation"],
-                            fetch=lambda station=station: self._fetch_wrh(wrh, station),
+                            fetch=lambda station=station: self._fetch_wrh(
+                                self._require_wrh_client(), station
+                            ),
                         )
                     )
                 )
@@ -291,7 +462,9 @@ class WeatherDaemon:
                                 name="nws",
                                 station_id=station.station_id,
                                 interval=intervals["nws"],
-                                fetch=lambda station=station: self._fetch_nws(client, station),
+                                fetch=lambda station=station: self._fetch_nws(
+                                    self._require_http_client(), station
+                                ),
                             )
                         )
                     )
@@ -302,7 +475,9 @@ class WeatherDaemon:
                                 name="metar",
                                 station_id=station.station_id,
                                 interval=intervals["metar"],
-                                fetch=lambda station=station: self._fetch_metar(client, station),
+                                fetch=lambda station=station: self._fetch_metar(
+                                    self._require_http_client(), station
+                                ),
                             )
                         ),
                         asyncio.create_task(
@@ -310,7 +485,9 @@ class WeatherDaemon:
                                 name="taf",
                                 station_id=station.station_id,
                                 interval=intervals["taf"],
-                                fetch=lambda station=station: self._fetch_taf(client, station),
+                                fetch=lambda station=station: self._fetch_taf(
+                                    self._require_http_client(), station
+                                ),
                             )
                         ),
                     )
@@ -328,13 +505,14 @@ class WeatherDaemon:
                                 station_id=station.station_id,
                                 interval=intervals["multi_model_deterministic_forecast"],
                                 fetch=lambda station=station: self._fetch_multi_model(
-                                    client, station
+                                    self._require_http_client(), station
                                 ),
                             )
                         )
                     )
             writer = asyncio.create_task(self._writer())
             status_heartbeat = asyncio.create_task(self._status_heartbeat())
+            pool_heartbeat = asyncio.create_task(self._http_pool_diagnostics_heartbeat())
             timer = (
                 asyncio.create_task(self._stop_after(runtime_seconds))
                 if runtime_seconds > 0
@@ -354,6 +532,8 @@ class WeatherDaemon:
                 writer_result = await asyncio.gather(writer, return_exceptions=True)
                 status_heartbeat.cancel()
                 await asyncio.gather(status_heartbeat, return_exceptions=True)
+                pool_heartbeat.cancel()
+                await asyncio.gather(pool_heartbeat, return_exceptions=True)
                 writer_errors = [
                     result for result in writer_result if isinstance(result, BaseException)
                 ]
@@ -367,6 +547,12 @@ class WeatherDaemon:
                 self.sink.close()
                 if writer_errors:
                     raise RuntimeError("weather stream writer failed") from writer_errors[0]
+        finally:
+            client = self.http_client
+            self.http_client = None
+            self.wrh_client = None
+            if client is not None:
+                await client.aclose()
         return self.metrics
 
     async def _stop_after(self, seconds: float) -> None:
@@ -401,7 +587,8 @@ class WeatherDaemon:
                     },
                 )
                 product_metrics["requests"] += 1
-                event = await fetch()
+                async with self.http_request_slots:
+                    event = await fetch()
                 now_iso = datetime.now(UTC).isoformat()
                 self.request_outcomes.append((time.monotonic(), True))
                 self.metrics.last_successful_request_at = now_iso
@@ -486,8 +673,11 @@ class WeatherDaemon:
         response = await client.get(
             f"https://api.weather.gov/stations/{station.station_id}/observations/latest"
         )
-        response.raise_for_status()
-        payload = response.json()
+        try:
+            response.raise_for_status()
+            payload = response.json()
+        finally:
+            await response.aclose()
         properties = payload["properties"]
         source_time = datetime.fromisoformat(str(properties["timestamp"]).replace("Z", "+00:00"))
         temperature = properties.get("temperature") or {}
@@ -545,10 +735,13 @@ class WeatherDaemon:
             "https://aviationweather.gov/api/data/metar",
             params={"ids": station.station_id, "format": "json", "hours": 2},
         )
-        if response.status_code == 204:
-            return None
-        response.raise_for_status()
-        payload = response.json()
+        try:
+            if response.status_code == 204:
+                return None
+            response.raise_for_status()
+            payload = response.json()
+        finally:
+            await response.aclose()
         if not isinstance(payload, list) or not payload:
             return None
         latest = max(payload, key=lambda row: int(row["obsTime"]))
@@ -577,10 +770,13 @@ class WeatherDaemon:
             "https://aviationweather.gov/api/data/taf",
             params={"ids": station.station_id, "format": "json"},
         )
-        if response.status_code == 204:
-            return None
-        response.raise_for_status()
-        payload = response.json()
+        try:
+            if response.status_code == 204:
+                return None
+            response.raise_for_status()
+            payload = response.json()
+        finally:
+            await response.aclose()
         if not isinstance(payload, list) or not payload:
             return None
         latest = max(
@@ -613,8 +809,11 @@ class WeatherDaemon:
                 "forecast_days": 2,
             },
         )
-        response.raise_for_status()
-        payload = response.json()
+        try:
+            response.raise_for_status()
+            payload = response.json()
+        finally:
+            await response.aclose()
         if not isinstance(payload, dict):
             raise ValueError("multi-model deterministic response is not an object")
         forecasts = parse_multi_model_forecasts(
@@ -741,6 +940,92 @@ class WeatherDaemon:
             except TimeoutError:
                 pass
 
+    async def _http_pool_diagnostics_heartbeat(self) -> None:
+        while not self.stop_event.is_set():
+            pool = _http_pool_diagnostics(self.http_client)
+            process_tcp = await asyncio.to_thread(_process_tcp_connections, os.getpid())
+            pool_total = pool.get("connections_total")
+            tcp_established = process_tcp.get("established")
+            gap = (
+                int(pool_total) - int(tcp_established)
+                if isinstance(pool_total, int) and isinstance(tcp_established, int)
+                else None
+            )
+            sampled_at = datetime.now(UTC).isoformat()
+            self.http_pool_health = {
+                "sampled_at": sampled_at,
+                "pool": pool,
+                "process_tcp": process_tcp,
+                "connection_accounting_gap": gap,
+                "gap_consecutive_samples": self.http_pool_gap_consecutive_samples,
+                "rebuild_count": self.http_pool_rebuild_count,
+                "last_rebuild_at": self.last_http_pool_rebuild_at,
+                "last_rebuild_reason": self.last_http_pool_rebuild_reason,
+            }
+            if isinstance(gap, int) and gap >= HTTP_POOL_ACCOUNTING_GAP_DEGRADED_THRESHOLD:
+                self.http_pool_gap_consecutive_samples += 1
+            else:
+                self.http_pool_gap_consecutive_samples = 0
+            self.http_pool_health["gap_consecutive_samples"] = (
+                self.http_pool_gap_consecutive_samples
+            )
+            self.pool_samples_path.parent.mkdir(parents=True, exist_ok=True)
+            sample = {
+                "run_id": self.run_id,
+                **self.http_pool_health,
+                "requests": self.metrics.requests,
+                "errors": self.metrics.errors,
+                "last_error": self.metrics.last_error,
+            }
+            await asyncio.to_thread(self._append_pool_sample, sample)
+            self._write_status()
+            if (
+                self.http_pool_gap_consecutive_samples
+                >= HTTP_POOL_REBUILD_CONSECUTIVE_SAMPLES
+            ):
+                await self._rebuild_http_client(
+                    reason=(
+                        "httpcore/process TCP accounting gap remained at "
+                        f"{gap} for {self.http_pool_gap_consecutive_samples} samples"
+                    )
+                )
+            await self._wait(HTTP_POOL_DIAGNOSTIC_INTERVAL_SECONDS)
+
+    async def _rebuild_http_client(self, *, reason: str) -> None:
+        """Replace a poisoned httpcore proxy pool after active requests drain."""
+        acquired = 0
+        try:
+            for _ in range(HTTP_REQUEST_CONCURRENCY):
+                await self.http_request_slots.acquire()
+                acquired += 1
+            old_client = self.http_client
+            new_client = self._new_http_client()
+            self.http_client = new_client
+            self.wrh_client = WrhTimeseriesClient(new_client)
+            if old_client is not None:
+                await old_client.aclose()
+            self.http_pool_rebuild_count += 1
+            self.http_pool_gap_consecutive_samples = 0
+            self.last_http_pool_rebuild_at = datetime.now(UTC).isoformat()
+            self.last_http_pool_rebuild_reason = reason
+            self.http_pool_health.update(
+                {
+                    "rebuild_count": self.http_pool_rebuild_count,
+                    "last_rebuild_at": self.last_http_pool_rebuild_at,
+                    "last_rebuild_reason": reason,
+                    "gap_consecutive_samples": 0,
+                }
+            )
+            self._write_status()
+        finally:
+            for _ in range(acquired):
+                self.http_request_slots.release()
+
+    def _append_pool_sample(self, sample: dict[str, Any]) -> None:
+        with self.pool_samples_path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(sample, ensure_ascii=False, separators=(",", ":")))
+            handle.write("\n")
+
     def _write_status(self) -> None:
         self.status_path.parent.mkdir(parents=True, exist_ok=True)
         now_monotonic = time.monotonic()
@@ -773,6 +1058,13 @@ class WeatherDaemon:
                 effective_state = "stalled"
             elif len(recent) >= 10 and recent_error_rate >= 0.25:
                 effective_state = "degraded"
+            accounting_gap = self.http_pool_health.get("connection_accounting_gap")
+            if (
+                effective_state == "running"
+                and isinstance(accounting_gap, int)
+                and accounting_gap >= HTTP_POOL_ACCOUNTING_GAP_DEGRADED_THRESHOLD
+            ):
+                effective_state = "degraded"
         payload = {
             **asdict(self.metrics),
             "state": effective_state,
@@ -796,6 +1088,10 @@ class WeatherDaemon:
                 "forecast": self.forecast_interval_seconds,
             },
             "model_weights_by_station": self.model_weights_by_station,
+            "http_pool_health": self.http_pool_health,
+            "http_pool_accounting_gap_degraded_threshold": (
+                HTTP_POOL_ACCOUNTING_GAP_DEGRADED_THRESHOLD
+            ),
             "queue_depth": self.queue.qsize(),
             "updated_at": datetime.now(UTC).isoformat(),
             "read_only": True,
