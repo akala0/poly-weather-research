@@ -42,6 +42,10 @@ uv run poly-weather stream-status
 uv run poly-weather liquidity-report --source auto
 uv run poly-weather execution-cost-calibration
 uv run poly-weather multi-city-certainty-report --refresh
+uv run poly-weather sync-polymarket-status
+uv run poly-weather audit-polymarket-maintenance
+uv run poly-weather collect-public-trades
+uv run poly-weather analyze-public-trades
 ```
 
 默认实际结算 registry 为 `configs/settlements.json`。原来的
@@ -70,15 +74,19 @@ uv run poly-weather multi-city-certainty-report --refresh
 
 `market-stream` 保存完整初始 `book` 并逐档应用 `price_change`，持续维护准确的内存订单簿。每个事件按结算时区在当地 09:00-20:00 全量落盘；窗口外仍保持连接、心跳和内存更新，但仅保存每小时完整深度及最终 `market_resolved`。原始写盘与数据库写入使用独立队列，不连接需要认证的 user channel。
 
+`market-stream` 还每 5 分钟读取官方状态的实际机器源（summary + Atom 历史），按组件区分 CLOB WebSocket 与其他服务。维护/故障时继续原频率采集，但新归档带 `upstream_status`/incident 标记，运行状态显示 `upstream_maintenance`；历史未带字段的记录由持久化质量窗口在分析时默认排除。状态变化保存在 `data/runtime/polymarket_status_history.jsonl`。
+
 `market-supervisor` 通过 Gamma public-search 发现当天与次日事件，复用 `inspect-settlement` 的严格证据核验。新 token 先热订阅并等待全部初始 book，Gamma 已关闭的旧事件才会退订；失败城市记录差异并 fail-closed，不阻塞其他城市。状态在 `market_supervisor_status.json`，配置变更通知在 `signal_config_update.json`；`signal-engine --supervised` 会校验证据 SHA 后原子热加载每个新 generation。
 
-`weather-stream` 是独立的异步天气守护进程。NWS 最新观测和 AWC METAR 默认每 60 秒读取，TAF 每 10 分钟，Open-Meteo GFS/ICON/GEM deterministic 每 3 小时一次请求。每个站点从 `multi_model_blend` 历史样本学习逆 MAE 权重；历史不足时明确回退等权。事件 `multi_model_deterministic_forecast` 同时保存三套模型序列、权重、blended 序列和原始响应。Open-Meteo 返回网格距请求机场超过 3 km 时立即拒绝该响应。事件批量写入 `data/weather_stream.duckdb` 和 `data/raw/weather_daemon/`。
+`weather-stream` 是独立的异步天气守护进程。实时链路按实测更新节奏轮询：WRH/NWS 120 秒、METAR 900 秒、TAF 3600 秒、中国站 1800 秒、Open-Meteo 10800 秒。每个站点从 `multi_model_blend` 历史样本学习逆 MAE 权重；历史不足时明确回退等权。事件 `multi_model_deterministic_forecast` 同时保存三套模型序列、权重、blended 序列和原始响应。Open-Meteo 返回网格距请求机场超过 3 km 时立即拒绝该响应。事件批量写入 `data/weather_stream.duckdb` 和 `data/raw/weather_daemon/`。
 
 2026-08-24 真实烟测证明单个市场 WebSocket 可同时覆盖美国八城及重庆、成都的当天和次日共 20 个事件、440 个 token：440/440 收到完整 book，0 重连、0 解析错误。Polymarket 文档未给出固定订阅上限，因此当前不引入连接池；运行时指标若持续越界，再按资产拆分。守护进程不调用任何大模型，因此持续监控本身不消耗模型 token。
 
 `signal-engine` 增量跟随两个守护进程的追加式 JSONL，不读取正在写入的流式 DuckDB。它把当日已观测最高温作为硬下界，以最新多模型 blended 日最高温作为均值、无前视多模型校准残差标准差作为离散度生成温度分档概率。除了原有 best-ask 理论边际，每个信号还按完整深度估算 $50/$200/$1000 的 Yes/No 吃单均价、滑点 bps、可成交比例和扣滑点净边际；盘口不完整时不以 best quote 兜底。流事件权重必须与校准权重逐项一致，否则 fail-closed 为 stale。候选净边际超过 15% 会加入 `implausible edge suggests model error`，强制阻止 paper alert。`execution_enabled` 始终为 `false`，不会访问钱包、签名或下单。
 
 `market-stream` 和 `weather-stream` 的 `--runtime 0` 表示持续运行；设置正数可做有限时长烟测。`liquidity-report` 按候选站点时段汇总 spread、$200/$1000 滑点和深度不足比例；热文件运行中读取小型深度检查点侧流，封存数据可用 DuckDB。`execution-cost-calibration` 严格按历史入场/退出截止时刻重放深度，比较 prices-history 的 `p` 代理与真实吃 ask/吃 bid 的偏差。当前 16 笔旧代理交易与 8/22 后深度归档无日期重叠，所以三档仓位均为 N=0，不用假价格补齐。Windows 实例对原始市场 JSONL 目录启用了 NTFS 透明压缩，代码仍读取普通 JSONL；跨平台部署需自行配置等效的压缩和保留策略。`stream-status` 展示 PID、连接、错误、内存队列、数据库队列和落盘计数。
+
+`collect-public-trades` 从免鉴权的 Data API 保存 canonical taker 成交流水；`analyze-public-trades` 对每个 prices-history 点只寻找其时间戳之前的成交，实测陈旧度、NO token 自身成交和 VWAP。成交价绝不是历史 ask/bid，也不能恢复深度；依赖真实入场 ask 或 $200/$1000 滑点的结论继续保持 N/A。
 
 默认实时信号健康闸门为：NWS 数据年龄不超过 75 分钟、METAR 不超过 70 分钟、两源温差不超过 2°F、市场 WebSocket 心跳不超过 1 分钟、天气守护进程心跳不超过 3 分钟、Open-Meteo 网格距离不超过 3 km、候选净边际不超过 15%。主 NOAA、deterministic 预报、守护进程或 CLOB 失效会把信号标记为 `stale`；METAR 交叉检查、盘口不完整或异常边际标记为 `warning`。监测器没有钱包、签名、下单或资金代码路径。
 
@@ -102,6 +110,8 @@ KLGA 2026-07-01 至 2026-07-31 已成功生成 31 条提前一天样本。以最
 - [Polymarket Market WebSocket](https://docs.polymarket.com/api-reference/wss/market)
 - [Polymarket Rate Limits](https://docs.polymarket.com/api-reference/rate-limits)
 - [Polymarket Prices History](https://docs.polymarket.com/api-reference/markets/get-prices-history)
+- [Polymarket Public Trades](https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets)
+- [Polymarket Blockchain Data](https://docs.polymarket.com/resources/blockchain-data)
 
 ## 当前开发顺序
 

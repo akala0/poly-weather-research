@@ -15,7 +15,8 @@
 | Sports WebSocket | `wss://sports-api.polymarket.com/ws` | 无 |
 | RTDS（实时数据） | `wss://ws-live-data.polymarket.com` | 可选 |
 
-本仓库当前只使用 CLOB REST 的公开只读端点（`/batch-prices-history`、`/prices`）和 Market WebSocket，均无需鉴权，与 README 中"不读取钱包、不签名、不下单"的边界一致。
+本仓库当前使用 CLOB REST 的公开只读端点（`/batch-prices-history`、`/prices`）、Data API
+`/trades` 和 Market WebSocket，均无需鉴权，与 README 中“不读取钱包、不签名、不下单”的边界一致。
 
 ## 2. 鉴权（本仓库暂不实现，仅记录供未来参考）
 
@@ -76,13 +77,42 @@ Time-in-force 四种，默认 GTC：
 - （需 `custom_feature_enabled`）`best_bid_ask`：top-of-book + spread + timestamp
 - （需 `custom_feature_enabled`）`new_market` / `market_resolved`
 
-本仓库的实现（"保存初始 book 全量 bids/asks，逐档应用 price_change 维护可精确重放的本地订单簿"）与官方事件语义一致，是正确用法。文档未给出并发订阅上限，与 HANDOFF.md 记录的"8 城市 176 个 token 单连接实测无重连无丢包"一致，暂不需要连接池。
+本仓库的实现（"保存初始 book 全量 bids/asks，逐档应用 price_change 维护可精确重放的本地订单簿"）与官方事件语义一致，是正确用法。文档未给出并发订阅上限，与 HANDOFF.md 记录的"十城当天/次日 440 个 token 单连接完整初始化"一致，暂不需要连接池。
+
+### 6.1 官方状态订阅与维护窗口
+
+`status.polymarket.com` 实际由 Instatus 提供，不是标准 Statuspage。2026-08-26 实测：
+
+- `GET /api/v2/summary.json` 可用，提供全局状态及 active maintenances/incidents；
+- `/api/v2/status.json`、`/api/v2/incidents.json`、`/api/v2/scheduled-maintenances.json` 均返回 404；
+- `/history.atom` 与 `/history.rss` 可用，含组件、更新过程和最终完成时间。
+
+仓库以 summary 判断事件是否仍 active，以 Atom 解析组件和历史窗口；只把影响 `Clob Websocket`
+的窗口标成市场数据降级。状态每 5 分钟轮询一次，变化历史写入本地；维护期间继续采集，不降低频率。
+分析默认排除降级窗口，包括没有显式字段的旧归档记录。
+
+## 6.2 Data API `/trades`
+
+公开 `GET https://data-api.polymarket.com/trades` 支持 `market` 或 `eventId`、`side`、`start`/`end`、
+`limit`、`offset` 与 `takerOnly`。最大 limit/offset 均为 10,000；更深历史应按时间窗切分并重置 offset。
+
+本仓库规范流水使用 `takerOnly=true`。实测 `false` 会同时返回参与者两侧：一笔撮合可能是一方汇总、
+另一方拆成多笔，无法仅凭 transactionHash/price/size 无损去重。每笔撮合必有 taker，因此 taker-only
+足以测量真实成交时间、token 自身价格、成交量和 VWAP，同时避免双计。
+
+严格边界：成交价不是当时 resting ask/bid，也不能恢复完整深度。`/trades` 可以实测 `p` 陈旧度，
+但不能为旧事件补出真实入场成本，依赖历史 ask、spread 或滑点的格子继续保持 N/A。
+
+### 6.3 `orderbook-history` 不可用
+
+未公开的 `/orderbook-history` 约在 2026-02-20 20:00 UTC 停止写入，之后查询返回 HTTP 200、
+`count: 0`。本项目事件均在 8 月，不能从该端点恢复历史深度；禁止据此建设管线。
 
 ## 7. 限流
 
 CLOB 通用：9,000 req / 10s。行情相关端点：`/book` 1,500/10s，`/books` 500/10s，`/price` 1,500/10s，`/prices` 500/10s，`/midpoint` 1,500/10s，`/prices-history` 1,000/10s。下单类端点有独立的 burst/sustained 双层限额（如 `POST /order` burst 5,000/10s，sustained 120,000/10min）。超限走 Cloudflare 排队/延迟，而非直接拒绝；429 时应指数退避。
 
-本仓库当前只读采集频率（NWS/METAR 60s、Open-Meteo 3h、market-stream 常驻单连接）远低于这些限额，暂无需专门处理限流退避逻辑，但如果未来提高轮询频率或扩展站点数，`/prices` 500/10s 是需要关注的瓶颈项（多站点批量查询要控制批大小）。
+本仓库当前只读采集频率（WRH/NWS 120s、METAR 900s、Open-Meteo 3h、market-stream 常驻单连接）远低于这些限额，暂无需专门处理限流退避逻辑，但如果未来提高轮询频率或扩展站点数，`/prices` 500/10s 是需要关注的瓶颈项（多站点批量查询要控制批大小）。
 
 ## 8. 错误码
 
@@ -130,7 +160,9 @@ Polymarket 不自行判定结果，通过 UMA 乐观预言机 + `UmaCtfAdapter` 
 | 手续费公式为 `feeRate × p × (1-p)`，非固定比例 | `fees.py` 已统一实现，深度逐档累计后按 5 位 USDC 舍入 | 已对齐 |
 | Taker 费率 Weather 类别为 5%，Maker 为 0 | paper/signal/NO 分析默认 taker，maker 可配置 | 已对齐；研究输出显式记录假设 |
 | 结算走 UMA 2 小时窗口（无争议情况） | README 提到"结算规则解析…改编自 polymarket-tmax-lab" | 与 T6 分析一致，无冲突 |
-| WS 无官方并发订阅上限说明 | HANDOFF 记录 8 城市 176 token 单连接实测稳定 | 无需改动，继续监控 stream-status |
+| WS 无官方并发订阅上限说明 | HANDOFF 记录十城当天/次日 440 token 单连接完整初始化 | 无需改动，继续监控 stream-status |
+| Data API `/trades` 是公开逐笔成交，不是盘口 | 已使用 taker-only 规范流水实测 `p` 陈旧度 | 保留成交价/ask 能力边界 |
+| 链上平台提供 trades/balances/positions/redeems | 已完成路径评估，不接入 | 宏观类别/地址研究出现后再评估 |
 
 ## 参考页面
 
