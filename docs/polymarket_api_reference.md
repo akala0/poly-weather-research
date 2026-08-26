@@ -91,6 +91,11 @@ Time-in-force 四种，默认 GTC：
 的窗口标成市场数据降级。状态每 5 分钟轮询一次，变化历史写入本地；维护期间继续采集，不降低频率。
 分析默认排除降级窗口，包括没有显式字段的旧归档记录。
 
+2026-08-26 官方最终完成时间是 07:30 UTC，不是早期公告的 06:00。此后本地 silence watchdog 在
+07:35:19–07:45:47 又记录 8 次重连，因此另设 `observed_telemetry` 恢复窗至最后一次重连后连续稳定
+5 分钟（07:50:48）。该窗补充但不篡改官方历史；收到的检查点仍为完整 book，夜间归档节奏使行数不能
+单独充当恢复依据。
+
 ## 6.2 Data API `/trades`
 
 公开 `GET https://data-api.polymarket.com/trades` 支持 `market` 或 `eventId`、`side`、`start`/`end`、
@@ -99,6 +104,10 @@ Time-in-force 四种，默认 GTC：
 本仓库规范流水使用 `takerOnly=true`。实测 `false` 会同时返回参与者两侧：一笔撮合可能是一方汇总、
 另一方拆成多笔，无法仅凭 transactionHash/price/size 无损去重。每笔撮合必有 taker，因此 taker-only
 足以测量真实成交时间、token 自身价格、成交量和 VWAP，同时避免双计。
+
+分页先在同一时间窗内使用 `offset<=10000`；若最后允许页仍满，按 `start/end` 二分为互不重叠的秒级
+窗口，并在每个子窗把 offset 重置为 0。最终按 transactionHash、wallet、asset、condition、timestamp、
+side、size、price 的完整 canonical taker 身份去除跨页精确重复；测试覆盖 offset、二分、去重和严格截止时刻。
 
 严格边界：成交价不是当时 resting ask/bid，也不能恢复完整深度。`/trades` 可以实测 `p` 陈旧度，
 但不能为旧事件补出真实入场成本，依赖历史 ask、spread 或滑点的格子继续保持 N/A。

@@ -134,6 +134,9 @@ def render_certainty_summary_report(rows: list[dict[str, Any]], output_path: Pat
     lines = [
         "# 多城市确定性曲线汇总",
         "",
+        "> **已废弃，不得用于当前结论。** 本报告使用 IEM 小时采样，会漏掉整点之间的真实高点。",
+        "> 当前口径请使用 `data/high_frequency_weather_reanalysis.md`；例如 KLAX 逆转率已由 1.1% 修正为 17.2%。",
+        "",
         "严格使用当地时刻之前（含）的观测；美国市场按 2°F 桶，中国市场按 1°C 桶。",
         "夏季为 6–8 月；逆转定义为 16:30 之后的最高温相对 16:30 观测上升 >1°F。",
         "",
