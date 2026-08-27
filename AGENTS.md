@@ -372,7 +372,7 @@ T8 双侧分层、T10 动态加仓、T11 邻桶价差都缺"已结算结果 × �
 
 （本机 `uv` 不在 PATH，直接用 venv 里的 python）
 
-- 当前基线：**150 passed**，Ruff 全绿
+- 当前基线：**171 passed**，Ruff 全绿
 - 提交前确认无密钥进入版本控制。注意 `adapters/wrh.py` 会从 weather.gov 抓公开 Synoptic token——必须是运行时动态获取，不能硬编码或写进配置
 - `data/` 保持在 `.gitignore` 里
 - 不要 push 到远端，除非用户明确要求

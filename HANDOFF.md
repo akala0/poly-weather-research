@@ -48,7 +48,7 @@
 - 当前结论唯一入口为仓库根目录 `CURRENT_CONCLUSIONS.md`；IEM 小时版 `multi_city_certainty_report.md` 已明确废弃。
 - 市场、天气、信号心跳监测与过期阻断。
 - 候选净边际超过 15% 时强制告警并阻止 paper alert。
-- 169 项单元测试及 Ruff 静态检查。
+- 171 项单元测试及 Ruff 静态检查。
 
 ## 当前校准结论
 

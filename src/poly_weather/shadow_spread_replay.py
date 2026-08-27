@@ -575,6 +575,23 @@ def replay_shadow_spread(
     primary_model = models[str(FillModel.QUEUE_AWARE)]
     snapshot_tokens = {row.token_id for row in snapshots}
     matched_trade_count = sum(row.asset_id in snapshot_tokens for row in trade_rows)
+    candidate_days: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    for row in snapshots:
+        if _band_match(row.best_ask, strategy.entry_bands.get(row.station_id or "", ())):
+            candidate_days[row.timestamp.date().isoformat()].add(_day_key(row))
+    tranche = strategy.tranche_usd[0]
+    global_capital_comparison = {}
+    for cap in (Decimal("200"), Decimal("400")):
+        capacity = int(cap // tranche) if tranche > ZERO else 0
+        conflicts = sum(max(0, len(days) - capacity) for days in candidate_days.values())
+        global_capital_comparison[str(cap)] = {
+            "status": "diagnostic_cap_only",
+            "capital_usd": float(cap),
+            "candidate_overlap_days": sum(len(days) > 1 for days in candidate_days.values()),
+            "candidate_conflict_count": conflicts,
+            "capacity_at_first_tranche": capacity,
+            "note": "Candidate overlap is not a fill or execution result; same-day buckets remain correlated.",
+        }
     return {
         "schema_version": 1,
         "generated_at": datetime.now(UTC).isoformat(),
@@ -611,14 +628,7 @@ def replay_shadow_spread(
         "same_second_policy": "ambiguous Data API groups are skipped; no intra-second order is invented",
         "models": models,
         "schedule_comparison": schedule_comparison,
-        "global_capital_comparison": {
-            str(cap): {
-                "status": "diagnostic_cap_only",
-                "capital_usd": cap,
-                "note": "Global cap is not an execution authorization; same-day bucket risk remains correlated.",
-            }
-            for cap in (200, 400)
-        },
+        "global_capital_comparison": global_capital_comparison,
         "primary_model": str(FillModel.QUEUE_AWARE),
         "limitations": [
             "shadow fills are model estimates, not actual order fills",
@@ -698,6 +708,7 @@ def render_shadow_spread_report(result: Mapping[str, Any], output_path: Path | s
             "- 正常退出优先 maker（maker fee=0）；只有维护、stale、日终等风险处置才模拟真实 bid 深度 taker 费。",
             "- 当前深度历史很短，必须按日期 walk-forward；没有至少 30 个独立 market-day 时不得宣布正期望。",
             "- 全局资本 $200/$400 仅为冲突诊断上限，不是执行授权；同站同日多个桶仍按相关风险处理。",
+            f"- 全局候选冲突诊断：`{result.get('global_capital_comparison', {})}`；候选重叠不等于成交。",
             f"- 影子订单拒绝原因计数（主模型）：`{result.get('models', {}).get('queue_aware', {}).get('rejection_reasons', {})}`。",
             f"- 主模型成交重叠状态：`{result.get('execution_result_status', 'N/A')}`；未实现 PnL、跳空损失和全局资本错失机会没有可靠输入时保持 N/A。",
             "- 结算重叠和 realized PnL 若为 N/A，不使用 `p`、midpoint、`1−YES` 或 trade price 填补。",
