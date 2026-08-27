@@ -227,9 +227,13 @@ def test_replenish_modes_do_not_allow_unconditional_averaging_down() -> None:
 
 
 def test_exit_plan_and_fee_safe_inventory_summary() -> None:
-    plan = build_exit_plan(inventory_shares="100", average_cost="0.70", targets=("0.05", "0.10"))
+    plan = build_exit_plan(
+        inventory_shares="100", average_cost="0.70", targets=("0.05", "0.10", "0.13")
+    )
     assert plan[0].fraction == Decimal("0.5")
     assert plan[0].target_price == Decimal("0.75")
+    assert [leg.target_price for leg in plan] == [Decimal("0.75"), Decimal("0.80"), Decimal("0.83")]
+    assert sum((leg.fraction for leg in plan), start=Decimal("0")) == Decimal("1")
     engine = ShadowOrderEngine(budget_usd="200")
     assert inventory_risk_summary(engine)["execution_enabled"] is False
     assert maker_fee_usdc("10", "0.50") == Decimal("0")

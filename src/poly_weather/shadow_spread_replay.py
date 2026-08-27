@@ -489,11 +489,18 @@ def _run_model(
         "settlement_hold_capital_minutes": None,
         "settlement_hold_contrast_status": "N/A: shadow strategy exits before settlement; no settlement-hold assumption",
         "max_adverse_move_per_share": min(adverse_moves, default=None),
+        "maker_adverse_selection": {
+            key: _summary(values) for key, values in markouts.items()
+        },
         "markout_by_horizon": {
             key: _summary(values) for key, values in markouts.items()
         },
         "failure_path_exit_prices": failure_exit_prices,
         "gap_loss_usd": None,
+        "max_drawdown_usd": None,
+        "unrealized_pnl_usd": None,
+        "global_capital_missed_opportunities": None,
+        "capital_reuse_across_cities": None,
         "round_trips": sum(row["round_trips"] for row in day_summaries),
         "day_summaries": day_summaries,
         "orders": [order.as_dict() for order in all_orders],
@@ -692,6 +699,7 @@ def render_shadow_spread_report(result: Mapping[str, Any], output_path: Path | s
             "- 当前深度历史很短，必须按日期 walk-forward；没有至少 30 个独立 market-day 时不得宣布正期望。",
             "- 全局资本 $200/$400 仅为冲突诊断上限，不是执行授权；同站同日多个桶仍按相关风险处理。",
             f"- 影子订单拒绝原因计数（主模型）：`{result.get('models', {}).get('queue_aware', {}).get('rejection_reasons', {})}`。",
+            f"- 主模型成交重叠状态：`{result.get('execution_result_status', 'N/A')}`；未实现 PnL、跳空损失和全局资本错失机会没有可靠输入时保持 N/A。",
             "- 结算重叠和 realized PnL 若为 N/A，不使用 `p`、midpoint、`1−YES` 或 trade price 填补。",
         ]
     )

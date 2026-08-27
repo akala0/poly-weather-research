@@ -618,6 +618,11 @@ class ShadowStrategyConfig:
             raise ValueError("tranche schedule exceeds market budget")
         if any(value <= ZERO for value in self.exit_targets):
             raise ValueError("exit targets must be positive")
+        for station, bands in self.entry_bands.items():
+            if not station or any(
+                lower < ZERO or upper > ONE or lower >= upper for lower, upper in bands
+            ):
+                raise ValueError(f"invalid entry band for {station}")
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> Self:
@@ -1562,10 +1567,12 @@ def build_exit_plan(
     first_target = cost + ordered[0]
     legs = [ExitLeg(first_fraction, first_target, reason="partial_target")]
     remaining = ONE - first_fraction
-    for rise in ordered[1:]:
-        if remaining <= ZERO:
-            break
-        legs.append(ExitLeg(remaining, cost + rise, reason="target"))
+    later_targets = ordered[1:]
+    if later_targets and remaining > ZERO:
+        leg_fraction = remaining / Decimal(len(later_targets))
+        for index, rise in enumerate(later_targets):
+            fraction = remaining - leg_fraction * Decimal(index) if index == len(later_targets) - 1 else leg_fraction
+            legs.append(ExitLeg(fraction, cost + rise, reason="target"))
         remaining = ZERO
     if remaining > ZERO:
         legs.append(ExitLeg(remaining, cost + ordered[-1], reason="target"))
@@ -1583,6 +1590,15 @@ class StopLossResult:
     lowest_bid_before_collapse: Decimal | None
     simulated_loss_per_share: Decimal | None
     note: str
+
+    @property
+    def first_executable_post_gap_price(self) -> Decimal | None:
+        """Alias used by reports; it is observed bid evidence, not a guarantee."""
+        return self.first_post_gap_bid
+
+    @property
+    def actual_simulated_loss(self) -> Decimal | None:
+        return self.simulated_loss_per_share
 
 
 def evaluate_stop_loss(
