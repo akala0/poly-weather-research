@@ -25,6 +25,15 @@
   47.1%（37.8–56.6%）（均为 Wilson 95%）。
   这是连续前向路径快照，不是已结算胜率；在 $200 路径子样本的 p90 往返成本分别为 KLAX 37.74¢、
   KLGA 25.95¢，因此四个目标在两站的 p90 净价差均为负，不能宣布正期望。
+- **上述价格路径报告只是固定 $200 taker 压力基线，不是否定 maker 影子策略。** 它把每个
+  五分钟点假设为立即吃满 $200，未模拟限价挂单、排队、部分成交、撤单/重报价、补仓、分批退出或
+  资金周转；因此不能据此否定 $20/$50/$100 分批 maker 策略。$200 在影子口径中是每个
+  market-day 的累计库存成本上限，不是每笔交易的固定投入。KLAX 105、KLGA 106 个点是相关的
+  名义快照样本，真正独立统计单位至少是 market-day，同站同日多个桶仍不能当独立样本。
+- **影子成交仍不是执行授权。** touch、queue-aware、trade-through 是由历史盘口和真实相反方向
+  成交事件形成的上界/基准/保守区间；没有真实订单 ID 和确切排队位置，不能把任一模型写成已实现
+  成交率或可执行收益。正常 maker 退出手续费按 0，只有风险处置才用真实 bid 深度和官方 taker
+  费率；成交价不是可成交 ask/bid。
 - **能进不等于能按 $200 卖出。** 同一报告另算了未来 bid 深度能完整承接原始 shares 的达标率；
   KLAX +5/+10/+13/+20¢ 为 65.7%（56.2–74.1%）/27.6%（20.0–36.8%）/23.8%（16.7–32.8%）/
   8.6%（4.6–15.5%），KLGA 为 50.9%（41.6–60.3%）/50.9%（41.6–60.3%）/50.9%（41.6–60.3%）/
@@ -60,6 +69,7 @@
 - [NO 尾桶进场可达性](data/no_entry_accessibility_report.md)
 - [中间 NO 价位可达性](data/price_band_accessibility_report.md)
 - [中间 NO 价格路径成功率](data/price_path_report.md)
+- [只读影子限价/价差策略回放](data/shadow_spread_strategy_report.md)
 - [上游质量窗口](data/polymarket_maintenance_audit.md)
 - [WRH 高频重算](data/high_frequency_weather_reanalysis.md)
 - [同季前向进度](data/no_forward_validation_report.md)
