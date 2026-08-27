@@ -109,7 +109,9 @@ def run_shadow_spread_once(
         "inventory_shares": risk["inventory_shares"],
         "average_inventory_cost": risk["average_inventory_cost"],
         "inventory_cost_usd": risk["inventory_cost_usd"],
+        "cumulative_buy_cost_usd": risk["cumulative_buy_cost_usd"],
         "active_reserved_usd": risk["active_reserved_usd"],
+        "budget_used_usd": risk["budget_used_usd"],
         "available_budget_usd": risk["available_budget_usd"],
         "realized_pnl_usd": risk["realized_pnl_usd"],
         "unrealized_pnl_usd": None,
@@ -118,7 +120,16 @@ def run_shadow_spread_once(
         "ledger_order_count": len(ledger.orders),
         "persisted_this_pass": persisted,
         "restart_idempotent": True,
-        "recent_rejection_reasons": [],
+        "recent_rejection_reasons": result["models"]["queue_aware"].get(
+            "rejection_reasons", {}
+        ),
+        "recent_cancel_reasons": {
+            str(order.get("cancel_reason")): sum(
+                1 for row in queue_orders if row.get("cancel_reason") == order.get("cancel_reason")
+            )
+            for order in queue_orders
+            if order.get("cancel_reason")
+        },
         "raw_snapshot_count": result["raw_snapshot_count"],
         "independent_market_day_count": result["independent_market_day_count"],
         "models": {

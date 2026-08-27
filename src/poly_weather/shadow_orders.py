@@ -49,6 +49,15 @@ def _decimal(value: Decimal | float | int | str) -> Decimal:
         raise ValueError(f"invalid decimal value: {value!r}") from exc
 
 
+def _flag(value: Any, *, default: bool = False) -> bool:
+    """Parse archive booleans without treating the string ``"false"`` as true."""
+    if value is None:
+        return default
+    if isinstance(value, str):
+        return value.strip().casefold() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
 def _json_value(value: Any) -> Any:
     if isinstance(value, Decimal):
         return str(value)
@@ -297,17 +306,17 @@ class BookSnapshot:
             min_order_size=_decimal(
                 no.get("min_order_size") or row.get("min_order_size") or "0"
             ),
-            book_complete=bool(no.get("book_complete", row.get("book_complete", True))),
-            market_stale=bool(row.get("market_stale", False)),
-            weather_stale=bool(row.get("weather_stale", False)),
-            settlement_verified=bool(row.get("settlement_verified", True)),
-            in_season=bool(row.get("in_season", True)),
+            book_complete=_flag(no.get("book_complete", row.get("book_complete", True)), default=True),
+            market_stale=_flag(row.get("market_stale", False)),
+            weather_stale=_flag(row.get("weather_stale", False)),
+            settlement_verified=_flag(row.get("settlement_verified", True), default=True),
+            in_season=_flag(row.get("in_season", True), default=True),
             season_version=(
                 str(row["season_version"]) if row.get("season_version") is not None else "unknown"
             ),
-            warming_valid=bool(row.get("warming_valid", True)),
+            warming_valid=_flag(row.get("warming_valid", True), default=True),
             upstream_status=str(row.get("upstream_status") or "normal"),
-            quality_excluded=bool(row.get("quality_excluded", False)),
+            quality_excluded=_flag(row.get("quality_excluded", False)),
             metadata=metadata,
         )
 
@@ -586,6 +595,7 @@ class ShadowStrategyConfig:
     """
 
     version: str = "shadow-spread-v1"
+    trigger_strategy: str = "price_band"
     quote_mode: QuoteMode = QuoteMode.BEST_BID
     fill_model: FillModel = FillModel.QUEUE_AWARE
     entry_bands: Mapping[str, tuple[tuple[Decimal, Decimal], ...]] = field(default_factory=dict)
@@ -604,6 +614,8 @@ class ShadowStrategyConfig:
     def validate(self) -> None:
         if not self.version.strip():
             raise ValueError("strategy version is required")
+        if self.trigger_strategy not in {"price_band", "weather_market_lag", "either"}:
+            raise ValueError("trigger_strategy must be price_band, weather_market_lag, or either")
         if self.target_rise <= ZERO:
             raise ValueError("target_rise must be positive")
         if self.order_timeout <= timedelta(0):
@@ -633,6 +645,7 @@ class ShadowStrategyConfig:
             )
         config = cls(
             version=str(payload.get("version") or "shadow-spread-v1"),
+            trigger_strategy=str(payload.get("trigger_strategy") or "price_band"),
             quote_mode=QuoteMode(str(payload.get("quote_mode") or QuoteMode.BEST_BID)),
             fill_model=FillModel(str(payload.get("fill_model") or FillModel.QUEUE_AWARE)),
             entry_bands=bands,
@@ -775,6 +788,7 @@ class ShadowOrderEngine:
         self.require_season_version = require_season_version
         self.inventory_shares = ZERO
         self.inventory_cost_usd = ZERO
+        self.cumulative_buy_cost_usd = ZERO
         self.realized_pnl_usd = ZERO
         self.fees_usd = ZERO
         self.rejection_reasons: list[str] = []
@@ -798,6 +812,7 @@ class ShadowOrderEngine:
             if order.side is ShadowSide.BUY:
                 self.inventory_shares += fill.shares
                 self.inventory_cost_usd += fill.shares * fill.price + fill.fee_usd
+                self.cumulative_buy_cost_usd += fill.shares * fill.price + fill.fee_usd
                 self.fees_usd += fill.fee_usd
             else:
                 average_cost = self.average_inventory_cost or ZERO
@@ -835,7 +850,9 @@ class ShadowOrderEngine:
 
     @property
     def available_budget_usd(self) -> Decimal:
-        return max(ZERO, self.budget_usd - self.total_risk_usd)
+        # The per-market-day cap is cumulative buy cost.  An exit releases
+        # inventory risk, but it does not erase cost already spent that day.
+        return max(ZERO, self.budget_usd - self.cumulative_buy_cost_usd - self.active_reserved_usd)
 
     def _store(self, order: ShadowOrder, *, event_key: str | None = None) -> None:
         if event_key is not None and event_key in self._seen_event_keys:
@@ -963,7 +980,17 @@ class ShadowOrderEngine:
             notional = requested_shares * price if size_usd is None else _decimal(size_usd)
         if requested_shares < snapshot.min_order_size:
             self._reject(ShadowOrderReason.MIN_ORDER_SIZE)
-        if side_value is ShadowSide.BUY and self.total_risk_usd + notional > self.budget_usd:
+        estimated_fee = trading_fee_usdc(
+            requested_shares,
+            price,
+            liquidity_role=LiquidityRole.MAKER if maker_assumption else LiquidityRole.TAKER,
+            market_category="weather",
+        )
+        if (
+            side_value is ShadowSide.BUY
+            and self.cumulative_buy_cost_usd + self.active_reserved_usd + notional + estimated_fee
+            > self.budget_usd
+        ):
             self._reject(ShadowOrderReason.BUDGET)
         if side_value is ShadowSide.SELL and self.enforce_inventory and requested_shares > self.inventory_shares:
             self._reject(ShadowOrderReason.INVENTORY)
@@ -1066,6 +1093,7 @@ class ShadowOrderEngine:
         if order.side is ShadowSide.BUY:
             self.inventory_shares += quantity
             self.inventory_cost_usd += quantity * price + fee
+            self.cumulative_buy_cost_usd += quantity * price + fee
             self.fees_usd += fee
         else:
             average_cost = self.average_inventory_cost or ZERO
@@ -1491,6 +1519,10 @@ def decide_replenish(
         allowed, reason = False, "spread_or_book_gate"
     elif _decimal(target_price) <= _decimal(current_ask):
         allowed, reason = False, "no_positive_space_to_target"
+    elif average is not None and _decimal(target_price) <= average:
+        # An additional fill is useful only when the resulting inventory can
+        # still reach the configured exit above its weighted cost.
+        allowed, reason = False, "no_positive_space_to_target"
     elif mode_value is ReplenishMode.CONFIRMATION and not weather_improving:
         allowed, reason = False, "confirmation_missing"
     elif mode_value is ReplenishMode.CONDITIONAL_DIP and not weather_unchanged:
@@ -1663,10 +1695,12 @@ def inventory_risk_summary(engine: ShadowOrderEngine) -> dict[str, Any]:
         "budget_usd": float(engine.budget_usd),
         "inventory_shares": float(engine.inventory_shares),
         "inventory_cost_usd": float(engine.inventory_cost_usd),
+        "cumulative_buy_cost_usd": float(engine.cumulative_buy_cost_usd),
         "average_inventory_cost": (
             float(engine.average_inventory_cost) if engine.average_inventory_cost is not None else None
         ),
         "active_reserved_usd": float(engine.active_reserved_usd),
+        "budget_used_usd": float(engine.budget_usd - engine.available_budget_usd),
         "total_risk_usd": float(engine.total_risk_usd),
         "available_budget_usd": float(engine.available_budget_usd),
         "realized_pnl_usd": float(engine.realized_pnl_usd),

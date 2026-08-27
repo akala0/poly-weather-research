@@ -72,6 +72,14 @@ def _utc(value: datetime | str) -> datetime:
 def _decimal(value: Any) -> Decimal | None:
     if value is None:
         return None
+
+
+def _flag(value: Any, *, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        return value.strip().casefold() in {"1", "true", "yes", "on"}
+    return bool(value)
     try:
         return Decimal(str(value))
     except (ArithmeticError, ValueError):
@@ -152,17 +160,17 @@ def _row_snapshot(
         min_order_size=(
             _decimal(no.get("min_order_size") or row.get("min_order_size") or "0") or ZERO
         ),
-        book_complete=bool(no.get("book_complete", row.get("book_complete", True))),
-        market_stale=bool(row.get("market_stale", False)),
-        weather_stale=bool(row.get("weather_stale", False)),
-        settlement_verified=bool(row.get("settlement_verified", True)),
-        in_season=bool(row.get("in_season", True)),
+        book_complete=_flag(no.get("book_complete", row.get("book_complete", True)), default=True),
+        market_stale=_flag(row.get("market_stale", False)),
+        weather_stale=_flag(row.get("weather_stale", False)),
+        settlement_verified=_flag(row.get("settlement_verified", True), default=True),
+        in_season=_flag(row.get("in_season", True), default=True),
         season_version=(
             str(row["season_version"]) if row.get("season_version") is not None else "unknown"
         ),
-        warming_valid=bool(row.get("warming_valid", True)),
+        warming_valid=_flag(row.get("warming_valid", True), default=True),
         upstream_status=str(row.get("upstream_status") or "normal"),
-        quality_excluded=bool(row.get("quality_excluded", False)),
+        quality_excluded=_flag(row.get("quality_excluded", False)),
         metadata=metadata,
     )
 
@@ -238,7 +246,7 @@ def _run_model(
     for snapshot in snapshots:
         all_snapshots_by_token[snapshot.token_id].append(snapshot)
     missed_opportunities = 0
-    band_candidates = 0
+    trigger_candidates = 0
     rejection_reasons: dict[str, int] = defaultdict(int)
     global_peak_risk = ZERO
     global_capital = Decimal(str(global_capital_usd))
@@ -271,8 +279,17 @@ def _run_model(
             for snapshot in current_snapshots:
                 bands = config.entry_bands.get(snapshot.station_id or "", ())
                 raw_entry_candidate = _band_match(snapshot.best_ask, bands)
-                if raw_entry_candidate:
-                    band_candidates += 1
+                lag_trigger = _flag(snapshot.metadata.get("weather_market_lag"))
+                weather_trigger = lag_trigger and _flag(snapshot.metadata.get("weather_improving"))
+                trigger_candidate = (
+                    raw_entry_candidate
+                    if config.trigger_strategy == "price_band"
+                    else weather_trigger
+                    if config.trigger_strategy == "weather_market_lag"
+                    else raw_entry_candidate or weather_trigger
+                )
+                if trigger_candidate:
+                    trigger_candidates += 1
                 was_inventory = engine.inventory_shares > ZERO
                 engine.process_snapshot(snapshot)
                 if snapshot.health_ok:
@@ -280,10 +297,10 @@ def _run_model(
                 if not snapshot.health_ok and was_inventory and engine.inventory_shares > ZERO:
                     engine.simulate_taker_exit(snapshot, reason="health_gate_risk_exit")
                 if not snapshot.health_ok:
-                    if raw_entry_candidate:
+                    if trigger_candidate:
                         rejection_reasons["health_gate"] += 1
                     continue
-                entry_candidate = raw_entry_candidate
+                entry_candidate = trigger_candidate
                 if (
                     entry_candidate
                     and not engine.active_orders
@@ -291,10 +308,6 @@ def _run_model(
                     and next_tranche < len(config.tranche_usd)
                     and bool(engine.available_budget_usd >= config.tranche_usd[next_tranche])
                 ):
-                    lag_trigger = bool(snapshot.metadata.get("weather_market_lag"))
-                    weather_trigger = lag_trigger and bool(snapshot.metadata.get("weather_improving"))
-                    if config.entry_bands and not (entry_candidate or weather_trigger):
-                        continue
                     quote = quote_limit(snapshot, mode=config.quote_mode)
                     if quote is None:
                         missed_opportunities += 1
@@ -336,9 +349,9 @@ def _run_model(
                             mode=config.replenish_mode,
                             target_price=target,
                             prior_order_resolved=True,
-                            weather_improving=bool(snapshot.metadata.get("weather_improving")),
-                            weather_unchanged=bool(snapshot.metadata.get("weather_unchanged")),
-                            weather_worsening=bool(snapshot.metadata.get("weather_worsening")),
+                            weather_improving=_flag(snapshot.metadata.get("weather_improving")),
+                            weather_unchanged=_flag(snapshot.metadata.get("weather_unchanged")),
+                            weather_worsening=_flag(snapshot.metadata.get("weather_worsening")),
                             duplicate_event=False,
                             strategy_version=config.version,
                             idempotency_key=f"{day[0]}:{day[1]}:{snapshot.market_id}:{snapshot.timestamp.isoformat()}:replenish:{next_tranche}",
@@ -481,7 +494,10 @@ def _run_model(
         "independent_market_day_count": total_days,
         "market_day_unit": "station/market-day; same-day buckets are correlated",
         "entry_candidate_count": sum(row["entry_candidate_count"] for row in day_summaries),
-        "price_band_candidate_count": band_candidates,
+        "trigger_candidate_count": trigger_candidates,
+        "price_band_candidate_count": sum(
+            row["price_band_candidate_count"] for row in day_summaries
+        ),
         "fill_rate": _rate(len([order for order in all_orders if order.filled_shares > ZERO]), model_orders),
         "full_fill_rate": _rate(sum(order.state is ShadowOrderState.FILLED for order in all_orders), model_orders),
         "market_day_round_trip_rate": _rate(
@@ -586,6 +602,28 @@ def replay_shadow_spread(
             "net_pnl_usd": schedule_result["net_pnl_usd"],
             "diagnostic_only": True,
         }
+    trigger_comparison: dict[str, dict[str, Any]] = {}
+    for trigger_strategy in ("price_band", "weather_market_lag"):
+        trigger_config = replace(strategy, trigger_strategy=trigger_strategy)
+        trigger_result = _run_model(
+            snapshots,
+            trade_rows,
+            config=trigger_config,
+            model=FillModel.QUEUE_AWARE,
+            global_capital_usd=Decimal(str(global_capital_usd)),
+        )
+        trigger_comparison[trigger_strategy] = {
+            "trigger_candidate_count": trigger_result["trigger_candidate_count"],
+            "price_band_candidate_count": trigger_result["price_band_candidate_count"],
+            "entry_candidate_count": trigger_result["entry_candidate_count"],
+            "independent_market_day_count": trigger_result["independent_market_day_count"],
+            "shadow_order_count": trigger_result["shadow_order_count"],
+            "fill_count": trigger_result["fill_count"],
+            "full_fill_rate": trigger_result["full_fill_rate"],
+            "market_day_round_trip_rate": trigger_result["market_day_round_trip_rate"],
+            "net_pnl_usd": trigger_result["net_pnl_usd"],
+            "diagnostic_only": True,
+        }
     station_days = sorted({_day_key(row) for row in snapshots})
     primary_model = models[str(FillModel.QUEUE_AWARE)]
     snapshot_tokens = {row.token_id for row in snapshots}
@@ -629,6 +667,7 @@ def replay_shadow_spread(
         else None,
         "strategy_version": strategy.version,
         "strategy": {
+            "trigger_strategy": strategy.trigger_strategy,
             "quote_mode": str(strategy.quote_mode),
             "target_rise": str(strategy.target_rise),
             "market_budget_usd": str(strategy.market_budget_usd),
@@ -654,10 +693,12 @@ def replay_shadow_spread(
             else "diagnostic only; shadow fills are not executable fills"
         ),
         "price_band_candidate_count": primary_model["price_band_candidate_count"],
+        "trigger_candidate_count": primary_model["trigger_candidate_count"],
         "same_second_policy": "ambiguous Data API groups are skipped; no intra-second order is invented",
         "models": models,
         "priority_station_summary": priority_station_summary,
         "schedule_comparison": schedule_comparison,
+        "trigger_comparison": trigger_comparison,
         "global_capital_comparison": global_capital_comparison,
         "primary_model": str(FillModel.QUEUE_AWARE),
         "limitations": [
@@ -693,6 +734,7 @@ def render_shadow_spread_report(result: Mapping[str, Any], output_path: Path | s
         f"与归档 token 实际重叠的成交：**{result.get('matched_trade_count', 0)}**；结果状态："
         f"**{result.get('execution_result_status', 'N/A')}**。",
         f"真实 NO ask 落入配置价带的候选点：**{result.get('price_band_candidate_count', 0)}**；"
+        f"当前触发族候选点：**{result.get('trigger_candidate_count', 0)}**；"
         "若订单为 0，优先检查下方 fail-closed 拒绝原因，而不是用代理报价补齐。",
         "",
         "| 模型 | 影子订单 | 成交 | 完整成交率 | market-day round-trip 率 | 首次成交等待 p50/p90（分钟） | 净 PnL |",
@@ -710,6 +752,28 @@ def render_shadow_spread_report(result: Mapping[str, Any], output_path: Path | s
             f"(Wilson {day_rate.get('wilson_low')}–{day_rate.get('wilson_high')}) | "
             f"{waits.get('p50')} / {waits.get('p90')} | "
             f"{'N/A' if model.get('net_pnl_usd') is None else model.get('net_pnl_usd')} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## 触发策略固定候选族比较（queue-aware）",
+            "",
+            "| 触发族 | 触发候选 | 价带候选 | 影子订单 | 成交 | 完整成交率 | round-trip 率 | 净 PnL |",
+            "|---|---:|---:|---:|---:|---|---|---:|",
+        ]
+    )
+    for name, trigger in (result.get("trigger_comparison") or {}).items():
+        rate = trigger.get("full_fill_rate") or {}
+        day_rate = trigger.get("market_day_round_trip_rate") or {}
+        lines.append(
+            f"| {name} | {trigger.get('trigger_candidate_count', 0)} | "
+            f"{trigger.get('price_band_candidate_count', 0)} | "
+            f"{trigger.get('shadow_order_count', 0)} | {trigger.get('fill_count', 0)} | "
+            f"{rate.get('count', 0)}/{rate.get('sample_count', 0)} "
+            f"(Wilson {rate.get('wilson_low')}–{rate.get('wilson_high')}) | "
+            f"{day_rate.get('count', 0)}/{day_rate.get('sample_count', 0)} "
+            f"(Wilson {day_rate.get('wilson_low')}–{day_rate.get('wilson_high')}) | "
+            f"{'N/A' if trigger.get('net_pnl_usd') is None else trigger.get('net_pnl_usd')} |"
         )
     lines.extend(
         [
@@ -751,7 +815,7 @@ def render_shadow_spread_report(result: Mapping[str, Any], output_path: Path | s
             "## 解释与停止条件",
             "",
             "- 固定 $200 taker `price_path_report.md` 仍是压力基线；它不否定本处 $20/$50/$100 maker 分批假设。",
-            "- 总预算是每个 market-day 的累计库存上限；未成交活动单计入潜在风险，未成交不计入库存。",
+            "- 总预算是每个 market-day 的累计买入成本上限（含已平仓成本）；未成交活动单计入潜在风险，未成交不计入库存。",
             "- 正常退出优先 maker（maker fee=0）；只有维护、stale、日终等风险处置才模拟真实 bid 深度 taker 费。",
             "- 当前深度历史很短，必须按日期 walk-forward；没有至少 30 个独立 market-day 时不得宣布正期望。",
             "- 全局资本 $200/$400 仅为冲突诊断上限，不是执行授权；同站同日多个桶仍按相关风险处理。",

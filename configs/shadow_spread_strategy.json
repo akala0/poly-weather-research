@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "version": "shadow-spread-v1",
+  "trigger_strategy": "price_band",
   "quote_mode": "best_bid",
   "fill_model": "queue_aware",
   "entry_bands": {

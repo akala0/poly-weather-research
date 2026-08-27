@@ -152,6 +152,26 @@ def test_budget_counts_active_orders_and_filled_inventory_but_not_unfilled_as_in
     assert engine.inventory_shares == 0
 
 
+def test_market_day_budget_is_cumulative_after_an_exit() -> None:
+    engine = ShadowOrderEngine(fill_model=FillModel.TOUCH, budget_usd="20")
+    buy = engine.submit_limit(book(), limit_price="0.70", size_usd="20")
+    engine.process_snapshot(book(1, asks=(("0.70", "100"),)))
+    assert buy.state is ShadowOrderState.FILLED
+    assert engine.cumulative_buy_cost_usd == Decimal("20")
+    sell = engine.submit_limit(
+        book(2, bids=(("0.80", "100"),), asks=(("0.90", "100"),)),
+        side=ShadowSide.SELL,
+        limit_price="0.90",
+        shares=buy.filled_shares,
+    )
+    engine.process_snapshot(book(3, bids=(("0.90", "100"),), asks=(("0.95", "100"),)))
+    assert sell.state is ShadowOrderState.FILLED
+    assert engine.inventory_shares == 0
+    with pytest.raises(ShadowOrderRejected) as rejected:
+        engine.submit_limit(book(4), limit_price="0.70", size_usd="5", idempotency_key="after-exit")
+    assert rejected.value.reason.value == "budget_exceeded"
+
+
 def test_restart_and_idempotency_restore_order_and_inventory(tmp_path) -> None:
     path = tmp_path / "shadow_orders.jsonl"
     first = ShadowOrderEngine(
@@ -224,6 +244,20 @@ def test_replenish_modes_do_not_allow_unconditional_averaging_down() -> None:
     assert decide_replenish(mode=ReplenishMode.CONFIRMATION, weather_improving=True, **kwargs).allowed
     assert not decide_replenish(mode=ReplenishMode.CONDITIONAL_DIP, weather_worsening=True, **kwargs).allowed
     assert decide_replenish(mode=ReplenishMode.CONDITIONAL_DIP, weather_unchanged=True, **kwargs).allowed
+
+
+def test_replenishment_rejects_target_at_or_below_weighted_cost() -> None:
+    decision = decide_replenish(
+        mode=ReplenishMode.CONFIRMATION,
+        current_ask="0.70",
+        target_price="0.75",
+        prior_order_resolved=True,
+        weather_improving=True,
+        budget_remaining_usd="100",
+        weighted_average_cost="0.76",
+    )
+    assert decision.allowed is False
+    assert decision.reason == "no_positive_space_to_target"
 
 
 def test_exit_plan_and_fee_safe_inventory_summary() -> None:

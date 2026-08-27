@@ -58,6 +58,7 @@ def test_replay_is_market_day_based_and_runs_three_fill_models() -> None:
     assert result["execution_enabled"] is False
     assert result["independent_market_day_count"] == 1
     assert set(result["models"]) == {"touch", "queue_aware", "trade_through"}
+    assert set(result["trigger_comparison"]) == {"price_band", "weather_market_lag"}
     assert all(model["execution_enabled"] is False for model in result["models"].values())
     assert result["same_second_policy"].startswith("ambiguous")
 
@@ -68,6 +69,35 @@ def test_replay_never_uses_trade_at_entry_timestamp() -> None:
     result = replay_shadow_spread(pairs, trades=trades, config=config())
     for model in result["models"].values():
         assert model["fill_count"] == 0
+
+
+def test_weather_lag_trigger_is_separate_from_price_band() -> None:
+    pairs = [
+        row(0, ask="0.40", bid="0.30"),
+        {
+            **row(5, ask="0.40", bid="0.30"),
+            "weather_market_lag": True,
+            "weather_improving": True,
+        },
+    ]
+    base = config()
+    strategy = ShadowStrategyConfig(
+        version=base.version,
+        trigger_strategy="weather_market_lag",
+        quote_mode=base.quote_mode,
+        fill_model=base.fill_model,
+        entry_bands=base.entry_bands,
+        target_rise=base.target_rise,
+        order_timeout=base.order_timeout,
+        max_active_orders=base.max_active_orders,
+        market_budget_usd=base.market_budget_usd,
+        tranche_usd=base.tranche_usd,
+        replenish_mode=base.replenish_mode,
+    )
+    result = replay_shadow_spread(pairs, config=strategy)
+    assert result["strategy"]["trigger_strategy"] == "weather_market_lag"
+    assert result["models"]["queue_aware"]["trigger_candidate_count"] == 1
+    assert result["models"]["queue_aware"]["price_band_candidate_count"] == 0
 
 
 def test_report_keeps_n_a_and_shadow_boundary(tmp_path) -> None:
