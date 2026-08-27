@@ -105,8 +105,10 @@ uv run poly-weather shadow-spread-engine --supervised
 对 touch（乐观上界）、queue-aware（相反方向真实 taker 成交消耗队列）和 trade-through（严格穿价）
 分别输出成交、等待、撤单/重报价、markout、资本占用和净 PnL 诊断，并比较有限 $200 分批方案。
 成交价不是可成交 ask/bid，影子成交不是执行记录；缺少季节版本、维护/恢复、盘口完整性或天气新鲜度时
-fail-closed。`shadow-spread-engine --supervised` 只读取本地归档，将结果写入独立永久账本和状态 JSON，
-绝不访问钱包、签名、User WebSocket 或 POST/DELETE order。
+fail-closed。`shadow-spread-engine --supervised` 默认持续只读跟随本地追加归档，使用原子 cursor、
+重启代数和独立永久账本/状态 JSON；`--once` 仅用于有限归档烟测。它保留活动影子单、queue ahead、
+部分成交、库存和分批退出，并扫描执行依赖；维护或 stale 时只撤销影子单，绝不访问钱包、签名、
+User WebSocket 或 POST/DELETE order。
 
 默认实时信号健康闸门为：NWS 数据年龄不超过 75 分钟、METAR 不超过 70 分钟、两源温差不超过 2°F、市场 WebSocket 心跳不超过 1 分钟、天气守护进程心跳不超过 3 分钟、Open-Meteo 网格距离不超过 3 km、候选净边际不超过 15%。主 NOAA、deterministic 预报、守护进程或 CLOB 失效会把信号标记为 `stale`；METAR 交叉检查、盘口不完整或异常边际标记为 `warning`。监测器没有钱包、签名、下单或资金代码路径。
 

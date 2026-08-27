@@ -54,6 +54,12 @@
 独立永久影子账本并硬断言 `execution_enabled=false`，绝不访问钱包、签名、User WebSocket、
 POST/DELETE order 或 Relayer。
 
+当前 `shadow-spread-engine --supervised` 默认持续跟随本地追加归档；`--once` 仅用于有限烟测。
+它用原子 cursor、append-only ledger 和重启代数保存活动影子单、queue ahead、库存、退出阶段与
+上游维护状态，启动时扫描执行依赖并在发现维护/失效时只撤销影子单。所有成交、PnL 和周转仍是
+历史盘口驱动的只读模型估计，不是实际订单记录；缺少真实订单 ID、确切排队位置或可验证季节版本时
+继续 fail-closed。
+
 **不要把价差策略当成需要重新论证的新想法。** 要做的是用真实数据算它的期望。
 
 ### 但逆转率仍然绕不开（这一点要讲清，不是反对）

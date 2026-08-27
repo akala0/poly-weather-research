@@ -42,13 +42,15 @@
 - `analyze-price-band-accessibility` 已按真实 NO best ask 分箱，比较 $20–$200 的 NO 买入与等价 YES 卖出深度、滑点、实际手续费、同簿成本门槛和本地时段；KLAX/KLGA 的中间候选分别为 0.70–0.85/0.50–0.70，结果仅用于纸面可达性筛选。
 - `analyze-price-paths` 已对 $200 深度完整入场后的同一 NO token 严格未来 best bid 追踪 +5/+10/+13/+20¢，区分真实 bid 触达、未来 $200 深度触达、物理出局跳空、最低 bid 和 −5% 止损带，并按物理余量×典型高点阶段分层；当前 22 个已结算目录事件与深度重叠为 N=0，结果是未结算前向路径快照。
 - 只读影子策略已加入：`shadow_orders.py` 提供 post-only 状态机、touch/queue-aware/trade-through 队列模型、有限 $200 预算、补仓闸门、分批退出、紧急 taker 费和 append-only 永久账本；`analyze-shadow-spread` 与 `shadow-spread-engine --supervised` 只读重放/写账本，绝不执行订单。
-- 影子回放按 station/market-day 聚类，比较 4×$50、20+30+50+100、2×$100 与单笔对照；当前归档没有可靠的 season/version 元数据，默认闸门因此对候选下单 fail-closed，结果不能宣称 maker 可执行收益。
+- 影子回放按 station/market-day 聚类，比较 4×$50、20+30+50+100、2×$100 与单笔对照；当前回放有严格 season/version 元数据和天气 source/receipt 双截止，缺失时仍对候选 fail-closed，结果不能宣称 maker 可执行收益。
+- 最新只读回放覆盖 50 个独立 station/market-day、80,314 个深度快照和 1,174 个价带候选；固定 price-band queue-aware 10 单/0 成交，逐单 touch 审计为 1 个触价但未过队列、9 个 timeout 前未触价。weather-market-lag 49 单/11 个影子成交、诊断净 PnL $13.56，仅为模型诊断，不是执行收益。
+- `shadow-spread-engine --supervised` 默认持续跟随，使用原子 cursor、重启代数和永久影子账本；`--once` 为烟测。状态暴露 heartbeat、cursor、活动单、库存、成交、上游维护和执行依赖扫描，`execution_enabled` 始终为 `false`。
 - 链上 SQL 路径已完成只读评估，当前不接入；宏观类别/地址/持仓研究出现明确需求时再启用。
 - `signal_snapshot` 已启用 NTFS 透明压缩并纳入 2 日 gzip/30 日删除；T7 完整订单簿证据由不参与过期的 `no_forward_validation` 独立保留。
 - 当前结论唯一入口为仓库根目录 `CURRENT_CONCLUSIONS.md`；IEM 小时版 `multi_city_certainty_report.md` 已明确废弃。
 - 市场、天气、信号心跳监测与过期阻断。
 - 候选净边际超过 15% 时强制告警并阻止 paper alert。
-- 174 项单元测试及 Ruff 静态检查。
+- 197 项单元测试全部通过，Ruff 静态检查全绿；最近一次验收时间为 2026-08-27。
 
 ## 当前校准结论
 
@@ -61,7 +63,7 @@ P0 验证确认 Previous Runs `lead_days=0` 含目标日内模型更新，不能
 ## 尚未完成
 
 1. 联合历史回放：需要使用 Single Runs 固定初始化时间，把当时已发布的 deterministic 跑次与 CLOB 盘口严格按时间对齐；Previous Runs lead 1 仍不是完整的单一 vintage。
-2. 成交可实现性：完整深度吃单成本和 Weather 官方 taker 手续费曲线已经分别估算，但仍未模拟挂单排队和短时撤单；现有结论仍不能视作可执行收益。
+2. 成交可实现性：已加入 touch、queue-aware、trade-through、动态补仓和分批退出的只读模型；真实订单 ID、确切排队位置、撤单归因和可执行收益仍未知，现有结论不能视作实盘收益。
 3. 多日、多城市泛化：十城行情采集已启动，但尚未积累足够的新阈值已结算样本。
 4. Wunderground 最终结算差异审计：实时信号使用同机场 NOAA 数据，但最终仍应记录官方页面值并比较差异。
 5. 任意非触发 signal 的原始 17 位浮点在 30 日后不再逐行保留；若未来需要永久逐位复现，应新增冷归档或确定性抽样。
