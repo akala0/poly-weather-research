@@ -108,3 +108,31 @@ def test_report_keeps_n_a_and_shadow_boundary(tmp_path) -> None:
     assert "execution_enabled=false" in text
     assert "成交价不是可成交 ask/bid" in text
     assert "没有至少 30 个独立 market-day" in text
+
+
+def test_replay_touch_audit_sees_later_ask_touching_buy_limit() -> None:
+    pairs = [row(0, ask="0.80", bid="0.70"), row(5, ask="0.70", bid="0.69")]
+    result = replay_shadow_spread(pairs, config=config())
+    touch = result["models"]["touch"]
+    assert touch["fill_count"] >= 1
+    assert touch["touch_audit"]["touch_count"] == 1
+    assert any(row["side"] == "BUY" and row["filled_shares"] != "0" for row in touch["orders"])
+
+
+def test_replay_does_not_consume_trade_before_local_availability() -> None:
+    # The exchange trade happened at +1, but the local archive received it at
+    # +6.  An order decided at +2 must not be retroactively filled by it.
+    pairs = [row(2), row(5, ask="0.81", bid="0.71")]
+    trades = [
+        TradeEvent(
+            BASE + timedelta(minutes=1),
+            "no-1",
+            "SELL",
+            "0.70",
+            "200",
+            "late-trade",
+            available_at=BASE + timedelta(minutes=6),
+        )
+    ]
+    result = replay_shadow_spread(pairs, trades=trades, config=config())
+    assert result["models"]["queue_aware"]["fill_count"] == 0

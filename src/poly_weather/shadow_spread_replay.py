@@ -33,6 +33,7 @@ from poly_weather.shadow_orders import (
     TradeEvent,
     quote_limit,
 )
+from poly_weather.shadow_touch_audit import audit_touch_zero_orders
 
 ZERO = Decimal("0")
 DEFAULT_ENTRY_BANDS: dict[str, tuple[tuple[Decimal, Decimal], ...]] = {
@@ -72,6 +73,10 @@ def _utc(value: datetime | str) -> datetime:
 def _decimal(value: Any) -> Decimal | None:
     if value is None:
         return None
+    try:
+        return Decimal(str(value))
+    except (ArithmeticError, ValueError):
+        return None
 
 
 def _flag(value: Any, *, default: bool = False) -> bool:
@@ -80,10 +85,6 @@ def _flag(value: Any, *, default: bool = False) -> bool:
     if isinstance(value, str):
         return value.strip().casefold() in {"1", "true", "yes", "on"}
     return bool(value)
-    try:
-        return Decimal(str(value))
-    except (ArithmeticError, ValueError):
-        return None
 
 
 def _rate(successes: int, total: int) -> dict[str, Any]:
@@ -187,7 +188,13 @@ def _trade_value(value: Any) -> TradeEvent:
             price=Decimal(str(value.price)),
             size=Decimal(str(value.size)),
             event_id=(str(value.transaction_hash) if hasattr(value, "transaction_hash") else "") or None,
-            source="data_api",
+            source=str(getattr(value, "source", "data_api")),
+            sequence=(int(value.sequence) if getattr(value, "sequence", None) is not None else None),
+            available_at=(
+                _utc(value.available_at)
+                if getattr(value, "available_at", None) is not None
+                else None
+            ),
         )
     if isinstance(value, Mapping):
         return TradeEvent.from_mapping(value)
@@ -268,7 +275,11 @@ def _run_model(
         for row in day_rows:
             timeline[row.timestamp]["snapshots"].append(row)
         for trade in day_trades:
-            timeline[trade.timestamp]["trades"].append(trade)
+            # The exchange timestamp is retained for strict order-vs-trade
+            # comparisons, while local processing cannot happen before the
+            # archive receipt/availability timestamp.
+            available_at = trade.available_at or trade.timestamp
+            timeline[max(trade.timestamp, available_at)]["trades"].append(trade)
         entry_count = 0
         round_trips = 0
         had_inventory = False
@@ -433,6 +444,11 @@ def _run_model(
     requoted = sum(order.cancel_reason == "requote" for order in all_orders)
     model_orders = len(all_orders)
     total_days = len(day_summaries)
+    touch_audit = audit_touch_zero_orders(
+        all_orders,
+        snapshots,
+        timeout=config.order_timeout,
+    )
     capital_minutes = ZERO
     adverse_moves: list[float] = []
     markouts: dict[str, list[float]] = {f"{minutes}m": [] for minutes in (1, 5, 15, 30)}
@@ -535,6 +551,7 @@ def _run_model(
         "round_trips": sum(row["round_trips"] for row in day_summaries),
         "day_summaries": day_summaries,
         "orders": [order.as_dict() for order in all_orders],
+        "touch_audit": touch_audit,
         "n_a_reason": (
             "no eligible market-day snapshots"
             if total_days == 0
@@ -624,6 +641,28 @@ def replay_shadow_spread(
             "net_pnl_usd": trigger_result["net_pnl_usd"],
             "diagnostic_only": True,
         }
+    timeout_sensitivity: dict[str, dict[str, Any]] = {}
+    # This is a predeclared operational sensitivity grid, not parameter
+    # searching.  It keeps the same trigger family, bands, budget and fill
+    # model while changing only the order timeout.
+    for timeout_minutes in (5, 15, 30, 60):
+        timeout_config = replace(strategy, order_timeout=timedelta(minutes=timeout_minutes))
+        timeout_result = _run_model(
+            snapshots,
+            trade_rows,
+            config=timeout_config,
+            model=FillModel.QUEUE_AWARE,
+            global_capital_usd=Decimal(str(global_capital_usd)),
+        )
+        timeout_sensitivity[str(timeout_minutes)] = {
+            "order_timeout_seconds": timeout_minutes * 60,
+            "shadow_order_count": timeout_result["shadow_order_count"],
+            "fill_count": timeout_result["fill_count"],
+            "full_fill_rate": timeout_result["full_fill_rate"],
+            "touch_audit": timeout_result["touch_audit"],
+            "rejection_reasons": timeout_result["rejection_reasons"],
+            "diagnostic_only": True,
+        }
     station_days = sorted({_day_key(row) for row in snapshots})
     primary_model = models[str(FillModel.QUEUE_AWARE)]
     snapshot_tokens = {row.token_id for row in snapshots}
@@ -677,14 +716,28 @@ def replay_shadow_spread(
                 for station, bands in strategy.entry_bands.items()
             },
             "replenish_mode": str(strategy.replenish_mode),
+            "partial_exit_fraction": str(strategy.partial_exit_fraction),
+            "max_hold_seconds": (
+                strategy.max_hold.total_seconds() if strategy.max_hold is not None else None
+            ),
             "fixed_candidate_family": True,
             "walk_forward_required": True,
         },
         "raw_snapshot_count": len(snapshots),
         "independent_market_day_count": len(station_days),
         "settled_event_count": len(set(settled_event_slugs)),
-        "settled_depth_overlap_count": 0,
-        "settled_result_status": "N/A: settlement overlap must be supplied separately",
+        "settled_depth_overlap_count": len(
+            set(str(value) for value in settled_event_slugs)
+            & {row.event_id for row in snapshots}
+        ),
+        "settled_result_status": (
+            "N/A: no settled event overlaps archived depth"
+            if not (
+                set(str(value) for value in settled_event_slugs)
+                & {row.event_id for row in snapshots}
+            )
+            else "diagnostic only; settlement result is not used for shadow PnL"
+        ),
         "trade_count": len(trade_rows),
         "matched_trade_count": matched_trade_count,
         "execution_result_status": (
@@ -699,6 +752,7 @@ def replay_shadow_spread(
         "priority_station_summary": priority_station_summary,
         "schedule_comparison": schedule_comparison,
         "trigger_comparison": trigger_comparison,
+        "timeout_sensitivity": timeout_sensitivity,
         "global_capital_comparison": global_capital_comparison,
         "primary_model": str(FillModel.QUEUE_AWARE),
         "limitations": [
@@ -793,6 +847,60 @@ def render_shadow_spread_report(result: Mapping[str, Any], output_path: Path | s
             f"(Wilson {rate.get('wilson_low')}–{rate.get('wilson_high')}) | "
             f"{'N/A' if schedule.get('net_pnl_usd') is None else schedule.get('net_pnl_usd')} |"
         )
+    queue_model = (result.get("models") or {}).get("queue_aware", {})
+    touch_audit = queue_model.get("touch_audit") or {}
+    lines.extend(
+        [
+            "",
+            "## touch=0 逐单审计与 timeout 敏感性",
+            "",
+            f"主模型订单 **{touch_audit.get('order_count', 0)}**；触价 **{touch_audit.get('touch_count', 0)}**；"
+            f"未触价 **{touch_audit.get('zero_touch_count', 0)}**。原因计数：`{touch_audit.get('reason_counts', {})}`。",
+            "以下只使用提交之后、订单生命周期内的同 token 真实盘口；成交价不是可成交 ask/bid。",
+            "",
+            "| timeout（分钟） | 订单 | 成交 | 未触价 | 原因计数 |",
+            "|---:|---:|---:|---:|---|",
+        ]
+    )
+    for minutes, sensitivity in (result.get("timeout_sensitivity") or {}).items():
+        audit = sensitivity.get("touch_audit") or {}
+        lines.append(
+            f"| {minutes} | {sensitivity.get('shadow_order_count', 0)} | "
+            f"{sensitivity.get('fill_count', 0)} | {audit.get('zero_touch_count', 0)} | "
+            f"`{audit.get('reason_counts', {})}` |"
+        )
+    lines.extend(
+        [
+            "",
+            "逐单证据（主模型）如下；没有后续盘口不归因于价格未触价，标为 `snapshot_routing_or_token_error`/`no_later_quote`。",
+            "",
+            "| 订单 | market-day | token | 方向 | 限价 | 后续盘口 | 触价 | 原因 |",
+            "|---|---|---|---|---:|---:|---|---|",
+        ]
+    )
+    for order in touch_audit.get("orders", ()):
+        lines.append(
+            f"| `{order.get('order_id', '')}` | {order.get('market_day', '')} | "
+            f"`{order.get('token_id', '')}` | {order.get('side', '')} | "
+            f"{order.get('limit_price', '')} | {order.get('later_quote_count', 0)} | "
+            f"{'是' if order.get('touched') else '否'} | `{order.get('reason', '')}` |"
+        )
+    trade_sources = result.get("trade_sources") or {}
+    weather_join = result.get("weather_join") or {}
+    lines.extend(
+        [
+            "",
+            "## 成交源与天气严格时间对齐",
+            "",
+            f"WS 成交：{(trade_sources.get('market_ws') or {}).get('trade_count', 0)}；"
+            f"Data API：{(trade_sources.get('data_api') or {}).get('trade_count', result.get('trade_count', 0))}；"
+            f"side 闸门：{(trade_sources.get('side_validation') or {}).get('status', 'N/A')}。",
+            f"天气观测：{weather_join.get('observation_count', 0)}；"
+            f"join 原因：`{weather_join.get('reason_counts', {})}`；"
+            "只接受 source timestamp 与 receipt/available timestamp 均不晚于盘口快照。",
+            "若 queue-aware/trade-through 没有真实 token 重叠，只报告 N/A；touch 是乐观上界，不能转成 PnL。",
+        ]
+    )
     lines.extend(
         [
             "",
