@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "version": "shadow-spread-v1",
+  "schema_version": 2,
+  "version": "shadow-spread-v2-token-scoped",
   "trigger_strategy": "price_band",
   "quote_mode": "best_bid",
   "fill_model": "queue_aware",
@@ -12,6 +12,7 @@
   "order_timeout_seconds": 900,
   "max_active_orders": 1,
   "market_budget_usd": "200",
+  "station_day_budget_mode": "cumulative_buy_cost",
   "tranche_usd": ["50"],
   "replenish_mode": "none",
   "exit_targets": ["0.05", "0.10", "0.13", "0.20"],
@@ -22,6 +23,8 @@
   "notes": [
     "Fixed candidate family only; no parameter search.",
     "The bands are configuration, not an executable recommendation.",
-    "All fills are touch/queue-aware/trade-through shadow estimates."
+    "All fills are touch/queue-aware/trade-through shadow estimates.",
+    "Inventory, orders, cost basis, realized PnL and round trips are token-scoped; station-day remains only a correlated risk/statistics cluster.",
+    "The $200 station-day cap uses cumulative_buy_cost: an exit releases current exposure but does not replenish that day's cumulative buy allowance."
   ]
 }

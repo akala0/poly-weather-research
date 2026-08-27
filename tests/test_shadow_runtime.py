@@ -254,7 +254,9 @@ def test_continuous_skips_ambiguous_same_second_api_trades(tmp_path) -> None:
             TradeEvent(at.replace(minute=at.minute + 1), "no", ShadowSide.SELL, "0.70", "5"),
         )
     )
-    engine = processor.engines[("KLAX", "2026-08-27")]
+    engine = next(
+        engine for key, engine in processor.engines.items() if key.token_id == "no"
+    )
     assert engine.inventory_shares == Decimal("0")
     assert not any(order.fills for order in engine.orders)
 
@@ -294,7 +296,7 @@ def test_processor_replenishes_only_after_fill_and_exits_in_legs(tmp_path) -> No
     processor.process_trade(
         TradeEvent(at.replace(minute=at.minute + 1), "no", ShadowSide.SELL, "0.70", "100", "entry")
     )
-    engine = processor.engines[("KLAX", "2026-08-27")]
+    engine = processor.engines[first.portfolio_key]
     assert engine.inventory_shares > 0
 
     processor.process_snapshot(
@@ -399,3 +401,103 @@ def test_public_trade_increment_is_receipt_gated_and_requires_identity(tmp_path)
     events = _public_trade_events_from_file(path)
     assert len(events) == 1
     assert events[0].available_at == datetime(2026, 8, 27, 12, 5, tzinfo=UTC)
+
+
+def test_continuous_hot_token_load_keeps_inventory_and_queue_state_isolated(tmp_path) -> None:
+    ledger_path = tmp_path / "shadow_orders_v2.jsonl"
+    processor = ShadowStreamProcessor(
+        ledger=ShadowLedger(ledger_path), strategy=default_shadow_strategy_config()
+    )
+    at = datetime(2026, 8, 27, 12, tzinfo=UTC)
+
+    def snapshot(token_id: str, market_id: str) -> BookSnapshot:
+        return BookSnapshot(
+            timestamp=at,
+            event_id="event",
+            market_id=market_id,
+            token_id=token_id,
+            station_id="KLAX",
+            market_day="2026-08-27",
+            season_version="heat-v1",
+            bids=(("0.70", "10"),),
+            asks=(("0.80", "100"),),
+        )
+
+    first = snapshot("token-a", "market-a")
+    second = snapshot("token-b", "market-b")
+    processor.process_snapshot(first)
+    # This represents the supervisor publishing a second bucket after the
+    # first one is already live.  It must create a second token portfolio.
+    processor.process_snapshot(second)
+    processor.process_trade(
+        TradeEvent(at.replace(minute=1), "token-a", ShadowSide.SELL, "0.70", "100", "a-fill")
+    )
+
+    status = processor.status()
+    engine_a = processor.engines[first.portfolio_key]
+    engine_b = processor.engines[second.portfolio_key]
+    assert engine_a.inventory_shares > Decimal("0")
+    assert engine_b.inventory_shares == Decimal("0")
+    assert status["portfolio_count"] == 2
+    assert status["station_day_budgets"][0]["portfolio_count"] == 2
+
+    restarted = ShadowStreamProcessor(
+        ledger=ShadowLedger(ledger_path), strategy=default_shadow_strategy_config()
+    )
+    assert restarted.engines[first.portfolio_key].inventory_shares == engine_a.inventory_shares
+    assert restarted.engines[second.portfolio_key].inventory_shares == Decimal("0")
+    assert restarted.halted is False
+
+
+def test_runtime_legacy_ledger_halts_without_rewriting_archival_v1_file(tmp_path) -> None:
+    path = tmp_path / "shadow_orders_v1.jsonl"
+    payload = {
+        "schema_version": 1,
+        "record_type": "order",
+        "order": {
+            "order_id": "legacy-order",
+            "idempotency_key": "legacy-key",
+            "event_id": "event",
+            "market_id": "market",
+            "token_id": "token",
+            "station_id": "KLAX",
+            "market_day": "2026-08-27",
+            "side": "BUY",
+            "state": "RESTING",
+            "submitted_at": "2026-08-27T12:00:00+00:00",
+            "limit_price": "0.70",
+            "requested_shares": "10",
+            "requested_usd": "7",
+            "maker_assumption": True,
+            "fill_model": "queue_aware",
+            "tick_size": "0.01",
+            "min_order_size": "5",
+            "better_level_shares": "0",
+            "volume_ahead": "0",
+            "remaining_shares": "10"
+        }
+    }
+    original = json.dumps(payload) + "\n"
+    path.write_text(original, encoding="utf-8")
+
+    processor = ShadowStreamProcessor(
+        ledger=ShadowLedger(path), strategy=default_shadow_strategy_config()
+    )
+
+    assert processor.halted is True
+    assert processor.halt_reason == "legacy_ledger_schema_requires_token_scoped_v2_path"
+    assert path.read_text(encoding="utf-8") == original
+
+
+def test_persisted_token_discrepancy_keeps_runtime_halted_after_restart(tmp_path) -> None:
+    path = tmp_path / "shadow_orders_v2.jsonl"
+    ledger = ShadowLedger(path)
+    ledger.record_discrepancy(code="sell_exceeds_same_token_inventory", details={"token_id": "token-b"})
+
+    processor = ShadowStreamProcessor(
+        ledger=ShadowLedger(path), strategy=default_shadow_strategy_config()
+    )
+
+    assert processor.halted is True
+    assert processor.halt_reason == "sell_exceeds_same_token_inventory"
+    assert processor.discrepancies

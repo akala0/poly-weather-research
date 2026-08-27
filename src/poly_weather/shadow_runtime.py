@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import sys
 import time
-from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -35,6 +34,7 @@ from poly_weather.polymarket_status import (
 )
 from poly_weather.real_no_books import archived_event_metadata, paired_book_snapshots
 from poly_weather.shadow_orders import (
+    SHADOW_LEDGER_SCHEMA_VERSION,
     BookSnapshot,
     FillModel,
     QuoteMode,
@@ -43,8 +43,11 @@ from poly_weather.shadow_orders import (
     ShadowOrder,
     ShadowOrderEngine,
     ShadowOrderRejected,
+    ShadowPortfolioInvariantError,
     ShadowSide,
     ShadowStrategyConfig,
+    StationDayRiskManager,
+    TokenPortfolioKey,
     TradeEvent,
     inventory_risk_summary,
     quote_limit,
@@ -273,7 +276,13 @@ def _archive_pair_rows(
 
 
 class ShadowStreamProcessor:
-    """Small persistent-state adapter for one or more market-days."""
+    """Persistent token portfolios with station-day-only risk aggregation.
+
+    ``engines`` is intentionally keyed by ``TokenPortfolioKey``.  The
+    station-day dictionary below is only allowed to sum risk and report one
+    correlated sample; it cannot own inventory, route a trade, or calculate a
+    token's cost basis.
+    """
 
     def __init__(
         self,
@@ -285,72 +294,160 @@ class ShadowStreamProcessor:
         self.ledger = ledger
         self.strategy = strategy
         self.metadata = metadata or {}
-        self.engines: dict[tuple[str, str], ShadowOrderEngine] = {}
+        self.engines: dict[TokenPortfolioKey, ShadowOrderEngine] = {}
+        self.portfolio_station: dict[TokenPortfolioKey, str] = {}
+        self.risk_managers: dict[tuple[str, str], StationDayRiskManager] = {}
         self.last_market_event: str | None = None
         self.last_trade_event: str | None = None
         self.last_upstream_status: str = "normal"
         self.upstream_maintenance = False
         self.fill_count = 0
         self.rebuild_count = 0
+        self.halted = False
+        self.halt_reason: str | None = None
+        self.discrepancies: list[dict[str, Any]] = list(ledger.discrepancies)
+        if self.discrepancies:
+            # A persisted invariant discrepancy is durable HALTED evidence;
+            # restarting must not silently resume the affected ledger.
+            self.halted = True
+            self.halt_reason = str(
+                self.discrepancies[-1].get("code") or "persisted_token_portfolio_discrepancy"
+            )
+        # A v1 ledger was produced by the station-day-scoped engine.  It is
+        # audit input only: never append a HALTED marker to it and never load
+        # its orders into the v2 runtime.
+        self.legacy_ledger_read_only = bool(ledger.legacy_invalid_records)
         self._restore_from_ledger()
 
+    @staticmethod
+    def _cluster_key(snapshot: BookSnapshot) -> tuple[str, str]:
+        return (
+            snapshot.station_id or "unknown",
+            snapshot.market_day or snapshot.timestamp.date().isoformat(),
+        )
+
+    def _risk_manager(self, cluster: tuple[str, str]) -> StationDayRiskManager:
+        return self.risk_managers.setdefault(
+            cluster,
+            StationDayRiskManager(
+                station_id=cluster[0],
+                market_day=cluster[1],
+                budget_usd=self.strategy.market_budget_usd,
+                budget_mode=self.strategy.station_day_budget_mode,
+            ),
+        )
+
+    def _cluster_for_portfolio(self, key: TokenPortfolioKey) -> tuple[str, str] | None:
+        station = self.portfolio_station.get(key)
+        return (station, key.market_day) if station is not None else None
+
+    def _cluster_engines(self, cluster: tuple[str, str]) -> tuple[ShadowOrderEngine, ...]:
+        return tuple(
+            engine
+            for key, engine in self.engines.items()
+            if self.portfolio_station.get(key) == cluster[0] and key.market_day == cluster[1]
+        )
+
+    def _halt(
+        self,
+        code: str,
+        *,
+        details: Mapping[str, Any],
+        cluster: tuple[str, str] | None = None,
+        portfolio_key: TokenPortfolioKey | None = None,
+        persist: bool = True,
+    ) -> None:
+        """Fail closed and leave immutable discrepancy evidence when safe."""
+        self.halted = True
+        self.halt_reason = code
+        if cluster is None and portfolio_key is not None:
+            cluster = self._cluster_for_portfolio(portfolio_key)
+        if cluster is not None:
+            self._risk_manager(cluster).halt(code, details=details)
+        record = {
+            "code": code,
+            "details": dict(details),
+            "portfolio_key": portfolio_key.as_dict() if portfolio_key else None,
+            "cluster": list(cluster) if cluster else None,
+        }
+        self.discrepancies.append(record)
+        if persist and not self.legacy_ledger_read_only:
+            self.ledger.record_discrepancy(
+                code=code,
+                details=record,
+                portfolio_key=portfolio_key,
+            )
+
     def _restore_from_ledger(self) -> None:
-        restored: dict[tuple[str, str], list[Any]] = defaultdict(list)
-        for order in self.ledger.orders.values():
-            key = (order.station_id or "unknown", order.market_day)
-            engine = self.engines.setdefault(
-                key,
-                ShadowOrderEngine(
+        if self.halted and self.discrepancies:
+            return
+        if self.legacy_ledger_read_only:
+            self._halt(
+                "legacy_ledger_schema_requires_token_scoped_v2_path",
+                details={
+                    "legacy_invalid_order_count": len(self.ledger.legacy_invalid_records),
+                    "legacy_records": list(self.ledger.legacy_invalid_records),
+                },
+                persist=False,
+            )
+            return
+        keys = sorted({order.portfolio_key for order in self.ledger.orders.values()})
+        for key in keys:
+            orders = self.ledger.orders_for(key)
+            station = next(
+                (order.station_id or "unknown" for order in orders),
+                "unknown",
+            )
+            self.portfolio_station[key] = station
+            cluster = (station, key.market_day)
+            self._risk_manager(cluster)
+            try:
+                engine = ShadowOrderEngine(
+                    ledger=self.ledger,
                     budget_usd=self.strategy.market_budget_usd,
                     max_active_orders=self.strategy.max_active_orders,
                     fill_model=FillModel.QUEUE_AWARE,
                     order_timeout=self.strategy.order_timeout,
-                    market_day=order.market_day,
+                    portfolio_key=key,
+                    budget_mode=self.strategy.station_day_budget_mode,
                     require_season_version=self.strategy.require_season_version,
-                ),
-            )
-            if not hasattr(engine, "_orders"):
-                engine._orders = {}
-            engine._orders[order.order_id] = order
-            engine._local_idempotency[order.idempotency_key] = order
-            restored[key].append(order)
-        for key, orders in restored.items():
-            engine = self.engines[key]
-            # The in-memory engine is intentionally ledger-less, but it still
-            # needs the ledger's seen event set to reject a replayed trade or
-            # touch after restart.  Otherwise a partially filled order could
-            # consume the same transaction twice.
+                )
+            except ShadowPortfolioInvariantError as exc:
+                self._halt(
+                    exc.code,
+                    details={"portfolio_key": key.as_dict(), **exc.details},
+                    cluster=cluster,
+                    portfolio_key=key,
+                )
+                return
             engine._seen_event_keys.update(getattr(self.ledger, "_seen_events", set()))
-            for order in sorted(orders, key=lambda value: value.submitted_at):
-                for fill in sorted(order.fills, key=lambda value: value.timestamp):
-                    if order.side is ShadowSide.BUY:
-                        engine.inventory_shares += fill.shares
-                        engine.inventory_cost_usd += fill.shares * fill.price + fill.fee_usd
-                        engine.cumulative_buy_cost_usd += fill.shares * fill.price + fill.fee_usd
-                        engine.fees_usd += fill.fee_usd
-                    else:
-                        average = engine.average_inventory_cost or Decimal("0")
-                        engine.inventory_shares = max(Decimal("0"), engine.inventory_shares - fill.shares)
-                        engine.inventory_cost_usd = max(
-                            Decimal("0"), engine.inventory_cost_usd - fill.shares * average
-                        )
-                        engine.realized_pnl_usd += fill.shares * (fill.price - average) - fill.fee_usd
-                        engine.fees_usd += fill.fee_usd
+            self.engines[key] = engine
+        for cluster, manager in self.risk_managers.items():
+            try:
+                manager.assert_conservation(self._cluster_engines(cluster))
+            except ShadowPortfolioInvariantError as exc:
+                self._halt(exc.code, details=exc.details, cluster=cluster)
+                return
         self.rebuild_count = 1 if self.ledger.orders else 0
 
     def _engine(self, snapshot: BookSnapshot) -> ShadowOrderEngine:
-        key = (snapshot.station_id or "unknown", snapshot.market_day or snapshot.timestamp.date().isoformat())
-        return self.engines.setdefault(
-            key,
-            ShadowOrderEngine(
+        key = snapshot.portfolio_key
+        cluster = self._cluster_key(snapshot)
+        self.portfolio_station[key] = cluster[0]
+        self._risk_manager(cluster)
+        if key not in self.engines:
+            self.engines[key] = ShadowOrderEngine(
+                ledger=self.ledger,
                 budget_usd=self.strategy.market_budget_usd,
                 max_active_orders=self.strategy.max_active_orders,
                 fill_model=FillModel.QUEUE_AWARE,
                 order_timeout=self.strategy.order_timeout,
-                market_day=key[1],
+                portfolio_key=key,
+                budget_mode=self.strategy.station_day_budget_mode,
                 require_season_version=self.strategy.require_season_version,
-            ),
-        )
+            )
+            self.engines[key]._seen_event_keys.update(getattr(self.ledger, "_seen_events", set()))
+        return self.engines[key]
 
     def _persist(self, engine: ShadowOrderEngine) -> None:
         for order in engine.orders:
@@ -374,9 +471,22 @@ class ShadowStreamProcessor:
             self.ledger.save(order, event_key=event_key)
 
     def process_snapshot(self, snapshot: BookSnapshot) -> None:
-        engine = self._engine(snapshot)
-        before = sum(len(order.fills) for order in engine.orders)
-        engine.process_snapshot(snapshot)
+        if self.halted:
+            return
+        cluster = self._cluster_key(snapshot)
+        try:
+            engine = self._engine(snapshot)
+            manager = self._risk_manager(cluster)
+            before = sum(len(order.fills) for order in engine.orders)
+            engine.process_snapshot(snapshot)
+        except ShadowPortfolioInvariantError as exc:
+            self._halt(
+                exc.code,
+                details={"timestamp": snapshot.timestamp.isoformat(), **exc.details},
+                cluster=cluster,
+                portfolio_key=snapshot.portfolio_key,
+            )
+            return
         self.last_upstream_status = snapshot.upstream_status
         self.upstream_maintenance = snapshot.upstream_status.casefold() in {
             "maintenance",
@@ -386,7 +496,16 @@ class ShadowStreamProcessor:
         # A stale/maintenance/weather-invalidated book is still useful for a
         # risk-only bid-depth exit, but it can never create a new maker order.
         if not snapshot.health_ok and engine.inventory_shares > Decimal("0"):
-            engine.simulate_taker_exit(snapshot, reason="health_gate_risk_exit")
+            try:
+                engine.simulate_taker_exit(snapshot, reason="health_gate_risk_exit")
+            except ShadowPortfolioInvariantError as exc:
+                self._halt(
+                    exc.code,
+                    details={"timestamp": snapshot.timestamp.isoformat(), **exc.details},
+                    cluster=cluster,
+                    portfolio_key=snapshot.portfolio_key,
+                )
+                return
         if snapshot.health_ok:
             bands = self.strategy.entry_bands.get(snapshot.station_id or "", ())
             ask = snapshot.best_ask
@@ -403,13 +522,16 @@ class ShadowStreamProcessor:
                 candidate = candidate or (lag and improving)
             if candidate and not engine.active_orders and engine.inventory_shares <= Decimal("0"):
                 quote = quote_limit(snapshot, mode=self.strategy.quote_mode)
-                if quote is not None:
+                tranche = self.strategy.tranche_usd[0]
+                if quote is not None and manager.can_reserve_buy(
+                    self._cluster_engines(cluster), requested_usd=tranche
+                ):
                     try:
                         engine.submit_limit(
                             snapshot,
                             side=ShadowSide.BUY,
                             limit_price=quote,
-                            size_usd=self.strategy.tranche_usd[0],
+                            size_usd=tranche,
                             idempotency_key=f"{snapshot.event_id}:{snapshot.market_id}:{snapshot.timestamp.isoformat()}:continuous-entry",
                             strategy_version=self.strategy.version,
                             season_version=snapshot.season_version,
@@ -417,6 +539,8 @@ class ShadowStreamProcessor:
                         )
                     except (ShadowOrderRejected, ValueError):
                         pass
+                elif quote is not None:
+                    engine.rejection_reasons.append("station_day_budget_exceeded")
             if engine.inventory_shares > Decimal("0") and not engine.active_orders:
                 # Replenishment is a separate, explicit gate from the initial
                 # entry.  The number of prior BUY orders is durable in the
@@ -429,12 +553,15 @@ class ShadowStreamProcessor:
                 ):
                     target = (engine.average_inventory_cost or Decimal("0")) + self.strategy.target_rise
                     quote = quote_limit(snapshot, mode=self.strategy.quote_mode)
-                    if quote is not None:
+                    tranche = self.strategy.tranche_usd[next_tranche]
+                    if quote is not None and manager.can_reserve_buy(
+                        self._cluster_engines(cluster), requested_usd=tranche
+                    ):
                         try:
                             engine.submit_replenishment(
                                 snapshot,
                                 limit_price=quote,
-                                size_usd=self.strategy.tranche_usd[next_tranche],
+                                size_usd=tranche,
                                 mode=self.strategy.replenish_mode,
                                 target_price=target,
                                 prior_order_resolved=True,
@@ -451,6 +578,8 @@ class ShadowStreamProcessor:
                             )
                         except (ShadowOrderRejected, ValueError):
                             pass
+                    elif quote is not None:
+                        engine.rejection_reasons.append("station_day_budget_exceeded")
                 if worsening and engine.inventory_shares > Decimal("0"):
                     engine.simulate_taker_exit(snapshot, reason="weather_worsening")
                 else:
@@ -507,6 +636,16 @@ class ShadowStreamProcessor:
                                 )
                             except (ShadowOrderRejected, ValueError):
                                 pass
+        try:
+            manager.assert_conservation(self._cluster_engines(cluster))
+        except ShadowPortfolioInvariantError as exc:
+            self._halt(
+                exc.code,
+                details=exc.details,
+                cluster=cluster,
+                portfolio_key=snapshot.portfolio_key,
+            )
+            return
         self._persist(engine)
         self.fill_count += sum(len(order.fills) for order in engine.orders) - before
         self.last_market_event = snapshot.timestamp.isoformat()
@@ -538,11 +677,42 @@ class ShadowStreamProcessor:
             else:
                 grouped.append([trade])
         for group in grouped:
-            for engine in self.engines.values():
+            if self.halted:
+                break
+            token_id = group[0].asset_id
+            matching = [
+                (key, engine)
+                for key, engine in self.engines.items()
+                if key.token_id == token_id
+            ]
+            if not matching:
+                continue
+            if len(matching) != 1:
+                self._halt(
+                    "ambiguous_trade_token_portfolio_route",
+                    details={
+                        "asset_id": token_id,
+                        "portfolio_keys": [key.as_dict() for key, _engine in matching],
+                    },
+                )
+                break
+            key, engine = matching[0]
+            cluster = self._cluster_for_portfolio(key)
+            try:
                 before = sum(len(order.fills) for order in engine.orders)
                 engine.process_trades(group, reject_ambiguous_same_second=True)
-                self._persist(engine)
-                self.fill_count += sum(len(order.fills) for order in engine.orders) - before
+                if cluster is not None:
+                    self._risk_manager(cluster).assert_conservation(self._cluster_engines(cluster))
+            except ShadowPortfolioInvariantError as exc:
+                self._halt(
+                    exc.code,
+                    details={"asset_id": token_id, **exc.details},
+                    cluster=cluster,
+                    portfolio_key=key,
+                )
+                break
+            self._persist(engine)
+            self.fill_count += sum(len(order.fills) for order in engine.orders) - before
         if ordered:
             self.last_trade_event = max(
                 ordered,
@@ -553,10 +723,57 @@ class ShadowStreamProcessor:
         active = [order for engine in self.engines.values() for order in engine.active_orders]
         orders = [order for engine in self.engines.values() for order in engine.orders]
         fills = [fill for order in orders for fill in order.fills]
+        portfolios = []
+        for key, engine in sorted(self.engines.items()):
+            portfolios.append(
+                {
+                    "portfolio_key": key.as_dict(),
+                    "station_id": self.portfolio_station.get(key),
+                    **inventory_risk_summary(engine),
+                }
+            )
+        station_day_budgets = [
+            manager.as_dict(self._cluster_engines(cluster))
+            for cluster, manager in sorted(self.risk_managers.items())
+        ]
         return {
+            "ledger_schema_version": SHADOW_LEDGER_SCHEMA_VERSION,
+            "legacy_invalid_order_count": len(self.ledger.legacy_invalid_records),
+            "legacy_ledger_read_only": self.legacy_ledger_read_only,
+            "halted": self.halted,
+            "halt_reason": self.halt_reason,
+            "discrepancy_count": len(self.discrepancies),
+            "discrepancies": list(self.discrepancies),
             "active_orders": len(active),
             "active_order_ids": [order.order_id for order in active],
             "inventory_shares": str(sum((engine.inventory_shares for engine in self.engines.values()), Decimal("0"))),
+            "inventory_cost_usd": str(sum((engine.inventory_cost_usd for engine in self.engines.values()), Decimal("0"))),
+            "cumulative_buy_cost_usd": str(
+                sum((engine.cumulative_buy_cost_usd for engine in self.engines.values()), Decimal("0"))
+            ),
+            "realized_pnl_usd": str(sum((engine.realized_pnl_usd for engine in self.engines.values()), Decimal("0"))),
+            "fees_usd": str(sum((engine.fees_usd for engine in self.engines.values()), Decimal("0"))),
+            "emergency_taker_exit_pnl_usd": str(
+                sum(
+                    (
+                        engine.realized_pnl_by_exit_source.get(
+                            "emergency_taker_depth", Decimal("0")
+                        )
+                        for engine in self.engines.values()
+                    ),
+                    Decimal("0"),
+                )
+            ),
+            "round_trip_count": sum(engine.round_trip_count for engine in self.engines.values()),
+            "pnl_status": (
+                "HALTED: token-portfolio invariant discrepancy"
+                if self.halted
+                else "diagnostic_token_scoped_shadow_ledger"
+            ),
+            "portfolio_count": len(portfolios),
+            "token_portfolios": portfolios,
+            "station_day_budget_mode": str(self.strategy.station_day_budget_mode),
+            "station_day_budgets": station_day_budgets,
             "ledger_order_count": len(self.ledger.orders),
             "fill_count": len(fills),
             "rebuild_count": self.rebuild_count,
@@ -570,8 +787,12 @@ class ShadowStreamProcessor:
 def run_shadow_spread_once(
     *,
     data_dir: Path | str = Path("data"),
-    ledger_path: Path | str = Path("data/raw/shadow_orders/shadow_orders.jsonl"),
-    status_path: Path | str = Path("data/runtime/shadow_spread_status.json"),
+    ledger_path: Path | str = Path(
+        "data/raw/shadow_orders/shadow_orders_v2_token_scoped.jsonl"
+    ),
+    status_path: Path | str = Path(
+        "data/runtime/shadow_spread_status_v2_token_scoped.json"
+    ),
     config_path: Path | str | None = None,
     supervised: bool = True,
 ) -> dict[str, Any]:
@@ -659,53 +880,38 @@ def run_shadow_spread_once(
         config=strategy,
         settled_event_slugs=settled_slugs,
     )
-    queue_orders = result["models"]["queue_aware"].get("orders") or []
+    queue_model = result["models"]["queue_aware"]
+    queue_orders = queue_model.get("orders") or []
     persisted = 0
-    for payload in queue_orders:
-        order = ShadowOrder.from_dict(payload)
-        if ledger.by_idempotency(order.idempotency_key) is None:
-            ledger.save(order, event_key=f"runtime:{order.order_id}")
-            persisted += 1
-    # Reconstructing the local engine is safe: it reads only the append-only
-    # ledger, and no network/execution state is consulted.
-    ledger_engine = ShadowOrderEngine(
-        ledger=ledger,
-        budget_usd=strategy.market_budget_usd,
-        require_season_version=False,
-    )
-    risk = inventory_risk_summary(ledger_engine)
-    active = [order for order in ledger.orders.values() if order.is_active]
-    fills = [fill for order in ledger.orders.values() for fill in order.fills]
+    if not ledger.legacy_invalid_records:
+        for payload in queue_orders:
+            order = ShadowOrder.from_dict(payload)
+            if ledger.by_idempotency(order.idempotency_key) is None:
+                ledger.save(order, event_key=f"runtime:{order.order_id}")
+                persisted += 1
+    # Reconstruct only token-scoped engines.  A station-day aggregate is never
+    # allowed to replay inventory or calculate an average cost.
+    processor = ShadowStreamProcessor(ledger=ledger, strategy=strategy, metadata=metadata)
+    portfolio_status = processor.status()
     ws_summary = ws_trade_result.as_json()
     ws_summary.pop("trades", None)
     ws_summary["queue_trade_events"] = trade_source_validation["ws_shadow_trade_event_count"]
     status = {
-        "schema_version": 1,
+        "schema_version": 2,
         "checked_at": datetime.now(UTC).isoformat(),
         "execution_enabled": False,
         "execution_dependency_scan": dependency_scan,
         "supervised": True,
         "runtime_mode": "read_only_shadow_archive_pass",
         "strategy_version": strategy.version,
-        "active_orders": len(active),
-        "active_order_ids": [order.order_id for order in active],
-        "inventory_shares": risk["inventory_shares"],
-        "average_inventory_cost": risk["average_inventory_cost"],
-        "inventory_cost_usd": risk["inventory_cost_usd"],
-        "cumulative_buy_cost_usd": risk["cumulative_buy_cost_usd"],
-        "active_reserved_usd": risk["active_reserved_usd"],
-        "budget_used_usd": risk["budget_used_usd"],
-        "available_budget_usd": risk["available_budget_usd"],
-        "realized_pnl_usd": risk["realized_pnl_usd"],
+        **portfolio_status,
+        "average_inventory_cost": None,
+        "average_inventory_cost_status": "N/A: average cost is token-specific and never aggregated",
         "unrealized_pnl_usd": None,
         "capital_minutes": None,
-        "fill_count": len(fills),
-        "ledger_order_count": len(ledger.orders),
         "persisted_this_pass": persisted,
         "restart_idempotent": True,
-        "recent_rejection_reasons": result["models"]["queue_aware"].get(
-            "rejection_reasons", {}
-        ),
+        "recent_rejection_reasons": queue_model.get("rejection_reasons", {}),
         "recent_cancel_reasons": {
             str(order.get("cancel_reason")): sum(
                 1 for row in queue_orders if row.get("cancel_reason") == order.get("cancel_reason")
@@ -740,6 +946,14 @@ def run_shadow_spread_once(
             }
             for key, value in result["models"].items()
         },
+        "replay_pnl_status": queue_model.get("pnl_status"),
+        "replay_pnl_breakdown": {
+            "realized_pnl_usd": queue_model.get("realized_pnl_usd"),
+            "unrealized_pnl_usd": queue_model.get("unrealized_pnl_usd"),
+            "emergency_taker_exit_pnl_usd": queue_model.get("emergency_taker_exit_pnl_usd"),
+            "day_end_taker_exit_pnl_usd": queue_model.get("day_end_taker_exit_pnl_usd"),
+            "fees_usd": queue_model.get("fees_usd"),
+        },
         "limitations": [
             "archive pass only; it never calls a Polymarket execution endpoint",
             "public trade prices are not quotes and touch fills are an upper bound",
@@ -756,9 +970,15 @@ def run_shadow_spread_once(
 def run_shadow_spread_continuous(
     *,
     data_dir: Path | str = Path("data"),
-    ledger_path: Path | str = Path("data/raw/shadow_orders/shadow_orders.jsonl"),
-    status_path: Path | str = Path("data/runtime/shadow_spread_status.json"),
-    cursor_path: Path | str = Path("data/runtime/shadow_spread_cursor.json"),
+    ledger_path: Path | str = Path(
+        "data/raw/shadow_orders/shadow_orders_v2_token_scoped.jsonl"
+    ),
+    status_path: Path | str = Path(
+        "data/runtime/shadow_spread_status_v2_token_scoped.json"
+    ),
+    cursor_path: Path | str = Path(
+        "data/runtime/shadow_spread_cursor_v2_token_scoped.json"
+    ),
     config_path: Path | str | None = None,
     supervised: bool = True,
     poll_seconds: float = 5.0,
@@ -1011,6 +1231,12 @@ def run_shadow_spread_continuous(
                     cursor.generation = generation
                     current_generation = generation
                     processor.rebuild_count += 1
+        except ShadowPortfolioInvariantError as exc:
+            processor._halt(
+                exc.code,
+                details=exc.details,
+            )
+            last_error = f"cycle:{type(exc).__name__}: {exc}"
         except (OSError, ValueError, TypeError, KeyError) as exc:
             last_error = f"cycle:{type(exc).__name__}: {exc}"
         runtime_status = {

@@ -42,15 +42,16 @@
 - `analyze-price-band-accessibility` 已按真实 NO best ask 分箱，比较 $20–$200 的 NO 买入与等价 YES 卖出深度、滑点、实际手续费、同簿成本门槛和本地时段；KLAX/KLGA 的中间候选分别为 0.70–0.85/0.50–0.70，结果仅用于纸面可达性筛选。
 - `analyze-price-paths` 已对 $200 深度完整入场后的同一 NO token 严格未来 best bid 追踪 +5/+10/+13/+20¢，区分真实 bid 触达、未来 $200 深度触达、物理出局跳空、最低 bid 和 −5% 止损带，并按物理余量×典型高点阶段分层；当前 22 个已结算目录事件与深度重叠为 N=0，结果是未结算前向路径快照。
 - 只读影子策略已加入：`shadow_orders.py` 提供 post-only 状态机、touch/queue-aware/trade-through 队列模型、有限 $200 预算、补仓闸门、分批退出、紧急 taker 费和 append-only 永久账本；`analyze-shadow-spread` 与 `shadow-spread-engine --supervised` 只读重放/写账本，绝不执行订单。
-- 影子回放按 station/market-day 聚类，比较 4×$50、20+30+50+100、2×$100 与单笔对照；当前回放有严格 season/version 元数据和天气 source/receipt 双截止，缺失时仍对候选 fail-closed，结果不能宣称 maker 可执行收益。
-- 最新只读回放覆盖 50 个独立 station/market-day、80,314 个深度快照和 1,174 个价带候选；固定 price-band queue-aware 10 单/0 成交，逐单 touch 审计为 1 个触价但未过队列、9 个 timeout 前未触价。weather-market-lag 49 单/11 个影子成交、诊断净 PnL $13.56，仅为模型诊断，不是执行收益。
-- `shadow-spread-engine --supervised` 默认持续跟随，使用原子 cursor、重启代数和永久影子账本；`--once` 为烟测。状态暴露 heartbeat、cursor、活动单、库存、成交、上游维护和执行依赖扫描，`execution_enabled` 始终为 `false`。
+- 影子回放按 `event_id + market_id + token_id + market_day` 隔离订单、库存、成本基准、PnL 和 round trip；station/market-day 只保留为相关统计与 $200 风险聚类，不能跨 token 平仓。比较 4×$50、20+30+50+100、2×$100 与单笔对照；当前回放有严格 season/version 元数据和天气 source/receipt 双截止，缺失时仍对候选 fail-closed，结果不能宣称 maker 可执行收益。
+- 最新只读回放已完成 v2 token-scoped 重跑：550 个 token portfolios、50 个独立 station/market-day、81,349 个深度快照和 1,187 个价带候选；固定 price-band queue-aware 26 单/3 fills，weather-market-lag 207 单/7 fills。所有订单、库存、成本、PnL 和 round trip 按 `event_id + market_id + token_id + market_day` 隔离，station-day 只作相关统计和 $200 累计预算聚类。weather-market-lag 仅 KDAL 有 1 个合法同-token round trip、realized PnL `+$15.0684931507`；KMIA 库存未验证同-token 出场，整体净 PnL 为 N/A，不能宣称正期望。旧诊断 `$13.5571351545` 已确认全部来自跨 token 串账，逐笔对账见 `data/shadow_token_scope_reconciliation_report.md`。
+- `shadow-spread-engine --supervised` 默认持续跟随，使用原子 cursor、重启代数和新的 token-scoped v2 永久账本；默认路径为 `shadow_orders_v2_token_scoped.jsonl`、`shadow_spread_status_v2_token_scoped.json` 与 `shadow_spread_cursor_v2_token_scoped.json`。旧 v1 账本只读隔离；如显式指向它，运行时 HALTED 而不改写。状态暴露 heartbeat、cursor、每 token 库存、station-day 预算、活动单、成交、上游维护和执行依赖扫描，`execution_enabled` 始终为 `false`。
+- 2026-08-27 19:00 +08:00 已完成一次有限 `--once` 烟测：v2 schema、26 个账本订单、3 个 fills、无 HALTED/不变量差异；与主回放的订单/成交/PnL 状态一致，运行期间仅因归档继续写入而多出 102 个快照。
 - 链上 SQL 路径已完成只读评估，当前不接入；宏观类别/地址/持仓研究出现明确需求时再启用。
 - `signal_snapshot` 已启用 NTFS 透明压缩并纳入 2 日 gzip/30 日删除；T7 完整订单簿证据由不参与过期的 `no_forward_validation` 独立保留。
 - 当前结论唯一入口为仓库根目录 `CURRENT_CONCLUSIONS.md`；IEM 小时版 `multi_city_certainty_report.md` 已明确废弃。
 - 市场、天气、信号心跳监测与过期阻断。
 - 候选净边际超过 15% 时强制告警并阻止 paper alert。
-- 197 项单元测试全部通过，Ruff 静态检查全绿；最近一次验收时间为 2026-08-27。
+- 210 项单元测试全部通过，Ruff 静态检查全绿；最近一次验收时间为 2026-08-27。
 
 ## 当前校准结论
 

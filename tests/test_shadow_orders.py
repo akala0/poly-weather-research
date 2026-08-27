@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -10,10 +11,13 @@ from poly_weather.shadow_orders import (
     QuoteMode,
     ReplenishMode,
     ShadowExitPolicy,
+    ShadowLedger,
     ShadowOrderEngine,
     ShadowOrderRejected,
     ShadowOrderState,
+    ShadowPortfolioInvariantError,
     ShadowSide,
+    StationDayRiskManager,
     TradeEvent,
     build_exit_plan,
     decide_replenish,
@@ -49,6 +53,28 @@ def book(
         min_order_size=Decimal("5"),
         season_version="test-v1",
         **kwargs,
+    )
+
+
+def token_book(
+    token_id: str,
+    *,
+    market_id: str | None = None,
+    minute: int = 0,
+    bids: tuple[tuple[str, str], ...] = (("0.70", "100"),),
+    asks: tuple[tuple[str, str], ...] = (("0.80", "100"),),
+) -> BookSnapshot:
+    return BookSnapshot(
+        timestamp=BASE + timedelta(minutes=minute),
+        event_id="event-1",
+        market_id=market_id or f"market-{token_id}",
+        token_id=token_id,
+        bids=bids,
+        asks=asks,
+        station_id="KLAX",
+        market_day="2026-08-26",
+        min_order_size=Decimal("5"),
+        season_version="test-v1",
     )
 
 
@@ -314,3 +340,203 @@ def test_emergency_taker_exit_uses_real_bids_and_official_fee() -> None:
     assert fills[0].price == Decimal("0.60")
     assert fills[0].fee_usd > 0
     assert engine.inventory_shares == 0
+
+
+def test_token_b_sell_is_rejected_after_token_a_buy_same_station_day() -> None:
+    a = token_book("token-a")
+    b = token_book("token-b")
+    engine_a = ShadowOrderEngine(
+        fill_model=FillModel.TOUCH, budget_usd="200", portfolio_key=a.portfolio_key
+    )
+    engine_b = ShadowOrderEngine(
+        fill_model=FillModel.TOUCH, budget_usd="200", portfolio_key=b.portfolio_key
+    )
+    engine_a.submit_limit(a, limit_price="0.70", shares="10")
+    engine_a.process_snapshot(
+        token_book("token-a", minute=1, asks=(("0.70", "100"),))
+    )
+
+    with pytest.raises(ShadowOrderRejected) as rejected:
+        engine_b.submit_limit(b, side=ShadowSide.SELL, limit_price="0.90", shares="10")
+
+    assert rejected.value.reason.value == "insufficient_inventory"
+    assert engine_a.inventory_shares == Decimal("10")
+    assert engine_b.inventory_shares == Decimal("0")
+
+
+def test_cross_bucket_sell_cannot_create_pnl() -> None:
+    a = token_book("token-a")
+    b = token_book("token-b")
+    engine_a = ShadowOrderEngine(
+        fill_model=FillModel.TOUCH, budget_usd="200", portfolio_key=a.portfolio_key
+    )
+    engine_b = ShadowOrderEngine(
+        fill_model=FillModel.TOUCH, budget_usd="200", portfolio_key=b.portfolio_key
+    )
+    engine_a.submit_limit(a, limit_price="0.70", shares="10")
+    engine_a.process_snapshot(
+        token_book("token-a", minute=1, asks=(("0.70", "100"),))
+    )
+
+    with pytest.raises(ShadowOrderRejected):
+        engine_b.submit_limit(b, side=ShadowSide.SELL, limit_price="0.90", shares="10")
+
+    assert engine_a.realized_pnl_usd == Decimal("0")
+    assert engine_b.realized_pnl_usd == Decimal("0")
+
+
+def test_same_token_exit_uses_only_that_token_cost_basis() -> None:
+    a = token_book("token-a")
+    b = token_book("token-b")
+    engine_a = ShadowOrderEngine(
+        fill_model=FillModel.TOUCH, budget_usd="200", portfolio_key=a.portfolio_key
+    )
+    engine_b = ShadowOrderEngine(
+        fill_model=FillModel.TOUCH, budget_usd="200", portfolio_key=b.portfolio_key
+    )
+    buy = engine_a.submit_limit(a, limit_price="0.70", shares="10")
+    engine_a.process_snapshot(
+        token_book("token-a", minute=1, asks=(("0.70", "100"),))
+    )
+    engine_a.submit_limit(
+        token_book(
+            "token-a",
+            minute=2,
+            bids=(("0.80", "100"),),
+            asks=(("0.90", "100"),),
+        ),
+        side=ShadowSide.SELL,
+        limit_price="0.90",
+        shares=buy.filled_shares,
+    )
+    engine_a.process_snapshot(
+        token_book(
+            "token-a",
+            minute=3,
+            bids=(("0.90", "100"),),
+            asks=(("0.95", "100"),),
+        )
+    )
+
+    assert engine_a.inventory_shares == Decimal("0")
+    assert engine_a.realized_pnl_usd == Decimal("2.00")
+    assert engine_a.round_trip_count == 1
+    assert engine_b.inventory_shares == Decimal("0")
+    assert engine_b.realized_pnl_usd == Decimal("0")
+
+
+def test_station_day_risk_manager_caps_combined_token_reservations() -> None:
+    a = token_book("token-a")
+    b = token_book("token-b")
+    engine_a = ShadowOrderEngine(budget_usd="200", portfolio_key=a.portfolio_key)
+    engine_b = ShadowOrderEngine(budget_usd="200", portfolio_key=b.portfolio_key)
+    manager = StationDayRiskManager(
+        station_id="KLAX", market_day="2026-08-26", budget_usd="200"
+    )
+    engine_a.submit_limit(a, limit_price="0.70", size_usd="100")
+    assert manager.can_reserve_buy((engine_a, engine_b), requested_usd="100")
+    engine_b.submit_limit(b, limit_price="0.70", size_usd="100")
+
+    assert manager.budget_used_usd((engine_a, engine_b)) == Decimal("200")
+    assert not manager.can_reserve_buy((engine_a, engine_b), requested_usd="0.01")
+    manager.assert_conservation((engine_a, engine_b))
+
+
+def test_timeout_in_one_token_does_not_change_another_token_order() -> None:
+    a = token_book("token-a")
+    b = token_book("token-b")
+    engine_a = ShadowOrderEngine(portfolio_key=a.portfolio_key, order_timeout=timedelta(minutes=5))
+    engine_b = ShadowOrderEngine(portfolio_key=b.portfolio_key, order_timeout=timedelta(minutes=5))
+    a_order = engine_a.submit_limit(a, limit_price="0.70", shares="10")
+    b_order = engine_b.submit_limit(b, limit_price="0.70", shares="10")
+
+    engine_a.process_snapshot(token_book("token-a", minute=5))
+
+    assert a_order.state is ShadowOrderState.EXPIRED
+    assert b_order.state is ShadowOrderState.RESTING
+    assert engine_b.active_orders == (b_order,)
+
+
+def test_token_scoped_ledger_restart_restores_only_own_inventory(tmp_path) -> None:
+    path = tmp_path / "shadow_orders_v2.jsonl"
+    ledger = ShadowLedger(path)
+    a = token_book("token-a")
+    b = token_book("token-b")
+    engine_a = ShadowOrderEngine(
+        ledger=ledger, fill_model=FillModel.TOUCH, portfolio_key=a.portfolio_key
+    )
+    engine_b = ShadowOrderEngine(ledger=ledger, portfolio_key=b.portfolio_key)
+    engine_a.submit_limit(a, limit_price="0.70", shares="10")
+    engine_a.process_snapshot(
+        token_book("token-a", minute=1, asks=(("0.70", "100"),))
+    )
+    engine_b.submit_limit(b, limit_price="0.70", shares="10")
+
+    restored = ShadowLedger(path)
+    restored_a = ShadowOrderEngine(ledger=restored, portfolio_key=a.portfolio_key)
+    restored_b = ShadowOrderEngine(ledger=restored, portfolio_key=b.portfolio_key)
+
+    assert restored_a.inventory_shares == Decimal("10")
+    assert restored_b.inventory_shares == Decimal("0")
+    assert len(restored_a.orders) == 1
+    assert len(restored_b.orders) == 1
+
+
+def test_legacy_schema_ledger_is_quarantined_not_loaded_into_token_state(tmp_path) -> None:
+    path = tmp_path / "shadow_orders_v1.jsonl"
+    order = ShadowOrderEngine().submit_limit(book(), limit_price="0.70", shares="5")
+    path.write_text(
+        json.dumps({"schema_version": 1, "record_type": "order", "order": order.as_dict()})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    ledger = ShadowLedger(path)
+
+    assert ledger.orders == {}
+    assert ledger.legacy_invalid_records == [
+        {
+            "reason": "legacy_schema_without_explicit_portfolio_key",
+            "order_id": order.order_id,
+        }
+    ]
+
+
+def test_mismatched_trade_asset_raises_token_portfolio_invariant() -> None:
+    a = token_book("token-a")
+    engine = ShadowOrderEngine(portfolio_key=a.portfolio_key)
+    engine.submit_limit(a, limit_price="0.70", shares="10")
+
+    with pytest.raises(ShadowPortfolioInvariantError) as invariant:
+        engine.process_trade(
+            TradeEvent(BASE + timedelta(minutes=1), "token-b", ShadowSide.SELL, "0.70", "100")
+        )
+
+    assert invariant.value.code == "trade_routed_to_wrong_token_portfolio"
+
+
+def test_unscoped_engine_binds_first_token_and_rejects_rebinding() -> None:
+    engine = ShadowOrderEngine()
+    a = token_book("token-a")
+    b = token_book("token-b")
+    engine.submit_limit(a, limit_price="0.70", shares="10")
+
+    with pytest.raises(ShadowPortfolioInvariantError) as invariant:
+        engine.submit_limit(b, limit_price="0.70", shares="10")
+
+    assert engine.portfolio_key == a.portfolio_key
+    assert invariant.value.code == "snapshot_token_portfolio_mismatch"
+
+
+def test_reused_idempotency_key_cannot_cross_token_scope(tmp_path) -> None:
+    ledger = ShadowLedger(tmp_path / "shadow_orders_v2.jsonl")
+    a = token_book("token-a")
+    b = token_book("token-b")
+    engine_a = ShadowOrderEngine(ledger=ledger, portfolio_key=a.portfolio_key)
+    engine_b = ShadowOrderEngine(ledger=ledger, portfolio_key=b.portfolio_key)
+    engine_a.submit_limit(a, limit_price="0.70", shares="10", idempotency_key="shared")
+
+    with pytest.raises(ShadowPortfolioInvariantError) as invariant:
+        engine_b.submit_limit(b, limit_price="0.70", shares="10", idempotency_key="shared")
+
+    assert invariant.value.code == "order_token_portfolio_mismatch"

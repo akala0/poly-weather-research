@@ -32,6 +32,20 @@ def row(minute: int, *, ask: str = "0.80", bid: str = "0.70") -> dict[str, objec
     }
 
 
+def token_row(
+    minute: int,
+    *,
+    market: str,
+    token: str,
+    ask: str = "0.80",
+    bid: str = "0.70",
+) -> dict[str, object]:
+    payload = row(minute, ask=ask, bid=bid)
+    payload["market_slug"] = market
+    payload["no"] = {**payload["no"], "asset_id": token}  # type: ignore[index]
+    return payload
+
+
 def config() -> ShadowStrategyConfig:
     base = default_shadow_strategy_config()
     return ShadowStrategyConfig(
@@ -136,3 +150,53 @@ def test_replay_does_not_consume_trade_before_local_availability() -> None:
     ]
     result = replay_shadow_spread(pairs, trades=trades, config=config())
     assert result["models"]["queue_aware"]["fill_count"] == 0
+
+
+def test_two_token_round_trips_remain_one_station_day_cluster() -> None:
+    pairs = [
+        token_row(0, market="market-a", token="token-a"),
+        token_row(0, market="market-b", token="token-b"),
+        token_row(5, market="market-a", token="token-a", ask="0.70", bid="0.69"),
+        token_row(5, market="market-b", token="token-b", ask="0.70", bid="0.69"),
+        token_row(10, market="market-a", token="token-a", ask="0.95", bid="0.90"),
+        token_row(10, market="market-b", token="token-b", ask="0.95", bid="0.90"),
+        token_row(15, market="market-a", token="token-a", ask="0.96", bid="0.95"),
+        token_row(15, market="market-b", token="token-b", ask="0.96", bid="0.95"),
+    ]
+
+    result = replay_shadow_spread(pairs, config=config())
+    touch = result["models"]["touch"]
+
+    assert touch["token_portfolio_count"] == 2
+    assert touch["station_day_cluster_count"] == 1
+    assert touch["independent_market_day_count"] == 1
+    assert touch["round_trips"] == 2
+    assert touch["market_day_round_trip_rate"]["count"] == 1
+    assert len(touch["portfolio_summaries"]) == 2
+
+
+def test_synthetic_cross_bucket_profit_is_rejected_from_token_scoped_replay() -> None:
+    # Old station-day state could buy token A and use that inventory to place a
+    # profitable SELL in token B.  B is intentionally outside the entry band;
+    # a token-scoped engine must never create B's exit or PnL.
+    pairs = [
+        token_row(0, market="market-a", token="token-a", ask="0.80", bid="0.70"),
+        token_row(5, market="market-a", token="token-a", ask="0.70", bid="0.69"),
+        token_row(10, market="market-b", token="token-b", ask="0.95", bid="0.94"),
+        token_row(15, market="market-b", token="token-b", ask="0.96", bid="0.95"),
+    ]
+
+    result = replay_shadow_spread(pairs, config=config())
+    touch = result["models"]["touch"]
+    token_b = next(
+        item
+        for item in touch["portfolio_summaries"]
+        if item["portfolio_key"]["token_id"] == "token-b"
+    )
+
+    assert token_b["realized_pnl_usd"] == 0.0
+    assert token_b["round_trips"] == 0
+    assert all(
+        order["token_id"] != "token-b" or order["side"] != "SELL"
+        for order in touch["orders"]
+    )

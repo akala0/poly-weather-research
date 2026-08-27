@@ -42,11 +42,13 @@
 ### 影子执行口径（只读）
 
 用户策略的下一层实现是**post-only maker 限价挂单、动态分批补仓和分批退出**，不是把每个
-五分钟快照都当成一次 $200 taker 交易。总预算 $200 是单一 market-day 的累计库存成本上限，
-不是每笔必须投入的金额；活动订单的潜在剩余风险与已成交库存合计不得越过该上限。
+五分钟快照都当成一次 $200 taker 交易。库存状态必须按
+`event_id + market_id + token_id + market_day` 隔离；总预算 $200 只由同一 station-day 的风险管理器聚合，
+不是每笔必须投入的金额。活动订单的潜在剩余风险与已成交库存合计不得越过该上限；本配置明确采用
+`cumulative_buy_cost`，所以平仓释放当前敞口但不会重置当日累计买入额度。
 影子策略允许部分成交、撤单/重报价、确认后加仓、条件性回撤补仓和保护/时间/天气失效退出，
-但天气恶化时禁止无条件摊平，且每个 market-day 只有一个状态机。统计独立单位是 market-day，
-同站同日多个桶仍按相关风险处理，不能把订单数或五分钟快照数当独立样本。
+但天气恶化时禁止无条件摊平，且每个 token portfolio 只有自己的状态机。统计独立单位仍是
+station/market-day：同站同日多个桶按相关风险处理，不能把 token 数、订单数或五分钟快照数当独立样本。
 
 所有成交都是历史重放的模型估计而非真实执行记录：touch 是乐观上界；queue-aware 只用真实
 相反方向 taker 成交消耗下单时记录的更优档与同价位前量；trade-through 还要求真实成交穿过限价
@@ -55,7 +57,7 @@
 POST/DELETE order 或 Relayer。
 
 当前 `shadow-spread-engine --supervised` 默认持续跟随本地追加归档；`--once` 仅用于有限烟测。
-它用原子 cursor、append-only ledger 和重启代数保存活动影子单、queue ahead、库存、退出阶段与
+它用 token-scoped v2 append-only ledger（`shadow_orders_v2_token_scoped.jsonl`）、原子 cursor 和重启代数保存活动影子单、queue ahead、库存、退出阶段与
 上游维护状态，启动时扫描执行依赖并在发现维护/失效时只撤销影子单。所有成交、PnL 和周转仍是
 历史盘口驱动的只读模型估计，不是实际订单记录；缺少真实订单 ID、确切排队位置或可验证季节版本时
 继续 fail-closed。
@@ -341,6 +343,8 @@ JJA（6/7/8 月）是气象学惯例，不是各城市实际热季。按固定�
 并比较 $20/$50/$100/$150/$200 的 NO 买入和 YES 卖出路径。KLAX 的平衡候选为 0.70–0.85，KLGA 为 0.50–0.70；
 这只是可达性筛选，不是盈利结论。当前簿 hurdle 是成本门槛，不能替代未来价差或逆转风险。成交价不是可成交 ask，
 报告为 `data/price_band_accessibility_report.md`，命令为 `analyze-price-band-accessibility`。
+
+影子账本作用域已修正为 `event_id + market_id + token_id + market_day`：每个 token 独立库存、成本、活动单、累计买入成本、PnL 和 round trip；`(station_id, market_day)` 只作相关统计与 $200 风险聚类。v2 重放覆盖 50 个 station-day、81,349 个真实深度快照；price-band 为 26 单/3 fills，weather-market-lag 为 207 单/7 fills。后者只有 KDAL 1 个合法同-token round trip、realized `+$15.0684931507`，因 KMIA token 仍有未验证出场而整体净 PnL 为 N/A；旧 `$13.5571351545` 已确认全部是跨 token 串账，详见 `data/shadow_token_scope_reconciliation_report.md`。旧 v1 账本只读隔离，新默认账本为 `shadow_orders_v2_token_scoped.jsonl`，`execution_enabled=false`。
 
 ### 6.2 前向样本进度（主要卡点）
 

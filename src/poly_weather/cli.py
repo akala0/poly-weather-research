@@ -2705,10 +2705,10 @@ def analyze_shadow_spread_command(
 def shadow_spread_engine_command(
     data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
     ledger_path: Annotated[Path, typer.Option("--ledger")] = Path(
-        "data/raw/shadow_orders/shadow_orders.jsonl"
+        "data/raw/shadow_orders/shadow_orders_v2_token_scoped.jsonl"
     ),
     status_path: Annotated[Path, typer.Option("--status")] = Path(
-        "data/runtime/shadow_spread_status.json"
+        "data/runtime/shadow_spread_status_v2_token_scoped.json"
     ),
     strategy_config_path: Annotated[
         Path | None, typer.Option("--strategy-config")
@@ -2723,7 +2723,7 @@ def shadow_spread_engine_command(
     poll_seconds: Annotated[float, typer.Option("--poll-seconds")] = 5.0,
     runtime_seconds: Annotated[float, typer.Option("--runtime")] = 0.0,
     cursor_path: Annotated[Path, typer.Option("--cursor")] = Path(
-        "data/runtime/shadow_spread_cursor.json"
+        "data/runtime/shadow_spread_cursor_v2_token_scoped.json"
     ),
 ) -> None:
     """Run a supervised, read-only shadow follower (or explicit ``--once`` pass)."""

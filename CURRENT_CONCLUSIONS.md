@@ -1,6 +1,6 @@
 # 当前研究结论（唯一入口）
 
-生成时间：2026-08-27 17:07:50 +08:00。影子回放订单簿数据截止：2026-08-27 16:56:03 +08:00。
+生成时间：2026-08-27 18:43:15 +08:00。影子回放订单簿数据截止：2026-08-27 18:34:55 +08:00。
 
 本文件是当前结论的唯一入口。下方明确区分稳定判断和会随归档增长的快照；历史报告若与本文件冲突，
 以本文件及其链接的当前报告为准。
@@ -34,16 +34,23 @@
   成交事件形成的上界/基准/保守区间；没有真实订单 ID 和确切排队位置，不能把任一模型写成已实现
   成交率或可执行收益。正常 maker 退出手续费按 0，只有风险处置才用真实 bid 深度和官方 taker
   费率；成交价不是可成交 ask/bid。
-- **当前只读影子回放已闭合成交带，但仍不是执行结论。** 最新 `shadow-spread-v1` 在 50 个
-  独立 station/market-day、80,314 个真实深度快照中发现 1,174 个配置价带候选；通过季节、盘口和
-  健康闸门后，固定 price-band 主模型产生 10 个影子订单、queue-aware/trade-through 均 0 成交。
+- **当前只读影子回放已按 token 隔离，但仍不是执行结论。** v2 重放覆盖 50 个独立
+  station/market-day（550 个 token portfolios）、81,349 个真实深度快照和 1,187 个配置价带候选；固定 price-band
+  queue-aware 为 26 单/3 fills，weather-market-lag 为 207 单/7 fills。所有订单、库存、成本、
+  PnL 和 round trip 均按 `event_id + market_id + token_id + market_day` 隔离；station-day
+  只作相关统计与 $200 累计买入成本/风险聚类，绝不跨 token 平仓。
   归档 token 与公开成交共有 26,686 条事件级资产交集（WS 侧 27,379 条中 26,875 条与
-  canonical Data API hash+token 对上，另有 504 条 WS 未匹配而 fail-closed），所以这次 0 fill
-  不再归因于 token N=0；逐单 touch 审计为 1 个触价但未过队列、9 个在 timeout 前未触价。
-  5/15/30/60 分钟预先声明的 timeout 敏感性仍没有主模型成交。weather-market-lag 比较族为
-  49 单/11 个影子成交、诊断净 PnL $13.56，但只有 50 个 market-day、没有真实订单 ID/确切排队位置，
-  不能宣称正期望或可执行收益。22 个已结算目录事件与深度仍重叠 **N=0**，结算结果与持有到结算
-  PnL 继续 N/A。详见 [影子策略回放报告](data/shadow_spread_strategy_report.md)。
+  canonical Data API hash+token 对上，另有 504 条 WS 未匹配而 fail-closed），所以成交带不是
+  token N=0；但影子 fills 仍不是实际订单成交。weather-market-lag 中只有 KDAL 一个合法同-token
+  round trip，realized PnL `+$15.0684931507`；KMIA 入场库存仍未验证同-token 出场，故整体净 PnL
+  **N/A**，不能当作正期望。此前 `$13.5571351545` 的旧结果已确认是 Miami 两个 token 串账，
+  全部标记 `INVALID_CROSS_TOKEN_PNL`（修复前曾标为 `INVALID_PENDING_TOKEN_SCOPING_FIX`），详见
+  [token 作用域对账](data/shadow_token_scope_reconciliation_report.md)。
+  22 个已结算目录事件与深度仍重叠 **N=0**，结算结果与持有到结算 PnL 继续 N/A。详见
+  [影子策略回放报告](data/shadow_spread_strategy_report.md)。
+  随后 2026-08-27 19:00 +08:00 的 `shadow-spread-engine --supervised --once` 烟测实测 v2 ledger
+  schema=2、26 个订单、3 个 fills、无 HALTED/不变量差异且 `execution_enabled=false`；运行期间归档
+  新增 102 个快照，但订单/成交/PnL 状态与主回放一致。
 - **能进不等于能按 $200 卖出。** 同一报告另算了未来 bid 深度能完整承接原始 shares 的达标率；
   KLAX +5/+10/+13/+20¢ 为 65.7%（56.2–74.1%）/27.6%（20.0–36.8%）/23.8%（16.7–32.8%）/
   8.6%（4.6–15.5%），KLGA 为 50.9%（41.6–60.3%）/50.9%（41.6–60.3%）/50.9%（41.6–60.3%）/
@@ -70,8 +77,8 @@
 | 高频天气特征 | KLAX 逆转 17.2%；KLGA 39.7%；KDAL 49.4%；KSEA 50.6% | WRH historical_backfill 截止 2026-08-22；仅事后特征，不可作严格 vintage 回测 |
 | 中间 NO 价位可达性 | 排除质量窗后保留 55,466 个配对。十城当前真实 NO asks 为空 38.9%（38.5%–39.3%）；KLAX 0.70–0.85（n=346）当前无 ask 0/346（0.0%–1.1%），$200 买 NO 完整 98.6%（96.7%–99.4%），同簿成本 hurdle p50/p90=3.35¢/17.07¢；KLGA 0.50–0.70（n=614）当前无 ask 0/614（0.0%–0.6%），$200 买 NO 完整 100.0%（99.4%–100.0%），hurdle=3.22¢/14.07¢。≥0.99 cohort 的 $200 买入率仅 KLAX 32.1%、KLGA 31.3%。 | 订单簿截止 2026-08-26 20:02:39 +08:00；生成 20:04:08 +08:00；详见中间价位报告 |
 | 价格路径（前向快照） | 订单簿配对 55,682，市场时间线 440；可用 $200 入场 2,379（候选 2,385，因深度不足排除 6），其中 KLAX 主区间 105、KLGA 主区间 106。已结算目录 22 个事件与深度事件重叠 **N=0**、已结算可用入场 **N=0**；其余 2,379 是未结算连续路径，realized PnL 仍 N/A。KLAX p90 成本 37.74¢、KLGA 25.95¢；两站 +5/+10/+13/+20¢ 的 p90 净价差均为负。 | 订单簿截止 2026-08-26 21:01:21 +08:00；生成 21:02:01 +08:00；详见价格路径报告 |
-| 影子天气严格 join | 9,585 条 realtime 观测；80,314 个快照中 76,741 次重复对齐、3,420 次新观测、153 次因 source/receipt 双截止无可用观测；不使用 historical_backfill，不把状态复制造成新事件。 | 回放生成 2026-08-27 17:07:50 +08:00 |
-| 只读影子限价/价差回放 | 50 个独立 station/market-day、80,314 个快照、1,174 个真实 ask 价带候选；固定 price-band queue-aware 10 单/0 成交；touch 1/10 触价、9/10 timeout 前未触价。canonical 成交带与归档 token 交集 26,686 条事件，WS 26,875 条经 hash+token 验证、504 条未匹配 fail-closed；weather-market-lag 比较族 49 单/11 个影子成交、诊断净 PnL $13.56，仍不可执行、不能判正期望。22 个已结算事件与深度重叠 **N=0**。 | 订单簿截止 2026-08-27 16:56:03 +08:00；生成 17:07:50 +08:00；详见影子策略报告 |
+| 影子天气严格 join | 9,829 条 realtime 观测；81,349 个快照中 77,748 次重复对齐、3,448 次新观测、153 次因 source/receipt 双截止无可用观测；不使用 historical_backfill，不把状态复制造成新事件。 | 回放生成 2026-08-27 18:43:15 +08:00 |
+| 只读影子限价/价差回放 | v2 token-scoped：50 个独立 station/market-day、81,349 个快照、1,187 个真实 ask 价带候选；固定 price-band queue-aware 26 单/3 fills，weather-market-lag 207 单/7 fills；整体净 PnL N/A（未平仓 token 不用代理估值），KDAL 仅 1 个合法同-token round trip `+$15.0684931507`，n=1 统计不可靠。canonical 成交带与归档 token 交集 26,686 条事件，WS 26,875 条经 hash+token 验证、504 条未匹配 fail-closed；旧 `$13.56` 已确认全为跨 token 串账并归档对账。22 个已结算事件与深度仍重叠 **N=0**。 | 订单簿截止 2026-08-27 18:34:55 +08:00；生成 18:43:15 +08:00 |
 
 当前报告：
 

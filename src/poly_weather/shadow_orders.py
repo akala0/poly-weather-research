@@ -33,6 +33,7 @@ from poly_weather.fees import LiquidityRole, trading_fee_usdc
 ZERO = Decimal("0")
 ONE = Decimal("1")
 EXECUTION_ENABLED = False
+SHADOW_LEDGER_SCHEMA_VERSION = 2
 
 
 def _utc(value: datetime | str) -> datetime:
@@ -133,6 +134,53 @@ class ReplenishMode(StrEnum):
     CONDITIONAL_DIP = "conditional_dip"
 
 
+class StationDayBudgetMode(StrEnum):
+    """How the station-day risk manager accounts for the fixed $200 cap."""
+
+    CURRENT_OPEN_EXPOSURE = "current_open_exposure"
+    CUMULATIVE_BUY_COST = "cumulative_buy_cost"
+
+
+@dataclass(frozen=True, slots=True, order=True)
+class TokenPortfolioKey:
+    """The only valid execution-state scope for a shadow token position."""
+
+    event_id: str
+    market_id: str
+    token_id: str
+    market_day: str
+
+    @classmethod
+    def from_snapshot(cls, snapshot: BookSnapshot) -> TokenPortfolioKey:
+        return cls(
+            event_id=snapshot.event_id,
+            market_id=snapshot.market_id,
+            token_id=snapshot.token_id,
+            market_day=snapshot.market_day or snapshot.timestamp.date().isoformat(),
+        )
+
+    @classmethod
+    def from_order(cls, order: ShadowOrder) -> TokenPortfolioKey:
+        return cls(
+            event_id=order.event_id,
+            market_id=order.market_id,
+            token_id=order.token_id,
+            market_day=order.market_day,
+        )
+
+    @property
+    def identifier(self) -> str:
+        return "\x1f".join((self.event_id, self.market_id, self.token_id, self.market_day))
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "event_id": self.event_id,
+            "market_id": self.market_id,
+            "token_id": self.token_id,
+            "market_day": self.market_day,
+        }
+
+
 @dataclass(frozen=True, slots=True)
 class InventorySchedule:
     """A finite candidate tranche schedule under the per-day $200 cap."""
@@ -216,6 +264,15 @@ class ShadowOrderRejected(ValueError):
         super().__init__(message or reason.value)
 
 
+class ShadowPortfolioInvariantError(RuntimeError):
+    """Fail-closed signal that a token portfolio boundary was crossed."""
+
+    def __init__(self, code: str, *, details: Mapping[str, Any] | None = None) -> None:
+        self.code = code
+        self.details = dict(details or {})
+        super().__init__(code)
+
+
 @dataclass(frozen=True, slots=True)
 class BookSnapshot:
     """A true two-sided quote used by the shadow engine.
@@ -269,6 +326,10 @@ class BookSnapshot:
         if self.best_bid is None or self.best_ask is None:
             return None
         return self.best_ask - self.best_bid
+
+    @property
+    def portfolio_key(self) -> TokenPortfolioKey:
+        return TokenPortfolioKey.from_snapshot(self)
 
     @property
     def health_ok(self) -> bool:
@@ -476,6 +537,10 @@ class ShadowOrder:
             else ZERO
         )
 
+    @property
+    def portfolio_key(self) -> TokenPortfolioKey:
+        return TokenPortfolioKey.from_order(self)
+
     def as_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["side"] = str(self.side)
@@ -493,6 +558,7 @@ class ShadowOrder:
             }
             for fill in self.fills
         ]
+        payload["portfolio_key"] = self.portfolio_key.as_dict()
         return _json_value(payload)
 
     @classmethod
@@ -541,6 +607,8 @@ class ShadowLedger:
         self.orders: dict[str, ShadowOrder] = {}
         self._idempotency: dict[str, str] = {}
         self._seen_events: set[str] = set()
+        self.legacy_invalid_records: list[dict[str, Any]] = []
+        self.discrepancies: list[dict[str, Any]] = []
         self._load()
 
     def _load(self) -> None:
@@ -552,11 +620,50 @@ class ShadowLedger:
                     row = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if not isinstance(row, Mapping) or row.get("record_type") != "order":
+                if not isinstance(row, Mapping):
+                    continue
+                if row.get("record_type") == "discrepancy":
+                    self.discrepancies.append(dict(row))
+                    continue
+                if row.get("record_type") != "order":
+                    continue
+                try:
+                    schema_version = int(row.get("schema_version") or 0)
+                except (TypeError, ValueError):
+                    schema_version = 0
+                if schema_version < SHADOW_LEDGER_SCHEMA_VERSION:
+                    # v1 had no explicit portfolio key.  Retain a compact
+                    # audit marker but never inject it into the new token-
+                    # scoped runtime, even if individual fields look usable.
+                    legacy_order = row.get("order")
+                    self.legacy_invalid_records.append(
+                        {
+                            "reason": "legacy_schema_without_explicit_portfolio_key",
+                            "order_id": str(
+                                legacy_order.get("order_id")
+                                if isinstance(legacy_order, Mapping)
+                                else ""
+                            ),
+                        }
+                    )
                     continue
                 try:
                     order = ShadowOrder.from_dict(row["order"])
                 except (KeyError, TypeError, ValueError):
+                    self.legacy_invalid_records.append(
+                        {"reason": "unreadable_token_scoped_order", "order_id": ""}
+                    )
+                    continue
+                declared = row.get("portfolio_key")
+                if not isinstance(declared, Mapping) or {
+                    str(key): str(value) for key, value in declared.items()
+                } != order.portfolio_key.as_dict():
+                    self.legacy_invalid_records.append(
+                        {
+                            "reason": "portfolio_key_mismatch",
+                            "order_id": order.order_id,
+                        }
+                    )
                     continue
                 self.orders[order.order_id] = order
                 self._idempotency[order.idempotency_key] = order.order_id
@@ -569,10 +676,11 @@ class ShadowLedger:
         if event_key is not None and event_key in self._seen_events:
             return
         row = {
-            "schema_version": 1,
+            "schema_version": SHADOW_LEDGER_SCHEMA_VERSION,
             "record_type": "order",
             "recorded_at": datetime.now(UTC).isoformat(),
             "event_key": event_key,
+            "portfolio_key": order.portfolio_key.as_dict(),
             "order": order.as_dict(),
         }
         with self.path.open("a", encoding="utf-8") as handle:
@@ -589,8 +697,42 @@ class ShadowLedger:
     def event_seen(self, event_key: str) -> bool:
         return event_key in self._seen_events
 
-    def active(self) -> tuple[ShadowOrder, ...]:
-        return tuple(order for order in self.orders.values() if order.is_active)
+    def active(
+        self, *, portfolio_key: TokenPortfolioKey | None = None
+    ) -> tuple[ShadowOrder, ...]:
+        return tuple(
+            order
+            for order in self.orders.values()
+            if order.is_active and (portfolio_key is None or order.portfolio_key == portfolio_key)
+        )
+
+    def orders_for(self, portfolio_key: TokenPortfolioKey | None = None) -> tuple[ShadowOrder, ...]:
+        return tuple(
+            order
+            for order in self.orders.values()
+            if portfolio_key is None or order.portfolio_key == portfolio_key
+        )
+
+    def record_discrepancy(
+        self,
+        *,
+        code: str,
+        details: Mapping[str, Any],
+        portfolio_key: TokenPortfolioKey | None = None,
+    ) -> None:
+        row = {
+            "schema_version": SHADOW_LEDGER_SCHEMA_VERSION,
+            "record_type": "discrepancy",
+            "recorded_at": datetime.now(UTC).isoformat(),
+            "code": code,
+            "portfolio_key": portfolio_key.as_dict() if portfolio_key else None,
+            "details": _json_value(dict(details)),
+            "execution_enabled": False,
+        }
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+        self.discrepancies.append(row)
 
 
 @dataclass(frozen=True, slots=True)
@@ -602,7 +744,7 @@ class ShadowStrategyConfig:
     rejected by ``validate``.
     """
 
-    version: str = "shadow-spread-v1"
+    version: str = "shadow-spread-v2-token-scoped"
     quote_mode: QuoteMode = QuoteMode.BEST_BID
     fill_model: FillModel = FillModel.QUEUE_AWARE
     entry_bands: Mapping[str, tuple[tuple[Decimal, Decimal], ...]] = field(default_factory=dict)
@@ -621,6 +763,8 @@ class ShadowStrategyConfig:
     trigger_strategy: str = "price_band"
     partial_exit_fraction: Decimal = Decimal("0.50")
     max_hold: timedelta | None = timedelta(hours=4)
+    # Appended at the end to preserve positional compatibility for older callers.
+    station_day_budget_mode: StationDayBudgetMode = StationDayBudgetMode.CUMULATIVE_BUY_COST
 
     def validate(self) -> None:
         if not self.version.strip():
@@ -635,6 +779,11 @@ class ShadowStrategyConfig:
             raise ValueError("max_active_orders must be positive")
         if self.market_budget_usd <= ZERO:
             raise ValueError("market_budget_usd must be positive")
+        if self.station_day_budget_mode not in {
+            StationDayBudgetMode.CURRENT_OPEN_EXPOSURE,
+            StationDayBudgetMode.CUMULATIVE_BUY_COST,
+        }:
+            raise ValueError("invalid station_day_budget_mode")
         if not self.tranche_usd or any(value <= ZERO for value in self.tranche_usd):
             raise ValueError("tranche_usd must contain positive values")
         if sum(self.tranche_usd, start=ZERO) > self.market_budget_usd:
@@ -662,7 +811,7 @@ class ShadowStrategyConfig:
             )
         max_hold_value = payload.get("max_hold_seconds", 4 * 60 * 60)
         config = cls(
-            version=str(payload.get("version") or "shadow-spread-v1"),
+            version=str(payload.get("version") or "shadow-spread-v2-token-scoped"),
             trigger_strategy=str(payload.get("trigger_strategy") or "price_band"),
             quote_mode=QuoteMode(str(payload.get("quote_mode") or QuoteMode.BEST_BID)),
             fill_model=FillModel(str(payload.get("fill_model") or FillModel.QUEUE_AWARE)),
@@ -671,6 +820,14 @@ class ShadowStrategyConfig:
             order_timeout=timedelta(seconds=float(payload.get("order_timeout_seconds", 900))),
             max_active_orders=int(payload.get("max_active_orders", 1)),
             market_budget_usd=_decimal(payload.get("market_budget_usd", "200")),
+            station_day_budget_mode=StationDayBudgetMode(
+                str(
+                    payload.get(
+                        "station_day_budget_mode",
+                        StationDayBudgetMode.CUMULATIVE_BUY_COST,
+                    )
+                )
+            ),
             tranche_usd=tuple(_decimal(value) for value in payload.get("tranche_usd", ("50",))),
             replenish_mode=ReplenishMode(
                 str(payload.get("replenish_mode") or ReplenishMode.NONE)
@@ -778,7 +935,7 @@ def _first_level_quantity(
 
 
 class ShadowOrderEngine:
-    """State machine for one market-day's finite, single-direction inventory."""
+    """State machine for one token portfolio's finite, single-direction inventory."""
 
     def __init__(
         self,
@@ -790,6 +947,8 @@ class ShadowOrderEngine:
         fill_model: FillModel | str = FillModel.QUEUE_AWARE,
         order_timeout: timedelta = timedelta(minutes=15),
         market_day: str | None = None,
+        portfolio_key: TokenPortfolioKey | None = None,
+        budget_mode: StationDayBudgetMode | str = StationDayBudgetMode.CUMULATIVE_BUY_COST,
         execution_enabled: bool = EXECUTION_ENABLED,
         enforce_inventory: bool = True,
         require_season_version: bool = True,
@@ -808,24 +967,68 @@ class ShadowOrderEngine:
         self.fill_model = FillModel(str(fill_model))
         self.order_timeout = order_timeout
         self.market_day = market_day
+        self.portfolio_key = portfolio_key
+        self.budget_mode = StationDayBudgetMode(str(budget_mode))
+        if self.portfolio_key is not None and self.market_day not in {
+            None,
+            self.portfolio_key.market_day,
+        }:
+            raise ValueError("market_day conflicts with token portfolio key")
+        if self.portfolio_key is not None:
+            self.market_day = self.portfolio_key.market_day
         self.enforce_inventory = enforce_inventory
         self.require_season_version = require_season_version
         self.inventory_shares = ZERO
         self.inventory_cost_usd = ZERO
         self.cumulative_buy_cost_usd = ZERO
         self.realized_pnl_usd = ZERO
+        self.realized_pnl_by_exit_source: dict[str, Decimal] = {}
+        self.realized_pnl_by_exit_reason: dict[str, Decimal] = {}
         self.fees_usd = ZERO
+        self.round_trip_count = 0
+        self._open_round_trip = False
         self.rejection_reasons: list[str] = []
         self.last_snapshot: BookSnapshot | None = None
         self._seen_fill_events: set[str] = set()
         self._seen_event_keys: set[str] = set()
         self._local_idempotency: dict[str, ShadowOrder] = {}
         if self.ledger is not None:
+            self._bind_ledger_scope_if_unambiguous()
             self._restore_inventory()
+
+    def _bind_portfolio_key(self, key: TokenPortfolioKey) -> None:
+        if self.portfolio_key is not None and self.portfolio_key != key:
+            raise ShadowPortfolioInvariantError(
+                "token_portfolio_rebinding_attempt",
+                details={
+                    "expected": self.portfolio_key.as_dict(),
+                    "actual": key.as_dict(),
+                },
+            )
+        if self.market_day not in {None, key.market_day}:
+            raise ShadowPortfolioInvariantError(
+                "market_day_conflicts_with_token_portfolio",
+                details={"market_day": self.market_day, "portfolio_key": key.as_dict()},
+            )
+        self.portfolio_key = key
+        self.market_day = key.market_day
+
+    def _bind_ledger_scope_if_unambiguous(self) -> None:
+        """Never restore a multi-token ledger through an unscoped engine."""
+        if self.ledger is None or self.portfolio_key is not None:
+            return
+        keys = {order.portfolio_key for order in self.ledger.orders.values()}
+        if len(keys) > 1:
+            raise ShadowPortfolioInvariantError(
+                "unscoped_ledger_contains_multiple_token_portfolios",
+                details={"portfolio_count": len(keys)},
+            )
+        if keys:
+            self._bind_portfolio_key(next(iter(keys)))
 
     def _restore_inventory(self) -> None:
         fills = sorted(
-            ((order, fill) for order in self.ledger.orders.values() for fill in order.fills),
+            ((order, fill) for order in self.orders for fill in order.fills),
             key=lambda item: item[1].timestamp,
         )
         for order, fill in fills:
@@ -838,27 +1041,47 @@ class ShadowOrderEngine:
                 self.inventory_cost_usd += fill.shares * fill.price + fill.fee_usd
                 self.cumulative_buy_cost_usd += fill.shares * fill.price + fill.fee_usd
                 self.fees_usd += fill.fee_usd
+                self._open_round_trip = True
             else:
+                if fill.shares > self.inventory_shares:
+                    raise ShadowPortfolioInvariantError(
+                        "legacy_or_corrupt_sell_exceeds_token_inventory",
+                        details={
+                            "portfolio_key": order.portfolio_key.as_dict(),
+                            "fill_id": fill.fill_id,
+                            "shares": str(fill.shares),
+                            "inventory_shares": str(self.inventory_shares),
+                        },
+                    )
                 average_cost = self.average_inventory_cost or ZERO
-                self.inventory_shares = max(ZERO, self.inventory_shares - fill.shares)
-                self.inventory_cost_usd = max(
-                    ZERO, self.inventory_cost_usd - fill.shares * average_cost
+                self.inventory_shares -= fill.shares
+                self.inventory_cost_usd -= fill.shares * average_cost
+                realized = fill.shares * (fill.price - average_cost) - fill.fee_usd
+                self.realized_pnl_usd += realized
+                self.realized_pnl_by_exit_source[fill.source] = (
+                    self.realized_pnl_by_exit_source.get(fill.source, ZERO) + realized
                 )
-                self.realized_pnl_usd += fill.shares * (fill.price - average_cost)
-                self.realized_pnl_usd -= fill.fee_usd
+                self.realized_pnl_by_exit_reason[order.trigger_reason] = (
+                    self.realized_pnl_by_exit_reason.get(order.trigger_reason, ZERO) + realized
+                )
                 self.fees_usd += fill.fee_usd
+                if self.inventory_shares == ZERO:
+                    self.inventory_cost_usd = ZERO
+                    if self._open_round_trip:
+                        self.round_trip_count += 1
+                        self._open_round_trip = False
 
     @property
     def active_orders(self) -> tuple[ShadowOrder, ...]:
         if self.ledger is None:
             return tuple(order for order in getattr(self, "_orders", {}).values() if order.is_active)
-        return self.ledger.active()
+        return self.ledger.active(portfolio_key=self.portfolio_key)
 
     @property
     def orders(self) -> tuple[ShadowOrder, ...]:
         if self.ledger is None:
             return tuple(getattr(self, "_orders", {}).values())
-        return tuple(self.ledger.orders.values())
+        return self.ledger.orders_for(self.portfolio_key)
 
     @property
     def average_inventory_cost(self) -> Decimal | None:
@@ -874,11 +1097,51 @@ class ShadowOrderEngine:
 
     @property
     def available_budget_usd(self) -> Decimal:
-        # The per-market-day cap is cumulative buy cost.  An exit releases
-        # inventory risk, but it does not erase cost already spent that day.
-        return max(ZERO, self.budget_usd - self.cumulative_buy_cost_usd - self.active_reserved_usd)
+        used = (
+            self.cumulative_buy_cost_usd
+            if self.budget_mode is StationDayBudgetMode.CUMULATIVE_BUY_COST
+            else self.inventory_cost_usd
+        )
+        return max(ZERO, self.budget_usd - used - self.active_reserved_usd)
+
+    @property
+    def budget_used_usd(self) -> Decimal:
+        used = (
+            self.cumulative_buy_cost_usd
+            if self.budget_mode is StationDayBudgetMode.CUMULATIVE_BUY_COST
+            else self.inventory_cost_usd
+        )
+        return used + self.active_reserved_usd
+
+    def _assert_snapshot_scope(self, snapshot: BookSnapshot) -> None:
+        if self.portfolio_key is None:
+            self._bind_portfolio_key(snapshot.portfolio_key)
+            return
+        if snapshot.portfolio_key != self.portfolio_key:
+            raise ShadowPortfolioInvariantError(
+                "snapshot_token_portfolio_mismatch",
+                details={
+                    "expected": self.portfolio_key.as_dict(),
+                    "actual": snapshot.portfolio_key.as_dict(),
+                },
+            )
+
+    def _assert_order_scope(self, order: ShadowOrder) -> None:
+        if self.portfolio_key is None:
+            self._bind_portfolio_key(order.portfolio_key)
+            return
+        if order.portfolio_key != self.portfolio_key:
+            raise ShadowPortfolioInvariantError(
+                "order_token_portfolio_mismatch",
+                details={
+                    "expected": self.portfolio_key.as_dict(),
+                    "actual": order.portfolio_key.as_dict(),
+                    "order_id": order.order_id,
+                },
+            )
 
     def _store(self, order: ShadowOrder, *, event_key: str | None = None) -> None:
+        self._assert_order_scope(order)
         if event_key is not None and event_key in self._seen_event_keys:
             return
         if self.ledger is None:
@@ -925,6 +1188,7 @@ class ShadowOrderEngine:
             self._reject(ShadowOrderReason.INVALID_SEASON_VERSION)
 
     def _active_for(self, snapshot: BookSnapshot) -> tuple[ShadowOrder, ...]:
+        self._assert_snapshot_scope(snapshot)
         return tuple(
             order
             for order in self.active_orders
@@ -934,11 +1198,14 @@ class ShadowOrderEngine:
         )
 
     def _active_for_market_day(self, snapshot: BookSnapshot) -> tuple[ShadowOrder, ...]:
+        self._assert_snapshot_scope(snapshot)
         day = snapshot.market_day or self.market_day or snapshot.timestamp.date().isoformat()
         return tuple(
             order
             for order in self.active_orders
-            if order.market_id == snapshot.market_id and order.market_day == day
+            if order.market_id == snapshot.market_id
+            and order.token_id == snapshot.token_id
+            and order.market_day == day
         )
 
     def submit_limit(
@@ -961,6 +1228,7 @@ class ShadowOrderEngine:
         metadata: Mapping[str, Any] | None = None,
         risk_exit: bool = False,
     ) -> ShadowOrder:
+        self._assert_snapshot_scope(snapshot)
         if not (risk_exit and side is not None and ShadowSide(str(side).upper()) is ShadowSide.SELL):
             self._validate_snapshot_for_new(snapshot)
         side_value = ShadowSide(str(side).upper())
@@ -986,6 +1254,9 @@ class ShadowOrderEngine:
             else self._local_idempotency.get(idempotency_key)
         )
         if existing is not None:
+            # Idempotency keys are caller-supplied.  Never let a reused key
+            # return an order belonging to a different token portfolio.
+            self._assert_order_scope(existing)
             return existing
         active = self._active_for_market_day(snapshot)
         if len(active) >= self.max_active_orders:
@@ -1012,8 +1283,7 @@ class ShadowOrderEngine:
         )
         if (
             side_value is ShadowSide.BUY
-            and self.cumulative_buy_cost_usd + self.active_reserved_usd + notional + estimated_fee
-            > self.budget_usd
+            and self.budget_used_usd + notional + estimated_fee > self.budget_usd
         ):
             self._reject(ShadowOrderReason.BUDGET)
         if side_value is ShadowSide.SELL and self.enforce_inventory and requested_shares > self.inventory_shares:
@@ -1076,12 +1346,33 @@ class ShadowOrderEngine:
         model: FillModel,
         source: str,
         trade_id: str | None = None,
+        asset_id: str | None = None,
     ) -> ShadowFill | None:
+        self._assert_order_scope(order)
+        if asset_id is not None and asset_id != order.token_id:
+            raise ShadowPortfolioInvariantError(
+                "fill_asset_does_not_match_order_token",
+                details={
+                    "order_id": order.order_id,
+                    "order_token_id": order.token_id,
+                    "fill_asset_id": asset_id,
+                },
+            )
         if not order.is_active or shares <= ZERO:
             return None
         quantity = min(shares, order.remaining_shares)
         if quantity <= ZERO:
             return None
+        if order.side is ShadowSide.SELL and quantity > self.inventory_shares:
+            raise ShadowPortfolioInvariantError(
+                "sell_exceeds_same_token_inventory",
+                details={
+                    "portfolio_key": order.portfolio_key.as_dict(),
+                    "order_id": order.order_id,
+                    "shares": str(quantity),
+                    "inventory_shares": str(self.inventory_shares),
+                },
+            )
         fill_id = str(uuid.uuid4())
         fee = trading_fee_usdc(
             quantity,
@@ -1119,12 +1410,25 @@ class ShadowOrderEngine:
             self.inventory_cost_usd += quantity * price + fee
             self.cumulative_buy_cost_usd += quantity * price + fee
             self.fees_usd += fee
+            self._open_round_trip = True
         else:
             average_cost = self.average_inventory_cost or ZERO
-            self.inventory_shares = max(ZERO, self.inventory_shares - quantity)
-            self.inventory_cost_usd = max(ZERO, self.inventory_cost_usd - quantity * average_cost)
-            self.realized_pnl_usd += quantity * (price - average_cost) - fee
+            self.inventory_shares -= quantity
+            self.inventory_cost_usd -= quantity * average_cost
+            realized = quantity * (price - average_cost) - fee
+            self.realized_pnl_usd += realized
+            self.realized_pnl_by_exit_source[source] = (
+                self.realized_pnl_by_exit_source.get(source, ZERO) + realized
+            )
+            self.realized_pnl_by_exit_reason[order.trigger_reason] = (
+                self.realized_pnl_by_exit_reason.get(order.trigger_reason, ZERO) + realized
+            )
             self.fees_usd += fee
+            if self.inventory_shares == ZERO:
+                self.inventory_cost_usd = ZERO
+                if self._open_round_trip:
+                    self.round_trip_count += 1
+                    self._open_round_trip = False
         self._store(order, event_key=f"fill:{order.order_id}:{fill_id}")
         return fill
 
@@ -1220,6 +1524,7 @@ class ShadowOrderEngine:
 
     def process_snapshot(self, snapshot: BookSnapshot) -> tuple[ShadowFill, ...]:
         """Process a later quote; only touch mode can fill from a quote."""
+        self._assert_snapshot_scope(snapshot)
         self.last_snapshot = snapshot
         if not snapshot.health_ok:
             for order in self._active_for(snapshot):
@@ -1259,6 +1564,7 @@ class ShadowOrderEngine:
                     price=order.limit_price,
                     model=FillModel.TOUCH,
                     source="book_touch_upper_bound",
+                    asset_id=snapshot.token_id,
                 )
                 if fill is not None:
                     fills.append(fill)
@@ -1267,6 +1573,15 @@ class ShadowOrderEngine:
 
     def process_trade(self, trade: TradeEvent) -> tuple[ShadowFill, ...]:
         """Consume a single real taker trade; book changes alone never fill."""
+        if self.portfolio_key is not None and trade.asset_id != self.portfolio_key.token_id:
+            raise ShadowPortfolioInvariantError(
+                "trade_routed_to_wrong_token_portfolio",
+                details={
+                    "expected_token_id": self.portfolio_key.token_id,
+                    "trade_asset_id": trade.asset_id,
+                    "portfolio_key": self.portfolio_key.as_dict(),
+                },
+            )
         # A transaction can contain multiple fills for one token.  The public
         # API identity is the transaction hash, so include the tape fields in
         # the idempotency key rather than dropping later fills from the same
@@ -1318,6 +1633,7 @@ class ShadowOrderEngine:
                 model=order.fill_model,
                 source=trade.source,
                 trade_id=trade.event_id,
+                asset_id=trade.asset_id,
             )
             if fill is not None:
                 fills.append(fill)
@@ -1431,6 +1747,7 @@ class ShadowOrderEngine:
         the fill carries ``source=emergency_taker_depth`` and the official
         weather taker fee is recorded separately in ``realized_pnl_usd``.
         """
+        self._assert_snapshot_scope(snapshot)
         quantity = self.inventory_shares if shares is None else _decimal(shares)
         if quantity <= ZERO:
             return ()
@@ -1484,6 +1801,7 @@ class ShadowOrderEngine:
                 price=price,
                 model=FillModel.TRADE_THROUGH,
                 source="emergency_taker_depth",
+                asset_id=snapshot.token_id,
             )
             if fill is not None:
                 fills.append(fill)
@@ -1493,13 +1811,180 @@ class ShadowOrderEngine:
     def _find(self, order_id: str) -> ShadowOrder:
         if self.ledger is not None:
             try:
-                return self.ledger.orders[order_id]
+                order = self.ledger.orders[order_id]
             except KeyError as exc:
                 raise KeyError(f"unknown shadow order {order_id}") from exc
+            self._assert_order_scope(order)
+            return order
         try:
-            return self._orders[order_id]
+            order = self._orders[order_id]
         except (AttributeError, KeyError) as exc:
             raise KeyError(f"unknown shadow order {order_id}") from exc
+        self._assert_order_scope(order)
+        return order
+
+
+@dataclass
+class StationDayRiskManager:
+    """Aggregate a station-day budget without owning any token inventory.
+
+    The manager intentionally receives engines as inputs.  It may sum their
+    exposure, but it never routes a fill, mutates inventory, or supplies a
+    cost basis.  That separation prevents a station-day statistical cluster
+    from becoming an execution portfolio.
+    """
+
+    station_id: str
+    market_day: str
+    budget_usd: Decimal
+    budget_mode: StationDayBudgetMode = StationDayBudgetMode.CUMULATIVE_BUY_COST
+    halted: bool = False
+    halt_reason: str | None = None
+    discrepancies: list[dict[str, Any]] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.budget_usd = _decimal(self.budget_usd)
+        self.budget_mode = StationDayBudgetMode(str(self.budget_mode))
+        if self.budget_usd <= ZERO:
+            raise ValueError("station-day budget must be positive")
+
+    def _matching_engines(
+        self, engines: Iterable[ShadowOrderEngine]
+    ) -> tuple[ShadowOrderEngine, ...]:
+        output: list[ShadowOrderEngine] = []
+        for engine in engines:
+            key = engine.portfolio_key
+            if key is None:
+                raise ShadowPortfolioInvariantError(
+                    "unscoped_engine_cannot_join_station_day_risk_manager",
+                    details={"station_id": self.station_id, "market_day": self.market_day},
+                )
+            if key.market_day != self.market_day:
+                raise ShadowPortfolioInvariantError(
+                    "portfolio_market_day_mismatch",
+                    details={
+                        "expected_market_day": self.market_day,
+                        "actual_portfolio_key": key.as_dict(),
+                    },
+                )
+            output.append(engine)
+        return tuple(output)
+
+    def active_reserved_usd(self, engines: Iterable[ShadowOrderEngine]) -> Decimal:
+        return sum((engine.active_reserved_usd for engine in self._matching_engines(engines)), start=ZERO)
+
+    def inventory_cost_usd(self, engines: Iterable[ShadowOrderEngine]) -> Decimal:
+        return sum((engine.inventory_cost_usd for engine in self._matching_engines(engines)), start=ZERO)
+
+    def cumulative_buy_cost_usd(self, engines: Iterable[ShadowOrderEngine]) -> Decimal:
+        return sum(
+            (engine.cumulative_buy_cost_usd for engine in self._matching_engines(engines)),
+            start=ZERO,
+        )
+
+    def current_open_exposure_usd(self, engines: Iterable[ShadowOrderEngine]) -> Decimal:
+        """Current inventory cost plus still-resting BUY reservations.
+
+        This is always reported even when the configured daily cap uses
+        cumulative buy cost.  A completed exit therefore visibly releases
+        *current* exposure without silently changing the configured daily
+        budget policy.
+        """
+        matching = self._matching_engines(engines)
+        return sum((engine.total_risk_usd for engine in matching), start=ZERO)
+
+    def budget_used_usd(self, engines: Iterable[ShadowOrderEngine]) -> Decimal:
+        matching = self._matching_engines(engines)
+        basis = (
+            sum((engine.cumulative_buy_cost_usd for engine in matching), start=ZERO)
+            if self.budget_mode is StationDayBudgetMode.CUMULATIVE_BUY_COST
+            else sum((engine.inventory_cost_usd for engine in matching), start=ZERO)
+        )
+        return basis + sum((engine.active_reserved_usd for engine in matching), start=ZERO)
+
+    def available_budget_usd(self, engines: Iterable[ShadowOrderEngine]) -> Decimal:
+        return max(ZERO, self.budget_usd - self.budget_used_usd(engines))
+
+    def can_reserve_buy(
+        self,
+        engines: Iterable[ShadowOrderEngine],
+        *,
+        requested_usd: Decimal | float | str,
+        estimated_fee_usd: Decimal | float | str = ZERO,
+    ) -> bool:
+        if self.halted:
+            return False
+        requested = _decimal(requested_usd)
+        fee = _decimal(estimated_fee_usd)
+        if requested <= ZERO:
+            return False
+        # Both views are hard constraints.  The configured cumulative policy
+        # may be stricter than current exposure after an exit, but it must
+        # never let active BUY reservations plus token inventory exceed $200.
+        return (
+            self.current_open_exposure_usd(engines) + requested + fee <= self.budget_usd
+            and self.budget_used_usd(engines) + requested + fee <= self.budget_usd
+        )
+
+    def halt(self, code: str, *, details: Mapping[str, Any]) -> None:
+        self.halted = True
+        self.halt_reason = code
+        self.discrepancies.append({"code": code, "details": _json_value(dict(details))})
+
+    def assert_conservation(self, engines: Iterable[ShadowOrderEngine]) -> None:
+        for engine in self._matching_engines(engines):
+            if engine.inventory_shares < ZERO or engine.inventory_cost_usd < ZERO:
+                details = {
+                    "portfolio_key": engine.portfolio_key.as_dict() if engine.portfolio_key else None,
+                    "inventory_shares": str(engine.inventory_shares),
+                    "inventory_cost_usd": str(engine.inventory_cost_usd),
+                }
+                self.halt("negative_token_inventory", details=details)
+                raise ShadowPortfolioInvariantError("negative_token_inventory", details=details)
+        current_open_exposure = self.current_open_exposure_usd(engines)
+        if current_open_exposure > self.budget_usd:
+            details = {
+                "station_id": self.station_id,
+                "market_day": self.market_day,
+                "current_open_exposure_usd": str(current_open_exposure),
+                "budget_usd": str(self.budget_usd),
+            }
+            self.halt("station_day_current_exposure_exceeded", details=details)
+            raise ShadowPortfolioInvariantError(
+                "station_day_current_exposure_exceeded", details=details
+            )
+        if self.budget_used_usd(engines) > self.budget_usd:
+            details = {
+                "station_id": self.station_id,
+                "market_day": self.market_day,
+                "budget_used_usd": str(self.budget_used_usd(engines)),
+                "budget_usd": str(self.budget_usd),
+            }
+            self.halt("station_day_budget_exceeded", details=details)
+            raise ShadowPortfolioInvariantError("station_day_budget_exceeded", details=details)
+
+    def as_dict(self, engines: Iterable[ShadowOrderEngine]) -> dict[str, Any]:
+        matching = self._matching_engines(engines)
+        return {
+            "station_id": self.station_id,
+            "market_day": self.market_day,
+            "budget_usd": str(self.budget_usd),
+            "budget_mode": str(self.budget_mode),
+            "inventory_cost_usd": str(sum((engine.inventory_cost_usd for engine in matching), start=ZERO)),
+            "cumulative_buy_cost_usd": str(
+                sum((engine.cumulative_buy_cost_usd for engine in matching), start=ZERO)
+            ),
+            "current_open_exposure_usd": str(self.current_open_exposure_usd(matching)),
+            "active_reserved_usd": str(
+                sum((engine.active_reserved_usd for engine in matching), start=ZERO)
+            ),
+            "budget_used_usd": str(self.budget_used_usd(matching)),
+            "available_budget_usd": str(self.available_budget_usd(matching)),
+            "portfolio_count": len(matching),
+            "halted": self.halted,
+            "halt_reason": self.halt_reason,
+            "discrepancies": list(self.discrepancies),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -1737,7 +2222,16 @@ def inventory_risk_summary(engine: ShadowOrderEngine) -> dict[str, Any]:
         "total_risk_usd": float(engine.total_risk_usd),
         "available_budget_usd": float(engine.available_budget_usd),
         "realized_pnl_usd": float(engine.realized_pnl_usd),
+        "realized_pnl_by_exit_source": {
+            source: float(value)
+            for source, value in sorted(engine.realized_pnl_by_exit_source.items())
+        },
+        "realized_pnl_by_exit_reason": {
+            reason: float(value)
+            for reason, value in sorted(engine.realized_pnl_by_exit_reason.items())
+        },
         "fees_usd": float(engine.fees_usd),
+        "round_trip_count": engine.round_trip_count,
         "active_orders": len(engine.active_orders),
         "order_count": len(engine.orders),
         "rejection_reasons": list(engine.rejection_reasons),

@@ -101,14 +101,18 @@ uv run poly-weather shadow-spread-engine --supervised
 
 `analyze-price-paths` 在真实 NO ask 的 $200 深度完整成交后，按严格晚于入场时刻的同一 NO token bid 追踪 +5/+10/+13/+20¢ 目标，区分目标触达、物理出局跳空、完整窗口未达标和数据截断；同时报告 $200 未来深度是否能完整承接、物理余量层、典型高点联合分层、最低出局前 bid 与 −5% 止损带。天气输入只读取原始 WRH 归档的 source/receipt 均不晚于入场的观测；成交价不是可成交 ask/bid，也不使用 midpoint、`p` 或 `1−YES`。
 
-`analyze-shadow-spread` 是事件驱动的只读 maker 影子回放。它按 station/market-day 运行一个有限库存状态机，
-对 touch（乐观上界）、queue-aware（相反方向真实 taker 成交消耗队列）和 trade-through（严格穿价）
-分别输出成交、等待、撤单/重报价、markout、资本占用和净 PnL 诊断，并比较有限 $200 分批方案。
+`analyze-shadow-spread` 是事件驱动的只读 maker 影子回放。它按
+`event_id + market_id + token_id + market_day` 运行独立库存状态机；同站同日只保留为
+相关风险和统计聚类，绝不会把一个温度桶的库存、成本或 PnL 用于另一个桶。对 touch（乐观上界）、
+queue-aware（相反方向真实 taker 成交消耗队列）和 trade-through（严格穿价）分别输出成交、等待、
+撤单/重报价、markout、token 级资本占用和 PnL 诊断，并比较有限 $200 分批方案。
 成交价不是可成交 ask/bid，影子成交不是执行记录；缺少季节版本、维护/恢复、盘口完整性或天气新鲜度时
 fail-closed。`shadow-spread-engine --supervised` 默认持续只读跟随本地追加归档，使用原子 cursor、
-重启代数和独立永久账本/状态 JSON；`--once` 仅用于有限归档烟测。它保留活动影子单、queue ahead、
-部分成交、库存和分批退出，并扫描执行依赖；维护或 stale 时只撤销影子单，绝不访问钱包、签名、
-User WebSocket 或 POST/DELETE order。
+重启代数和 token-scoped v2 永久账本/状态 JSON；默认新路径为
+`shadow_orders_v2_token_scoped.jsonl`、`shadow_spread_status_v2_token_scoped.json` 与
+`shadow_spread_cursor_v2_token_scoped.json`。旧 v1 station-day 账本只读隔离，不能载入新状态。
+`--once` 仅用于有限归档烟测。它保留活动影子单、queue ahead、部分成交、库存和分批退出，并扫描执行依赖；
+维护或 stale 时只撤销影子单，绝不访问钱包、签名、User WebSocket 或 POST/DELETE order。
 
 默认实时信号健康闸门为：NWS 数据年龄不超过 75 分钟、METAR 不超过 70 分钟、两源温差不超过 2°F、市场 WebSocket 心跳不超过 1 分钟、天气守护进程心跳不超过 3 分钟、Open-Meteo 网格距离不超过 3 km、候选净边际不超过 15%。主 NOAA、deterministic 预报、守护进程或 CLOB 失效会把信号标记为 `stale`；METAR 交叉检查、盘口不完整或异常边际标记为 `warning`。监测器没有钱包、签名、下单或资金代码路径。
 
