@@ -51,6 +51,8 @@ uv run poly-weather analyze-public-trades
 uv run poly-weather analyze-no-entry-accessibility
 uv run poly-weather analyze-price-band-accessibility
 uv run poly-weather analyze-price-paths
+uv run poly-weather analyze-shadow-spread --strategy-config configs/shadow_spread_strategy.json
+uv run poly-weather shadow-spread-engine --supervised
 ```
 
 默认实际结算 registry 为 `configs/settlements.json`。原来的
@@ -75,7 +77,7 @@ uv run poly-weather analyze-price-paths
 
 `backfill-prices` 使用 Polymarket 官方 CLOB 批量历史接口采集每个二元分档的 Yes token。`paper-decision` 只从 DuckDB 选择决策时刻之前、且未过期的价格，扣除配置费用与滑点后执行风险闸门。它只记录纸面决策，不包含钱包、签名或下单路径。
 
-`monitor` 是持续只读监测器。每轮读取 NOAA/NWS 最新站点温度、Aviation Weather METAR 和公开 CLOB 双边报价；TAF 默认每 10 分钟刷新。`--cycles 1` 用于单轮检查，`--cycles 0` 持续运行到 Ctrl+C。轮询间隔不得低于 60 秒。每轮快照同时进入 `data/research.duckdb` 和 `data/raw/monitor_snapshot/`。
+`monitor` 是持续只读监测器。每轮读取 NOAA/NWS 最新站点温度、Aviation Weather METAR 和公开 CLOB 双边报价；实际实时轮询频率为 WRH/NWS 120 秒、METAR 900 秒、TAF 3600 秒、中国站 1800 秒、Open-Meteo 10800 秒。`--cycles 1` 用于单轮检查，`--cycles 0` 持续运行到 Ctrl+C。轮询间隔不得低于 60 秒。每轮快照同时进入 `data/research.duckdb` 和 `data/raw/monitor_snapshot/`。
 
 `market-stream` 保存完整初始 `book` 并逐档应用 `price_change`，持续维护准确的内存订单簿。每个事件按结算时区在当地 09:00-20:00 全量落盘；窗口外仍保持连接、心跳和内存更新，但仅保存每小时完整深度及最终 `market_resolved`。原始写盘与数据库写入使用独立队列，不连接需要认证的 user channel。
 
@@ -98,6 +100,13 @@ uv run poly-weather analyze-price-paths
 `analyze-price-band-accessibility` 按真实 NO best ask 分析 `<0.30` 到 `≥0.99` 价格带，比较 $20–$200 的 NO 买入与等价 YES 卖出深度，并给出双边滑点、实际成交手续费、同簿往返成本门槛和本地时段分层。空 asks 不用 p/midpoint/互补价填补；主表仅用严格此前最后真实 ask 作 cohort 标签并保留年龄。成交价不是可成交 ask，结果仍是只读纸面研究。
 
 `analyze-price-paths` 在真实 NO ask 的 $200 深度完整成交后，按严格晚于入场时刻的同一 NO token bid 追踪 +5/+10/+13/+20¢ 目标，区分目标触达、物理出局跳空、完整窗口未达标和数据截断；同时报告 $200 未来深度是否能完整承接、物理余量层、典型高点联合分层、最低出局前 bid 与 −5% 止损带。天气输入只读取原始 WRH 归档的 source/receipt 均不晚于入场的观测；成交价不是可成交 ask/bid，也不使用 midpoint、`p` 或 `1−YES`。
+
+`analyze-shadow-spread` 是事件驱动的只读 maker 影子回放。它按 station/market-day 运行一个有限库存状态机，
+对 touch（乐观上界）、queue-aware（相反方向真实 taker 成交消耗队列）和 trade-through（严格穿价）
+分别输出成交、等待、撤单/重报价、markout、资本占用和净 PnL 诊断，并比较有限 $200 分批方案。
+成交价不是可成交 ask/bid，影子成交不是执行记录；缺少季节版本、维护/恢复、盘口完整性或天气新鲜度时
+fail-closed。`shadow-spread-engine --supervised` 只读取本地归档，将结果写入独立永久账本和状态 JSON，
+绝不访问钱包、签名、User WebSocket 或 POST/DELETE order。
 
 默认实时信号健康闸门为：NWS 数据年龄不超过 75 分钟、METAR 不超过 70 分钟、两源温差不超过 2°F、市场 WebSocket 心跳不超过 1 分钟、天气守护进程心跳不超过 3 分钟、Open-Meteo 网格距离不超过 3 km、候选净边际不超过 15%。主 NOAA、deterministic 预报、守护进程或 CLOB 失效会把信号标记为 `stale`；METAR 交叉检查、盘口不完整或异常边际标记为 `warning`。监测器没有钱包、签名、下单或资金代码路径。
 

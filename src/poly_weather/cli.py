@@ -129,6 +129,14 @@ from poly_weather.settlement import (
     verify_settlement_evidence,
     verify_signal_contract,
 )
+from poly_weather.shadow_orders import ShadowStrategyConfig
+from poly_weather.shadow_runtime import run_shadow_spread_once
+from poly_weather.shadow_spread_replay import (
+    default_shadow_strategy_config,
+    render_shadow_spread_report,
+    replay_shadow_spread,
+    write_shadow_spread_result,
+)
 from poly_weather.signal_engine import (
     LiveSignalConfig,
     LiveSignalEngine,
@@ -2522,6 +2530,130 @@ def analyze_price_paths_command(
             "execution_enabled": False,
         }
     )
+
+
+@app.command("analyze-shadow-spread")
+def analyze_shadow_spread_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    warming_policy_path: Annotated[
+        Path, typer.Option("--warming-policy")
+    ] = DEFAULT_WARMING_POLICY,
+    strategy_config_path: Annotated[
+        Path | None, typer.Option("--strategy-config", help="Versioned shadow strategy JSON.")
+    ] = None,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/shadow_spread_strategy_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/shadow_spread_strategy_analysis.json"
+    ),
+    global_capital_usd: Annotated[str, typer.Option("--global-capital-usd")] = "200",
+) -> None:
+    """Replay finite post-only shadow orders; never submits an order."""
+    checkpoint_paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
+    pairs = paired_book_snapshots(checkpoint_paths)
+    if not pairs:
+        raise typer.BadParameter("no eligible paired order-book records found in checkpoints")
+    registry = load_settlement_registry(config)
+    metadata = archived_event_metadata(
+        sorted({str(pair["event_slug"]) for pair in pairs}), registry.specs
+    )
+    if strategy_config_path is not None:
+        strategy_payload = json.loads(strategy_config_path.read_text(encoding="utf-8"))
+        strategy = ShadowStrategyConfig.from_mapping(strategy_payload)
+    else:
+        strategy = default_shadow_strategy_config()
+    policy_versions: dict[tuple[str, str], str] = {}
+    policy_windows: dict[tuple[str, str], bool] = {}
+    if warming_policy_path.exists():
+        policy_payload = json.loads(warming_policy_path.read_text(encoding="utf-8"))
+        for event_value in metadata.values():
+            station = str(event_value.get("station_id") or "")
+            target = str(event_value.get("target_date") or "")
+            seasons = (policy_payload.get("stations") or {}).get(station, {}).get("seasons", ())
+            for season in seasons:
+                start = str(season.get("window_start") or "")
+                end = str(season.get("window_end") or "")
+                if start and end and start <= target <= end:
+                    policy_versions[(station, target)] = str(
+                        season.get("threshold_version") or policy_payload.get("policy_version") or ""
+                    )
+                    policy_windows[(station, target)] = True
+                    break
+    replay_pairs: list[dict[str, object]] = []
+    for pair in pairs:
+        event_value = metadata.get(str(pair.get("event_slug") or ""), {})
+        station = str(event_value.get("station_id") or "")
+        target = str(event_value.get("target_date") or "")
+        enriched = dict(pair)
+        if (version := policy_versions.get((station, target))):
+            enriched["season_version"] = version
+            enriched["in_season"] = policy_windows[(station, target)]
+        replay_pairs.append(enriched)
+    trades_dir = data_dir / "public_trades"
+    trades = load_event_trade_tapes(trades_dir) if trades_dir.exists() else {}
+    settled_slugs: list[str] = []
+    settled_catalog = data_dir / "settled_markets.json"
+    if settled_catalog.exists():
+        payload = json.loads(settled_catalog.read_text(encoding="utf-8"))
+        settled_slugs = [
+            str(row["event_slug"])
+            for row in payload.get("events") or ()
+            if row.get("event_slug")
+        ]
+    result = replay_shadow_spread(
+        replay_pairs,
+        trades=trades,
+        event_metadata=metadata,
+        config=strategy,
+        global_capital_usd=Decimal(global_capital_usd),
+        settled_event_slugs=settled_slugs,
+    )
+    result["quality_window"] = (
+        "paired_book_snapshots default exclusion: official maintenance/failure plus measured recovery"
+    )
+    render_shadow_spread_report(result, output_path)
+    write_shadow_spread_result(result, analysis_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "independent_market_day_count": result["independent_market_day_count"],
+            "shadow_order_count": result["models"]["queue_aware"]["shadow_order_count"],
+            "fill_count": result["models"]["queue_aware"]["fill_count"],
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("shadow-spread-engine")
+def shadow_spread_engine_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    ledger_path: Annotated[Path, typer.Option("--ledger")] = Path(
+        "data/raw/shadow_orders/shadow_orders.jsonl"
+    ),
+    status_path: Annotated[Path, typer.Option("--status")] = Path(
+        "data/runtime/shadow_spread_status.json"
+    ),
+    strategy_config_path: Annotated[
+        Path | None, typer.Option("--strategy-config")
+    ] = None,
+    supervised: Annotated[
+        bool, typer.Option("--supervised", help="Required explicit read-only supervision flag.")
+    ] = False,
+) -> None:
+    """Run one supervised, read-only shadow pass over local market archives."""
+    if not supervised:
+        raise typer.BadParameter("--supervised is required; this command never executes orders")
+    status = run_shadow_spread_once(
+        data_dir=data_dir,
+        ledger_path=ledger_path,
+        status_path=status_path,
+        config_path=str(strategy_config_path) if strategy_config_path else None,
+        supervised=True,
+    )
+    _emit({**status, "status_path": str(status_path.resolve()), "execution_enabled": False})
 
 
 @app.command("analyze-eliminated-no-exit")

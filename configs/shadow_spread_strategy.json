@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "version": "shadow-spread-v1",
+  "quote_mode": "best_bid",
+  "fill_model": "queue_aware",
+  "entry_bands": {
+    "KLAX": [["0.70", "0.85"]],
+    "KLGA": [["0.50", "0.70"]]
+  },
+  "target_rise": "0.10",
+  "order_timeout_seconds": 900,
+  "max_active_orders": 1,
+  "market_budget_usd": "200",
+  "tranche_usd": ["50"],
+  "replenish_mode": "none",
+  "exit_targets": ["0.05", "0.10", "0.13", "0.20"],
+  "require_health_gates": true,
+  "require_season_version": true,
+  "notes": [
+    "Fixed candidate family only; no parameter search.",
+    "The bands are configuration, not an executable recommendation.",
+    "All fills are touch/queue-aware/trade-through shadow estimates."
+  ]
+}
