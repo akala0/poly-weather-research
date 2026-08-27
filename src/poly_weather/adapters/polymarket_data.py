@@ -25,12 +25,18 @@ class PublicTrade:
     price: Decimal
     timestamp: datetime
     transaction_hash: str
+    # Local receipt time is optional for historical API responses.  When a
+    # persisted tape supplies it, replay uses it as an availability fence so
+    # a later API fetch cannot fill an earlier shadow order retroactively.
+    available_at: datetime | None = None
 
     def as_json(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["size"] = str(self.size)
         payload["price"] = str(self.price)
         payload["timestamp"] = self.timestamp.isoformat()
+        if self.available_at is not None:
+            payload["available_at"] = self.available_at.isoformat()
         return payload
 
 

@@ -267,13 +267,19 @@ def collect_depth_event_trades(
                 coverage.start_at, previous_end - overlap
             )
             request_end = coverage.end_at + timedelta(seconds=1)
-            fetched = client.market_trades(
-                market_ids=coverage.condition_ids,
-                start=request_start,
-                end=request_end,
-                taker_only=True,
-            )
-            status = "collected_nonzero" if fetched else "collected_zero"
+            try:
+                fetched = client.market_trades(
+                    market_ids=coverage.condition_ids,
+                    start=request_start,
+                    end=request_end,
+                    taker_only=True,
+                )
+            except Exception as exc:  # network/API failure is recorded, not mislabelled zero
+                fetched = []
+                status = "collection_error"
+                state["last_error"] = f"{type(exc).__name__}: {exc}"
+            else:
+                status = "collected_nonzero" if fetched else "collected_zero"
         rows = _merge_trades(old_rows, fetched)
         trade_assets = {str(row.get("asset_id") or "") for row in rows if row.get("asset_id")}
         intersected = sorted(set(coverage.asset_ids) & trade_assets)
@@ -323,13 +329,14 @@ def collect_depth_event_trades(
         _atomic_json_write(path, payload)
         state.update(
             {
-                "watermark_end": coverage.end_at.isoformat(),
                 "watermark_snapshot_count": coverage.snapshot_count,
                 "status": status,
                 "last_fetched_at": fetched_at,
                 "last_fetched_trade_count": len(fetched),
             }
         )
+        if status != "collection_error":
+            state["watermark_end"] = coverage.end_at.isoformat()
         summaries.append(
             {
                 "event_slug": event_slug,
@@ -351,7 +358,9 @@ def collect_depth_event_trades(
         "generated_at": fetched_at,
         "depth_event_count": len(summaries),
         "collected_zero_event_count": sum(row["collection_status"] == "collected_zero" for row in summaries),
-        "not_collected_event_count": sum(row["collection_status"] == "not_collected" for row in summaries),
+        "not_collected_event_count": sum(
+            row["collection_status"] in {"not_collected", "collection_error"} for row in summaries
+        ),
         "trade_count": sum(row["trade_count"] for row in summaries),
         "trade_asset_intersection_count": sum(
             row["trade_asset_intersection_count"] for row in summaries

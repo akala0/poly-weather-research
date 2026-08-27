@@ -80,9 +80,12 @@ class MarketWsTrade:
         return ":".join(
             (
                 self.asset_id,
+                self.market_id,
                 self.source_timestamp.isoformat(),
                 str(self.price),
                 str(self.size),
+                str(self.side),
+                str(self.run_id or ""),
                 str(self.sequence or ""),
             )
         )
@@ -247,13 +250,33 @@ def load_market_ws_trades(
                     quality_excluded += 1
                     reasons["upstream_quality_window"] += 1
                     continue
+                # A transaction hash plus token/tape fields is the stable
+                # identity across reconnects.  A single blockchain
+                # transaction may contain more than one token fill, so hash
+                # alone would undercount queue consumption.  Without a hash,
+                # retain run/sequence: same-second executions can share
+                # price/size and cannot be collapsed safely.
                 key = (
-                    parsed.transaction_hash,
-                    parsed.asset_id,
-                    parsed.source_timestamp,
-                    parsed.price,
-                    parsed.size,
-                    parsed.side,
+                    (
+                        "tx",
+                        parsed.transaction_hash,
+                        parsed.asset_id,
+                        parsed.source_timestamp,
+                        parsed.price,
+                        parsed.size,
+                        parsed.side,
+                    )
+                    if parsed.transaction_hash
+                    else (
+                        "composite",
+                        parsed.asset_id,
+                        parsed.source_timestamp,
+                        parsed.price,
+                        parsed.size,
+                        parsed.side,
+                        parsed.run_id,
+                        parsed.sequence,
+                    )
                 )
                 trades.setdefault(key, parsed)
     ordered = tuple(
@@ -276,7 +299,11 @@ def merge_trade_sources(
     order is unknowable.
     """
     output: list[dict[str, Any]] = []
-    ws_hashes = {row.transaction_hash for row in ws_trades if row.transaction_hash}
+    ws_identities = {
+        (row.transaction_hash, row.asset_id)
+        for row in ws_trades
+        if row.transaction_hash
+    }
     ws_composites = {
         (row.asset_id, row.source_timestamp, row.price, row.size, row.side)
         for row in ws_trades
@@ -285,7 +312,7 @@ def merge_trade_sources(
     for row in sorted(ws_trades, key=lambda item: (item.source_timestamp, item.sequence or 0)):
         output.append({"source": "market_ws", "trade": row, "side_validated": False})
     for row in sorted(public_trades, key=lambda item: (item.timestamp, item.transaction_hash)):
-        if row.transaction_hash and row.transaction_hash in ws_hashes:
+        if row.transaction_hash and (row.transaction_hash, row.asset_id) in ws_identities:
             continue
         composite = (row.asset_id, row.timestamp, row.price, row.size, ShadowSide(row.side.upper()))
         if composite in ws_composites:
@@ -313,8 +340,8 @@ def validate_ws_side_semantics(
     matches can establish the aggressor interpretation; missing matches are
     reported as unknown rather than treated as proof.
     """
-    by_hash = {
-        trade.transaction_hash: trade
+    by_identity = {
+        (trade.transaction_hash, trade.asset_id): trade
         for trade in public_trades
         if trade.transaction_hash
     }
@@ -322,13 +349,14 @@ def validate_ws_side_semantics(
     matching = 0
     mismatched: list[str] = []
     for trade in ws_trades:
-        if not trade.transaction_hash or trade.transaction_hash not in by_hash:
+        identity = (trade.transaction_hash, trade.asset_id)
+        if not trade.transaction_hash or identity not in by_identity:
             continue
         matched += 1
-        if trade.side.value == by_hash[trade.transaction_hash].side.upper():
+        if trade.side.value == by_identity[identity].side.upper():
             matching += 1
         else:
-            mismatched.append(trade.transaction_hash)
+            mismatched.append(trade.event_id)
     status = (
         "validated"
         if matched > 0 and not mismatched
@@ -356,14 +384,33 @@ def build_shadow_trade_events(
     """Build queue inputs with WS preference and a fail-closed side gate."""
     validation = validate_ws_side_semantics(ws_trades, public_trades)
     ws_allowed = bool(validation["queue_use_allowed"])
+    canonical_identities = {
+        (trade.transaction_hash, trade.asset_id)
+        for trade in public_trades
+        if trade.transaction_hash
+    }
     events: list[TradeEvent] = []
     for row in ws_trades:
-        event = row.to_trade_event(validated_aggressor_side=ws_allowed)
+        # A documented side is not enough to infer queue aggressor semantics
+        # for an unmatched archive row.  Require a canonical taker row with
+        # the same transaction hash and token; unmatched WS rows are reported
+        # but fail closed and the API row remains available as a supplement.
+        event = row.to_trade_event(
+            validated_aggressor_side=ws_allowed
+            and row.transaction_hash is not None
+            and (row.transaction_hash, row.asset_id) in canonical_identities
+        )
         if event is not None:
             events.append(event)
-    ws_hashes = {row.transaction_hash for row in ws_trades if row.transaction_hash}
+    accepted_ws_identities = {
+        (row.transaction_hash, row.asset_id)
+        for row in ws_trades
+        if row.transaction_hash
+        and (row.transaction_hash, row.asset_id) in canonical_identities
+        and ws_allowed
+    }
     for row in public_trades:
-        if row.transaction_hash in ws_hashes:
+        if row.transaction_hash and (row.transaction_hash, row.asset_id) in accepted_ws_identities:
             continue
         try:
             events.append(
@@ -375,6 +422,7 @@ def build_shadow_trade_events(
                     size=row.size,
                     event_id=row.transaction_hash or None,
                     source="data_api",
+                    available_at=row.available_at,
                 )
             )
         except (TypeError, ValueError):
@@ -383,6 +431,11 @@ def build_shadow_trade_events(
     validation["shadow_trade_event_count"] = len(events)
     validation["ws_shadow_trade_event_count"] = sum(row.source == "market_ws" for row in events)
     validation["data_api_shadow_trade_event_count"] = sum(row.source == "data_api" for row in events)
+    validation["unmatched_ws_trade_count"] = sum(
+        row.transaction_hash is None
+        or (row.transaction_hash, row.asset_id) not in canonical_identities
+        for row in ws_trades
+    )
     return tuple(events), validation
 
 

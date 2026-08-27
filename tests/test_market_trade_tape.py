@@ -5,6 +5,7 @@ from decimal import Decimal
 from poly_weather.adapters.polymarket_data import PublicTrade
 from poly_weather.market_trade_tape import (
     WS_SIDE_SEMANTICS,
+    build_shadow_trade_events,
     load_market_ws_trades,
     merge_trade_sources,
     parse_market_ws_trade,
@@ -88,3 +89,56 @@ def test_cross_source_validation_and_ws_preference() -> None:
     merged = merge_trade_sources([ws], [api])
     assert len(merged) == 1
     assert merged[0]["source"] == "market_ws"
+
+
+def test_ws_without_hash_keeps_distinct_same_second_sequences(tmp_path) -> None:
+    first = _row()
+    second = _row()
+    first["raw"] = {**first["raw"], "transaction_hash": None}
+    second["raw"] = {**second["raw"], "transaction_hash": None}
+    first["sequence"] = 4
+    second["sequence"] = 5
+    path = tmp_path / "events.jsonl"
+    path.write_text("\n".join(json.dumps(row) for row in (first, second)) + "\n", encoding="utf-8")
+    result = load_market_ws_trades([path])
+    assert len(result.trades) == 2
+
+
+def test_unmatched_ws_rows_fail_closed_but_api_supplement_remains() -> None:
+    matched_ws = parse_market_ws_trade(_row())
+    unmatched_row = _row()
+    unmatched_row["raw"] = {**unmatched_row["raw"], "transaction_hash": "tx-unmatched"}
+    unmatched_ws = parse_market_ws_trade(unmatched_row)
+    api = PublicTrade(
+        proxy_wallet="wallet",
+        asset_id="asset",
+        condition_id="condition",
+        event_slug="event",
+        market_slug="market",
+        outcome="No",
+        side="SELL",
+        size=Decimal("4"),
+        price=Decimal("0.70"),
+        timestamp=datetime.fromtimestamp(1787820000, tz=UTC),
+        transaction_hash="tx-2",
+    )
+    matched_api = PublicTrade(
+        proxy_wallet="wallet",
+        asset_id="asset",
+        condition_id="condition",
+        event_slug="event",
+        market_slug="market",
+        outcome="No",
+        side="SELL",
+        size=Decimal("4"),
+        price=Decimal("0.70"),
+        timestamp=datetime.fromtimestamp(1787820000, tz=UTC),
+        transaction_hash="tx-1",
+    )
+    events, validation = build_shadow_trade_events(
+        [matched_ws, unmatched_ws], [matched_api, api]
+    )
+    assert validation["status"] == "validated"
+    assert validation["unmatched_ws_trade_count"] == 1
+    assert sum(event.source == "market_ws" for event in events) == 1
+    assert sum(event.source == "data_api" for event in events) == 1

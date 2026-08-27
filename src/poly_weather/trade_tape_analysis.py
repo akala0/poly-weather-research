@@ -47,8 +47,23 @@ def _trade_tier(count: int) -> str:
 def load_event_trade_tapes(path: Path) -> dict[str, list[PublicTrade]]:
     output: dict[str, list[PublicTrade]] = {}
     for source in sorted(path.glob("*.json")):
-        payload = json.loads(source.read_text(encoding="utf-8"))
+        try:
+            payload = json.loads(source.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, Mapping) or not payload.get("event_slug"):
+            # Collection audit/index files live beside event tapes but do not
+            # represent a trade tape themselves.
+            continue
         event_slug = str(payload["event_slug"])
+        fetched_at: datetime | None = None
+        if payload.get("fetched_at"):
+            try:
+                fetched_at = datetime.fromisoformat(
+                    str(payload["fetched_at"]).replace("Z", "+00:00")
+                ).astimezone(UTC)
+            except (TypeError, ValueError):
+                fetched_at = None
         output[event_slug] = [
             PublicTrade(
                 proxy_wallet=str(row.get("proxy_wallet") or ""),
@@ -62,6 +77,11 @@ def load_event_trade_tapes(path: Path) -> dict[str, list[PublicTrade]]:
                 price=Decimal(str(row["price"])),
                 timestamp=datetime.fromisoformat(str(row["timestamp"])).astimezone(UTC),
                 transaction_hash=str(row["transaction_hash"]),
+                available_at=(
+                    datetime.fromisoformat(str(row["available_at"])).astimezone(UTC)
+                    if row.get("available_at")
+                    else fetched_at
+                ),
             )
             for row in payload.get("trades") or ()
         ]
