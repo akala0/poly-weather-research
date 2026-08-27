@@ -333,9 +333,14 @@ class TradeEvent:
     event_id: str | None = None
     source: str = "data_api"
     sequence: int | None = None
+    # Receipt/availability time is distinct from the exchange event timestamp.
+    # Replays must never consume a trade before its local archive receipt.
+    available_at: datetime | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "timestamp", _utc(self.timestamp))
+        if self.available_at is not None:
+            object.__setattr__(self, "available_at", _utc(self.available_at))
         object.__setattr__(self, "side", ShadowSide(str(self.side).upper()))
         object.__setattr__(self, "price", _decimal(self.price))
         object.__setattr__(self, "size", _decimal(self.size))
@@ -360,6 +365,9 @@ class TradeEvent:
             event_id=str(row["id"]) if row.get("id") is not None else None,
             source=str(row.get("source") or "data_api"),
             sequence=int(row["sequence"]) if row.get("sequence") is not None else None,
+            available_at=(
+                _utc(str(row["available_at"])) if row.get("available_at") is not None else None
+            ),
         )
 
 
