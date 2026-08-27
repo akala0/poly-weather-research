@@ -452,10 +452,25 @@ def _run_model(
             if fill.source == "emergency_taker_depth":
                 failure_exit_prices.append(float(fill.price))
     capital_minutes_float = float(capital_minutes) if capital_minutes else None
+    gross_pnl = (
+        sum(
+            (order.filled_usd for order in all_orders if order.side is ShadowSide.SELL),
+            start=ZERO,
+        )
+        - sum(
+            (order.filled_usd for order in all_orders if order.side is ShadowSide.BUY),
+            start=ZERO,
+        )
+        if all_fills
+        else None
+    )
+    net_pnl = (
+        sum(row["realized_pnl_usd"] for row in day_summaries) if all_fills else None
+    )
     return_on_capital = (
-        float(sum(row["realized_pnl_usd"] for row in day_summaries))
+        float(net_pnl)
         / (capital_minutes_float / 60)
-        if capital_minutes_float and capital_minutes_float > 0
+        if net_pnl is not None and capital_minutes_float and capital_minutes_float > 0
         else None
     )
     return {
@@ -479,8 +494,8 @@ def _run_model(
         "rejection_reasons": dict(rejection_reasons),
         "first_fill_wait_minutes": _summary(fill_waits),
         "full_fill_wait_minutes": _summary(full_waits),
-        "gross_pnl_usd": float(sum((order.filled_usd for order in all_orders if order.side is ShadowSide.SELL), start=ZERO) - sum((order.filled_usd for order in all_orders if order.side is ShadowSide.BUY), start=ZERO)),
-        "net_pnl_usd": float(sum(row["realized_pnl_usd"] for row in day_summaries)),
+        "gross_pnl_usd": float(gross_pnl) if gross_pnl is not None else None,
+        "net_pnl_usd": float(net_pnl) if net_pnl is not None else None,
         "max_inventory_risk_usd": float(global_peak_risk),
         "global_capital_usd": float(global_capital),
         "capital_minutes": capital_minutes_float,
@@ -592,6 +607,20 @@ def replay_shadow_spread(
             "capacity_at_first_tranche": capacity,
             "note": "Candidate overlap is not a fill or execution result; same-day buckets remain correlated.",
         }
+    priority_station_summary: dict[str, dict[str, Any]] = {}
+    for station in ("KLAX", "KLGA"):
+        rows = [row for row in primary_model["day_summaries"] if row["station_id"] == station]
+        priority_station_summary[station] = {
+            "independent_market_day_count": len(rows),
+            "raw_snapshot_count": sum(row["raw_snapshot_count"] for row in rows),
+            "price_band_candidate_count": sum(
+                row["price_band_candidate_count"] for row in rows
+            ),
+            "shadow_order_count": sum(row["shadow_order_count"] for row in rows),
+            "fill_count": sum(row["fill_count"] for row in rows),
+            "round_trips": sum(row["round_trips"] for row in rows),
+            "status": "diagnostic only; no executable claim",
+        }
     return {
         "schema_version": 1,
         "generated_at": datetime.now(UTC).isoformat(),
@@ -627,6 +656,7 @@ def replay_shadow_spread(
         "price_band_candidate_count": primary_model["price_band_candidate_count"],
         "same_second_policy": "ambiguous Data API groups are skipped; no intra-second order is invented",
         "models": models,
+        "priority_station_summary": priority_station_summary,
         "schedule_comparison": schedule_comparison,
         "global_capital_comparison": global_capital_comparison,
         "primary_model": str(FillModel.QUEUE_AWARE),
@@ -678,7 +708,8 @@ def render_shadow_spread_report(result: Mapping[str, Any], output_path: Path | s
             f"(Wilson {rate.get('wilson_low')}–{rate.get('wilson_high')}) | "
             f"{day_rate.get('count', 0)}/{day_rate.get('sample_count', 0)} "
             f"(Wilson {day_rate.get('wilson_low')}–{day_rate.get('wilson_high')}) | "
-            f"{waits.get('p50')} / {waits.get('p90')} | {model.get('net_pnl_usd')} |"
+            f"{waits.get('p50')} / {waits.get('p90')} | "
+            f"{'N/A' if model.get('net_pnl_usd') is None else model.get('net_pnl_usd')} |"
         )
     lines.extend(
         [
@@ -696,7 +727,23 @@ def render_shadow_spread_report(result: Mapping[str, Any], output_path: Path | s
             f"{schedule.get('shadow_order_count', 0)} | {schedule.get('fill_count', 0)} | "
             f"{rate.get('count', 0)}/{rate.get('sample_count', 0)} "
             f"(Wilson {rate.get('wilson_low')}–{rate.get('wilson_high')}) | "
-            f"{schedule.get('net_pnl_usd')} |"
+            f"{'N/A' if schedule.get('net_pnl_usd') is None else schedule.get('net_pnl_usd')} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## KLAX/KLGA 优先摘要（queue-aware）",
+            "",
+            "| 站点 | 独立 market-day | 快照 | 价带候选 | 影子订单 | 成交 | round trips |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for station, summary in (result.get("priority_station_summary") or {}).items():
+        lines.append(
+            f"| {station} | {summary.get('independent_market_day_count', 0)} | "
+            f"{summary.get('raw_snapshot_count', 0)} | {summary.get('price_band_candidate_count', 0)} | "
+            f"{summary.get('shadow_order_count', 0)} | {summary.get('fill_count', 0)} | "
+            f"{summary.get('round_trips', 0)} |"
         )
     lines.extend(
         [
