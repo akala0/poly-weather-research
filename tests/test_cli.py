@@ -37,7 +37,28 @@ def test_shadow_runtime_requires_supervised_flag_and_is_read_only(tmp_path) -> N
             str(tmp_path / "ledger.jsonl"),
             "--status",
             str(tmp_path / "status.json"),
+            "--once",
         ],
     )
     assert accepted.exit_code == 0
     assert '"execution_enabled": false' in accepted.stdout
+
+    continuous = runner.invoke(
+        app,
+        [
+            "shadow-spread-engine",
+            "--supervised",
+            "--data-dir",
+            str(tmp_path),
+            "--ledger",
+            str(tmp_path / "continuous-ledger.jsonl"),
+            "--status",
+            str(tmp_path / "continuous-status.json"),
+            "--cursor",
+            str(tmp_path / "continuous-cursor.json"),
+            "--runtime",
+            "0.01",
+        ],
+    )
+    assert continuous.exit_code == 0
+    assert '"read_only_shadow_continuous"' in continuous.stdout

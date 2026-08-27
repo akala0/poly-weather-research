@@ -77,6 +77,10 @@ from poly_weather.market_supervisor import (
     discover_event,
     event_asset_maps,
 )
+from poly_weather.market_trade_tape import (
+    build_shadow_trade_events,
+    load_market_ws_trades,
+)
 from poly_weather.modeling import (
     DEFAULT_MULTI_MODEL_WEIGHTS,
     blend_multi_model_forecasts,
@@ -115,6 +119,10 @@ from poly_weather.price_path_analysis import (
     load_archived_weather_observations,
     render_price_path_report,
 )
+from poly_weather.public_trade_collection import (
+    collect_depth_event_trades,
+    discover_depth_event_coverage,
+)
 from poly_weather.real_no_books import (
     analyze_eliminated_no_exit,
     analyze_real_no_books,
@@ -130,7 +138,7 @@ from poly_weather.settlement import (
     verify_signal_contract,
 )
 from poly_weather.shadow_orders import ShadowStrategyConfig
-from poly_weather.shadow_runtime import run_shadow_spread_once
+from poly_weather.shadow_runtime import run_shadow_spread_continuous, run_shadow_spread_once
 from poly_weather.shadow_spread_replay import (
     default_shadow_strategy_config,
     render_shadow_spread_report,
@@ -156,6 +164,10 @@ from poly_weather.warming_policy import (
     build_heat_season_policy_analysis,
     policy_document,
     render_heat_season_policy_report,
+)
+from poly_weather.weather_market_join import (
+    align_weather_to_snapshots,
+    load_realtime_weather_observations,
 )
 from poly_weather.weather_stream import WeatherDaemon, WeatherStation
 from poly_weather.wrh_backfill import (
@@ -2043,8 +2055,36 @@ def collect_public_trades(
     output_dir: Annotated[Path, typer.Option("--output-dir")] = Path(
         "data/public_trades"
     ),
+    depth_dir: Annotated[Path, typer.Option("--depth-dir")] = Path(
+        "data/raw/polymarket_book_checkpoints"
+    ),
+    cursor_path: Annotated[Path | None, typer.Option("--cursor")] = None,
+    auto_discover: Annotated[
+        bool,
+        typer.Option(
+            "--auto-discover/--catalog-only",
+            help="Discover events/tokens from the depth archive before using the settled catalog.",
+        ),
+    ] = True,
 ) -> None:
-    """Archive canonical public taker-side executions for the settled-event study."""
+    """Archive canonical public taker-side executions incrementally.
+
+    When a depth archive is present, event/condition/token scope is discovered
+    from it and a durable cursor prevents a full historical refetch.  The
+    legacy settled-catalog mode remains available with ``--catalog-only``.
+    """
+    checkpoint_paths = jsonl_archive_paths(depth_dir) if auto_discover else []
+    coverages = discover_depth_event_coverage(checkpoint_paths) if checkpoint_paths else ()
+    if coverages:
+        with PolymarketDataClient() as client:
+            audit = collect_depth_event_trades(
+                coverages,
+                client=client,
+                output_dir=output_dir,
+                cursor_path=cursor_path,
+            )
+        _emit({**audit, "execution_enabled": False})
+        return
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     histories = load_history_directory(histories_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -2587,12 +2627,27 @@ def analyze_shadow_spread_command(
         station = str(event_value.get("station_id") or "")
         target = str(event_value.get("target_date") or "")
         enriched = dict(pair)
+        enriched["station_id"] = station or None
+        enriched["market_day"] = target or None
         if (version := policy_versions.get((station, target))):
             enriched["season_version"] = version
             enriched["in_season"] = policy_windows[(station, target)]
         replay_pairs.append(enriched)
+    weather_paths = jsonl_archive_paths(data_dir / "raw" / "weather_daemon")
+    weather_observations = load_realtime_weather_observations(weather_paths)
+    replay_pairs, weather_join_reasons = align_weather_to_snapshots(
+        replay_pairs, weather_observations
+    )
     trades_dir = data_dir / "public_trades"
-    trades = load_event_trade_tapes(trades_dir) if trades_dir.exists() else {}
+    public_trade_rows = load_event_trade_tapes(trades_dir) if trades_dir.exists() else {}
+    public_trade_values = [trade for rows in public_trade_rows.values() for trade in rows]
+    ws_trade_result = load_market_ws_trades(
+        jsonl_archive_paths(data_dir / "raw" / "polymarket_clob_websocket"),
+        quality_windows=load_quality_windows(data_dir / "runtime" / "polymarket_quality_windows.json"),
+    )
+    trade_events, trade_source_validation = build_shadow_trade_events(
+        ws_trade_result.trades, public_trade_values
+    )
     settled_slugs: list[str] = []
     settled_catalog = data_dir / "settled_markets.json"
     if settled_catalog.exists():
@@ -2604,7 +2659,7 @@ def analyze_shadow_spread_command(
         ]
     result = replay_shadow_spread(
         replay_pairs,
-        trades=trades,
+        trades=trade_events,
         event_metadata=metadata,
         config=strategy,
         global_capital_usd=Decimal(global_capital_usd),
@@ -2613,6 +2668,25 @@ def analyze_shadow_spread_command(
     result["quality_window"] = (
         "paired_book_snapshots default exclusion: official maintenance/failure plus measured recovery"
     )
+    result["weather_join"] = {
+        "observation_count": len(weather_observations),
+        "reason_counts": weather_join_reasons,
+        "strict_cutoff": "source_timestamp <= snapshot_at and received_at <= snapshot_at",
+        "historical_backfill_used": False,
+    }
+    ws_summary = ws_trade_result.as_json()
+    ws_summary.pop("trades", None)
+    result["trade_sources"] = {
+        "market_ws": ws_summary | {
+            "queue_trade_events": trade_source_validation["ws_shadow_trade_event_count"]
+        },
+        "data_api": {
+            "trade_count": len(public_trade_values),
+            "queue_trade_events": trade_source_validation["data_api_shadow_trade_event_count"],
+        },
+        "side_validation": trade_source_validation,
+        "cross_source_dedupe": "transaction_hash first; same-second rows without sequence are skipped",
+    }
     render_shadow_spread_report(result, output_path)
     write_shadow_spread_result(result, analysis_path)
     _emit(
@@ -2642,17 +2716,38 @@ def shadow_spread_engine_command(
     supervised: Annotated[
         bool, typer.Option("--supervised", help="Required explicit read-only supervision flag.")
     ] = False,
+    once: Annotated[
+        bool,
+        typer.Option("--once", help="Run one finite archive pass instead of the continuous follower."),
+    ] = False,
+    poll_seconds: Annotated[float, typer.Option("--poll-seconds")] = 5.0,
+    runtime_seconds: Annotated[float, typer.Option("--runtime")] = 0.0,
+    cursor_path: Annotated[Path, typer.Option("--cursor")] = Path(
+        "data/runtime/shadow_spread_cursor.json"
+    ),
 ) -> None:
-    """Run one supervised, read-only shadow pass over local market archives."""
+    """Run a supervised, read-only shadow follower (or explicit ``--once`` pass)."""
     if not supervised:
         raise typer.BadParameter("--supervised is required; this command never executes orders")
-    status = run_shadow_spread_once(
-        data_dir=data_dir,
-        ledger_path=ledger_path,
-        status_path=status_path,
-        config_path=str(strategy_config_path) if strategy_config_path else None,
-        supervised=True,
-    )
+    if once:
+        status = run_shadow_spread_once(
+            data_dir=data_dir,
+            ledger_path=ledger_path,
+            status_path=status_path,
+            config_path=str(strategy_config_path) if strategy_config_path else None,
+            supervised=True,
+        )
+    else:
+        status = run_shadow_spread_continuous(
+            data_dir=data_dir,
+            ledger_path=ledger_path,
+            status_path=status_path,
+            cursor_path=cursor_path,
+            config_path=str(strategy_config_path) if strategy_config_path else None,
+            supervised=True,
+            poll_seconds=poll_seconds,
+            runtime_seconds=runtime_seconds,
+        )
     _emit({**status, "status_path": str(status_path.resolve()), "execution_enabled": False})
 
 

@@ -619,6 +619,8 @@ class ShadowStrategyConfig:
     exit_targets: tuple[Decimal, ...] = (Decimal("0.05"), Decimal("0.10"), Decimal("0.13"))
     # Kept at the end to preserve positional compatibility for older callers.
     trigger_strategy: str = "price_band"
+    partial_exit_fraction: Decimal = Decimal("0.50")
+    max_hold: timedelta | None = timedelta(hours=4)
 
     def validate(self) -> None:
         if not self.version.strip():
@@ -637,8 +639,14 @@ class ShadowStrategyConfig:
             raise ValueError("tranche_usd must contain positive values")
         if sum(self.tranche_usd, start=ZERO) > self.market_budget_usd:
             raise ValueError("tranche schedule exceeds market budget")
+        if not self.exit_targets:
+            raise ValueError("exit targets must not be empty")
         if any(value <= ZERO for value in self.exit_targets):
             raise ValueError("exit targets must be positive")
+        if not ZERO < self.partial_exit_fraction <= ONE:
+            raise ValueError("partial_exit_fraction must be in (0, 1]")
+        if self.max_hold is not None and self.max_hold <= timedelta(0):
+            raise ValueError("max_hold must be positive")
         for station, bands in self.entry_bands.items():
             if not station or any(
                 lower < ZERO or upper > ONE or lower >= upper for lower, upper in bands
@@ -652,6 +660,7 @@ class ShadowStrategyConfig:
             bands[str(station)] = tuple(
                 (_decimal(row[0]), _decimal(row[1])) for row in rows
             )
+        max_hold_value = payload.get("max_hold_seconds", 4 * 60 * 60)
         config = cls(
             version=str(payload.get("version") or "shadow-spread-v1"),
             trigger_strategy=str(payload.get("trigger_strategy") or "price_band"),
@@ -668,10 +677,16 @@ class ShadowStrategyConfig:
             ),
             improve_tick_limit=_decimal(payload.get("improve_tick_limit", "0")),
             ladder_ticks=tuple(int(value) for value in payload.get("ladder_ticks", (0, -1, -2))),
-            require_health_gates=bool(payload.get("require_health_gates", True)),
-            require_season_version=bool(payload.get("require_season_version", True)),
+            require_health_gates=_flag(payload.get("require_health_gates"), default=True),
+            require_season_version=_flag(payload.get("require_season_version"), default=True),
             exit_targets=tuple(
                 _decimal(value) for value in payload.get("exit_targets", ("0.05", "0.10", "0.13"))
+            ),
+            partial_exit_fraction=_decimal(payload.get("partial_exit_fraction", "0.50")),
+            max_hold=(
+                None
+                if max_hold_value is None
+                else timedelta(seconds=float(max_hold_value))
             ),
         )
         config.validate()
@@ -1252,7 +1267,16 @@ class ShadowOrderEngine:
 
     def process_trade(self, trade: TradeEvent) -> tuple[ShadowFill, ...]:
         """Consume a single real taker trade; book changes alone never fill."""
-        trade_key = f"trade:{trade.event_id}" if trade.event_id else None
+        # A transaction can contain multiple fills for one token.  The public
+        # API identity is the transaction hash, so include the tape fields in
+        # the idempotency key rather than dropping later fills from the same
+        # transaction.
+        trade_key = (
+            f"trade:{trade.event_id}:{trade.asset_id}:{trade.timestamp.isoformat()}"
+            f":{trade.price}:{trade.size}:{trade.sequence or ''}"
+            if trade.event_id
+            else None
+        )
         if trade_key is not None and (
             trade_key in self._seen_event_keys
             or self.ledger is not None
