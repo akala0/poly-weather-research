@@ -595,7 +595,6 @@ class ShadowStrategyConfig:
     """
 
     version: str = "shadow-spread-v1"
-    trigger_strategy: str = "price_band"
     quote_mode: QuoteMode = QuoteMode.BEST_BID
     fill_model: FillModel = FillModel.QUEUE_AWARE
     entry_bands: Mapping[str, tuple[tuple[Decimal, Decimal], ...]] = field(default_factory=dict)
@@ -610,6 +609,8 @@ class ShadowStrategyConfig:
     require_health_gates: bool = True
     require_season_version: bool = True
     exit_targets: tuple[Decimal, ...] = (Decimal("0.05"), Decimal("0.10"), Decimal("0.13"))
+    # Kept at the end to preserve positional compatibility for older callers.
+    trigger_strategy: str = "price_band"
 
     def validate(self) -> None:
         if not self.version.strip():
