@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import math
 from bisect import bisect_right
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -44,7 +44,18 @@ def _trade_tier(count: int) -> str:
     return ">=100"
 
 
-def load_event_trade_tapes(path: Path) -> dict[str, list[PublicTrade]]:
+def load_event_trade_tapes(
+    path: Path,
+    *,
+    event_slugs: Iterable[str] | None = None,
+    start_at: datetime | str | None = None,
+    end_at: datetime | str | None = None,
+) -> dict[str, list[PublicTrade]]:
+    selected_slugs = frozenset(str(value) for value in event_slugs) if event_slugs else None
+    start_time = _utc_datetime(start_at) if start_at is not None else None
+    end_time = _utc_datetime(end_at) if end_at is not None else None
+    if start_time is not None and end_time is not None and start_time > end_time:
+        raise ValueError("start_at must be no later than end_at")
     output: dict[str, list[PublicTrade]] = {}
     for source in sorted(path.glob("*.json")):
         try:
@@ -56,6 +67,8 @@ def load_event_trade_tapes(path: Path) -> dict[str, list[PublicTrade]]:
             # represent a trade tape themselves.
             continue
         event_slug = str(payload["event_slug"])
+        if selected_slugs is not None and event_slug not in selected_slugs:
+            continue
         fetched_at: datetime | None = None
         if payload.get("fetched_at"):
             try:
@@ -84,8 +97,31 @@ def load_event_trade_tapes(path: Path) -> dict[str, list[PublicTrade]]:
                 ),
             )
             for row in payload.get("trades") or ()
+            if _trade_row_in_window(row, start_at=start_time, end_at=end_time)
         ]
     return output
+
+
+def _utc_datetime(value: datetime | str) -> datetime:
+    parsed = value if isinstance(value, datetime) else datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _trade_row_in_window(
+    row: Mapping[str, Any],
+    *,
+    start_at: datetime | None,
+    end_at: datetime | None,
+) -> bool:
+    if start_at is None and end_at is None:
+        return True
+    try:
+        timestamp = _utc_datetime(str(row["timestamp"]))
+    except (KeyError, TypeError, ValueError):
+        return False
+    return (start_at is None or timestamp >= start_at) and (end_at is None or timestamp <= end_at)
 
 
 def physical_elimination_times(

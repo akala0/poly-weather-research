@@ -236,3 +236,23 @@ uv run poly-weather signal-engine --supervised --runtime 0
 ## 建议的下一阶段
 
 先实现联合历史重放与报告，要求每个决策点只能看到当时已经发布的数据，并输出候选次数、命中率、Brier/LogLoss、理论边际、盘口可成交深度和最大不利偏差。回放通过后再接只读告警；真实交易执行继续保持隔离。
+
+## 2026-08-28 数据周期四态与 QUIET maker
+
+该阶段已经实现并完成一次全量离线验证。新增模块为：
+
+- `src/poly_weather/information_clock.py`：统一 external-information clock，保留 source/receipt 双截止、payload hash、修订和不可预测 SPECI；缺 receipt 的事件只作 N/A 诊断。
+- `src/poly_weather/market_regime.py`：每个 token portfolio 的 EVENT/DIGESTION/QUIET/PRE_RELEASE/HALTED 状态机，预声明 strict/neutral/lenient 阈值和 PRE_RELEASE 诊断。
+- `src/poly_weather/quiet_window_strategy.py`：独立 QUIET maker、token-scoped queue replay、因果匹配、Wilson/cluster bootstrap、after-the-fact decision regret、stop-everything 和三策略风险隔离。
+
+复现命令（只读，默认包含预声明 size grid）：
+
+```powershell
+.venv\Scripts\poly-weather.exe analyze-quiet-window --data-dir data
+.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\python.exe -m ruff check src tests
+```
+
+最后一次归档结果：`106,724` 配对快照、`213,448` token 快照、`18,052` 输入信息事件、`43,543` public trades、`60` 个 station-day cluster。三档固定阈值都没有 QUIET 观测；neutral 为 `EVENT=82,185`、`DIGESTION=130,504`、`PRE_RELEASE=759`。订单、成交、matched control 和 regret 均为 0/N/A，size grid 对 `$20/$50/$100/$200` 做了明确的 no-entry-gate short-circuit。该结果是证据不足，不是 maker 策略的正负收益结论。
+
+产物位于 `data/information_reaction_report.md`、`data/quiet_window_strategy_report.md`、`data/quiet_window_strategy_analysis.json` 和 `data/quiet_window_size_grid.json`。`data/` 被 Git 忽略；本次未启动实时 QUIET follower，也未改变现有 v2 weather lead-lag shadow 主策略。

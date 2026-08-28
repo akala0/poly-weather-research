@@ -111,6 +111,24 @@
 - [WRH 高频重算](data/high_frequency_weather_reanalysis.md)
 - [同季前向进度](data/no_forward_validation_report.md)
 
+## 数据周期四态与 QUIET maker（2026-08-28）
+
+已完成只读实现和一次全量归档验证：
+
+- `information_clock.py` 将 WRH/Synoptic、NWS、METAR/SPECI、TAF、模型 run、结算/Gamma 与官方状态统一为 source/receipt 双时间事件；重复 payload 去重，同一 source time 的内容修订保留。模型预期发布时间只用于 PRE_RELEASE，缺失 receipt 不重置状态。
+- `market_regime.py` 为每个 token portfolio 绑定 station/market-day 的 `EVENT → DIGESTION → QUIET → PRE_RELEASE` 状态机；维护、stale、质量、结算、scope、receipt、ledger 或风险不变量异常进入永久 `HALTED`。状态阈值为预先声明的 strict/neutral/lenient 三档，不按 PnL 选档。
+- `quiet_window_strategy.py` 使用独立 `quiet_window_noise_maker` 版本和账本身份，复用 token-native queue shadow engine；只有 QUIET 能开 post-only maker，其他阶段撤未成交单并只允许 reduce-only；补仓受 anchor/天气未恶化条件约束。三策略账本仍独立，station-day 仅由共同 `$200` 风险聚合器限额。
+- 全量 replay（固定启动截止线）覆盖 `106,724` 个配对 book 快照、`213,448` 个 token 快照、`18,052` 个输入信息事件和 `43,543` 个 token-native public trades，涉及 `60` 个 station/market-day cluster。neutral 档状态计数为 `EVENT=82,185`、`DIGESTION=130,504`、`QUIET=0`、`PRE_RELEASE=759`；strict/lenient 同样 `QUIET=0`。
+- 因当前固定阈值没有任何 QUIET 观测，四个预声明规模 `$20/$50/$100/$200` 使用精确的 no-entry-gate short-circuit，未做参数优选；三档均 `0` shadow orders、`0` fills、无 invariant discrepancy。maker fill、markout、spread capture、matched control、decision regret 与 PnL 均为 N/A/无样本，不能据此宣称正期望，也不能据此宣称负期望。
+- replay 只消费 token 自身真实 bid/ask、经过 canonical hash+side 验证的成交和 queue 模型；没有钱包、密钥、签名、POST/DELETE order、Relayer 或真实执行路径，`execution_enabled=false`。
+
+报告与机器结果：
+
+- [external-information clock / 四态报告](data/information_reaction_report.md)
+- [QUIET maker 验证报告](data/quiet_window_strategy_report.md)
+- [QUIET replay JSON](data/quiet_window_strategy_analysis.json)
+- [QUIET size grid JSON](data/quiet_window_size_grid.json)
+
 ## 运行与数据治理
 
 - market stream 当前 run `328905f1-979b-4beb-b4f4-7462c732c9d8`：440/440 book complete、0 重连、官方状态 normal。

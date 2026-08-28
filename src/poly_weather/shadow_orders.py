@@ -1441,6 +1441,7 @@ class ShadowOrderEngine:
         idempotency_key: str | None = None,
         strategy_version: str = "shadow-v1",
         trigger_reason: str = "target_maker_exit",
+        metadata: Mapping[str, Any] | None = None,
     ) -> ShadowOrder:
         """Post a non-crossing maker exit only when real bid has target space."""
         target = _decimal(target_price)
@@ -1459,6 +1460,7 @@ class ShadowOrderEngine:
             season_version=snapshot.season_version,
             trigger_reason=trigger_reason,
             maker_assumption=True,
+            metadata=metadata,
         )
 
     def submit_replenishment(

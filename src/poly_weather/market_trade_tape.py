@@ -128,6 +128,8 @@ class MarketWsTradeLoadResult:
     source_file_count: int
     quality_excluded: int
     filtered_asset_count: int = 0
+    filtered_time_count: int = 0
+    filtered_identity_count: int = 0
 
     @property
     def side_semantics(self) -> str:
@@ -141,6 +143,8 @@ class MarketWsTradeLoadResult:
             "source_file_count": self.source_file_count,
             "quality_excluded": self.quality_excluded,
             "filtered_asset_count": self.filtered_asset_count,
+            "filtered_time_count": self.filtered_time_count,
+            "filtered_identity_count": self.filtered_identity_count,
             "side_semantics": self.side_semantics,
             "trades": [trade.as_json() for trade in self.trades],
         }
@@ -213,21 +217,40 @@ def load_market_ws_trades(
     exclude_degraded: bool = True,
     require_transaction_hash: bool = False,
     asset_ids: Iterable[str] | None = None,
+    start_at: datetime | str | None = None,
+    end_at: datetime | str | None = None,
+    transaction_hashes: Iterable[str] | None = None,
 ) -> MarketWsTradeLoadResult:
     """Load rich WS trade events, fail-closed on price-only rows.
 
     ``asset_ids`` is an optional token-native scope filter.  It is applied
     before parsing so focused shadow replays do not materialise unrelated
-    websocket trades from the full raw archive.  It never substitutes one
-    token for another or changes the archive's ordering semantics.
+    websocket trades from the full raw archive.  ``start_at`` and ``end_at``
+    bound the source-time replay window; receipt time must also be no later
+    than ``end_at`` so a later-arriving row cannot leak into a strict replay.
+    ``transaction_hashes`` optionally keeps only rows with a canonical public
+    tape identity; excluded rows are counted as unmatched.
+    These filters never substitute one token for another or change the
+    archive's ordering semantics.
     """
     trades: dict[tuple[Any, ...], MarketWsTrade] = {}
     skipped = 0
     quality_excluded = 0
     filtered_asset_count = 0
+    filtered_time_count = 0
+    filtered_identity_count = 0
     reasons: Counter[str] = Counter()
     file_count = 0
     selected_assets = frozenset(str(asset_id) for asset_id in asset_ids) if asset_ids else None
+    selected_hashes = (
+        frozenset(str(value) for value in transaction_hashes)
+        if transaction_hashes is not None
+        else None
+    )
+    start_time = _utc(start_at) if start_at is not None else None
+    end_time = _utc(end_at) if end_at is not None else None
+    if start_time is not None and end_time is not None and start_time > end_time:
+        raise ValueError("start_at must be no later than end_at")
     for path in paths:
         if not path.exists():
             continue
@@ -270,6 +293,19 @@ def load_market_ws_trades(
                         if "size" in message
                         else "invalid_trade_event"
                     ] += 1
+                    continue
+                if (
+                    (start_time is not None and parsed.source_timestamp < start_time)
+                    or (end_time is not None and parsed.source_timestamp > end_time)
+                    or (end_time is not None and parsed.received_at > end_time)
+                ):
+                    filtered_time_count += 1
+                    continue
+                if selected_hashes is not None and (
+                    parsed.transaction_hash is None
+                    or parsed.transaction_hash not in selected_hashes
+                ):
+                    filtered_identity_count += 1
                     continue
                 if exclude_degraded and not market_record_is_analysis_eligible(
                     row, parsed.received_at, tuple(quality_windows)
@@ -319,6 +355,8 @@ def load_market_ws_trades(
         file_count,
         quality_excluded,
         filtered_asset_count,
+        filtered_time_count,
+        filtered_identity_count,
     )
 
 

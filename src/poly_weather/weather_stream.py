@@ -22,6 +22,7 @@ from poly_weather.adapters.open_meteo import (
     parse_multi_model_forecasts,
 )
 from poly_weather.adapters.wrh import WrhTimeseriesClient
+from poly_weather.information_clock import payload_hash
 from poly_weather.modeling import DEFAULT_MULTI_MODEL_WEIGHTS, blend_multi_model_forecasts
 from poly_weather.research_store import ResearchWarehouse
 from poly_weather.temperature import fahrenheit_to_celsius
@@ -354,6 +355,7 @@ class WeatherDaemon:
         self.metrics = WeatherMetrics(run_id=self.run_id, started_at=datetime.now(UTC).isoformat())
         self.request_outcomes: deque[tuple[float, bool]] = deque(maxlen=1000)
         self.last_source_timestamp_by_product: dict[tuple[str, str], int] = {}
+        self.last_payload_hash_by_product: dict[tuple[str, str], str] = {}
         self.product_metrics: dict[str, dict[str, Any]] = {}
         self.station_metrics: dict[str, dict[str, Any]] = {
             item.station_id: {
@@ -598,12 +600,33 @@ class WeatherDaemon:
                 if event is not None:
                     event_key = (station_id, event.product)
                     source_timestamp = event.source_timestamp_ms
-                    is_new = source_timestamp is None or source_timestamp > (
-                        self.last_source_timestamp_by_product.get(event_key, -1)
+                    event_hash = payload_hash(
+                        {
+                            "station_id": station_id,
+                            "product": event.product,
+                            "source_timestamp_ms": source_timestamp,
+                            "temperature_c": event.temperature_c,
+                            "raw": event.raw,
+                        }
+                    )
+                    prior_source_timestamp = self.last_source_timestamp_by_product.get(
+                        event_key, -1
+                    )
+                    prior_hash = self.last_payload_hash_by_product.get(event_key)
+                    is_new = (
+                        prior_hash is None
+                        or event_hash != prior_hash
+                        or (
+                            source_timestamp is not None
+                            and source_timestamp > prior_source_timestamp
+                        )
                     )
                     if is_new:
                         if source_timestamp is not None:
-                            self.last_source_timestamp_by_product[event_key] = source_timestamp
+                            self.last_source_timestamp_by_product[event_key] = max(
+                                source_timestamp, prior_source_timestamp
+                            )
+                        self.last_payload_hash_by_product[event_key] = event_hash
                         await self.queue.put(event)
                         self.metrics.events += 1
                         self.metrics.queue_high_water = max(

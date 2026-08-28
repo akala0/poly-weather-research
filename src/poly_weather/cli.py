@@ -3,7 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import tempfile
 import time
+from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -72,6 +74,7 @@ from poly_weather.high_frequency_audit import (
     build_high_frequency_reanalysis,
     render_high_frequency_reanalysis,
 )
+from poly_weather.information_clock import load_external_information_events
 from poly_weather.intraday_reversal import load_iem_asos_csv
 from poly_weather.liquidity import (
     archived_liquidity_rows,
@@ -135,6 +138,18 @@ from poly_weather.price_path_analysis import (
 from poly_weather.public_trade_collection import (
     collect_depth_event_trades,
     discover_depth_event_coverage,
+)
+from poly_weather.quiet_window_strategy import (
+    QuietWindowConfig,
+    analyze_information_clock,
+    default_quiet_window_config,
+    derive_size_grid_from_no_quiet_profile,
+    render_information_reaction_report,
+    render_quiet_window_report,
+    replay_quiet_window_size_grid_store,
+    replay_quiet_window_store,
+    write_quiet_snapshot_store,
+    write_quiet_window_result,
 )
 from poly_weather.real_no_books import (
     analyze_eliminated_no_exit,
@@ -2750,6 +2765,284 @@ def analyze_shadow_spread_command(
             "independent_market_day_count": result["independent_market_day_count"],
             "shadow_order_count": result["models"]["queue_aware"]["shadow_order_count"],
             "fill_count": result["models"]["queue_aware"]["fill_count"],
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-information-clock")
+def analyze_information_clock_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/information_reaction_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/information_clock_analysis.json"
+    ),
+) -> None:
+    """Normalize weather/status archives into a strict external-information clock."""
+    events = load_external_information_events(data_dir)
+    result = analyze_information_clock(events)
+    render_information_reaction_report(result, output_path)
+    write_quiet_window_result(result, analysis_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "accepted_event_count": result["accepted_event_count"],
+            "invalid_event_count": result["clock"]["invalid_event_count"],
+            "same_source_time_revision_groups": result[
+                "same_source_time_revision_groups"
+            ],
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-quiet-window")
+def analyze_quiet_window_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    warming_policy_path: Annotated[
+        Path, typer.Option("--warming-policy")
+    ] = DEFAULT_WARMING_POLICY,
+    strategy_config_path: Annotated[
+        Path | None, typer.Option("--strategy-config")
+    ] = None,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/quiet_window_strategy_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/quiet_window_strategy_analysis.json"
+    ),
+    size_grid_path: Annotated[Path, typer.Option("--size-grid-output")] = Path(
+        "data/quiet_window_size_grid.json"
+    ),
+    information_report_path: Annotated[
+        Path, typer.Option("--information-report")
+    ] = Path("data/information_reaction_report.md"),
+    size_grid: Annotated[
+        bool, typer.Option("--size-grid/--no-size-grid")
+    ] = True,
+) -> None:
+    """Replay the independent QUIET maker using token-native archived books."""
+    checkpoint_paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
+    analysis_cutoff = datetime.now(UTC)
+    paired_snapshot_count = 0
+    event_slugs: set[str] = set()
+    for pair in iter_paired_book_snapshots(checkpoint_paths):
+        observed_at = pair.get("observed_at")
+        if isinstance(observed_at, datetime) and observed_at > analysis_cutoff:
+            break
+        paired_snapshot_count += 1
+        if pair.get("event_slug"):
+            event_slugs.add(str(pair["event_slug"]))
+    if not paired_snapshot_count:
+        raise typer.BadParameter("no eligible paired order-book records found in checkpoints")
+    registry = load_settlement_registry(config)
+    metadata = archived_event_metadata(sorted(event_slugs), registry.specs)
+    station_timezones = {
+        str(value["station_id"]).upper(): str(value["timezone"])
+        for value in metadata.values()
+        if value.get("station_id") and value.get("timezone")
+    }
+    policy_payload = (
+        json.loads(warming_policy_path.read_text(encoding="utf-8"))
+        if warming_policy_path.exists()
+        else {}
+    )
+    weather_paths = jsonl_archive_paths(data_dir / "raw" / "weather_daemon")
+    weather_observations = load_realtime_weather_observations(weather_paths)
+    weather_join_reasons: dict[str, int] = {}
+    join_state: dict[str, Any] = {}
+
+    def _enriched_pair(pair: Mapping[str, Any]) -> dict[str, Any]:
+        event_value = metadata.get(str(pair.get("event_slug") or ""), {})
+        station = str(event_value.get("station_id") or "")
+        target = str(event_value.get("target_date") or "")
+        enriched = {
+            key: pair[key]
+            for key in (
+                "event_id",
+                "event_slug",
+                "market_id",
+                "market_slug",
+                "observed_at",
+                "yes",
+                "no",
+                "metadata",
+                "tick_size",
+                "market_stale",
+                "weather_stale",
+                "settlement_verified",
+                "warming_valid",
+                "upstream_status",
+                "quality_excluded",
+            )
+            if key in pair
+        }
+        enriched["station_id"] = station or None
+        enriched["market_day"] = target or None
+        seasons = (
+            (policy_payload.get("stations") or {}).get(station, {}).get("seasons", ())
+        )
+        for season in seasons:
+            start = str(season.get("window_start") or "")
+            end = str(season.get("window_end") or "")
+            if start and end and start <= target <= end:
+                enriched["season_version"] = str(
+                    season.get("threshold_version")
+                    or policy_payload.get("policy_version")
+                    or ""
+                )
+                enriched["in_season"] = True
+                break
+        return enriched
+
+    def _token_rows() -> Any:
+        chunk: list[dict[str, Any]] = []
+
+        def emit_chunk(rows: list[dict[str, Any]]) -> Any:
+            aligned, reasons = align_weather_to_snapshots(
+                rows,
+                weather_observations,
+                state=join_state,
+            )
+            for reason, count in reasons.items():
+                weather_join_reasons[reason] = weather_join_reasons.get(reason, 0) + count
+            for aligned_pair in aligned:
+                for token_side in ("yes", "no"):
+                    side = aligned_pair.get(token_side)
+                    if not isinstance(side, Mapping) or not side.get("asset_id"):
+                        continue
+                    row = dict(aligned_pair)
+                    row["no"] = dict(side)
+                    row["token_id"] = str(side["asset_id"])
+                    yield row
+
+        for pair in iter_paired_book_snapshots(checkpoint_paths):
+            observed_at = pair.get("observed_at")
+            if isinstance(observed_at, datetime) and observed_at > analysis_cutoff:
+                break
+            chunk.append(_enriched_pair(pair))
+            if len(chunk) >= 2048:
+                yield from emit_chunk(chunk)
+                chunk.clear()
+        if chunk:
+            yield from emit_chunk(chunk)
+
+    strategy = (
+        QuietWindowConfig.from_mapping(
+            json.loads(strategy_config_path.read_text(encoding="utf-8"))
+        )
+        if strategy_config_path is not None
+        else default_quiet_window_config()
+    )
+    information_events = load_external_information_events(data_dir)
+    with tempfile.TemporaryDirectory(prefix="poly-quiet-window-") as replay_dir:
+        store = write_quiet_snapshot_store(
+            _token_rows(), Path(replay_dir) / "token_books.sqlite3"
+        )
+        token_snapshot_count = store.snapshot_count
+        snapshot_start = store.start_at
+        snapshot_end = store.end_at
+        public_trade_rows = (
+            load_event_trade_tapes(
+                data_dir / "public_trades",
+                event_slugs=event_slugs,
+                start_at=snapshot_start,
+                end_at=snapshot_end,
+            )
+            if (data_dir / "public_trades").exists()
+            else {}
+        )
+        public_trade_values = [
+            trade for rows in public_trade_rows.values() for trade in rows
+        ]
+        ws_trade_result = load_market_ws_trades(
+            jsonl_archive_paths(data_dir / "raw" / "polymarket_clob_websocket"),
+            quality_windows=load_quality_windows(
+                data_dir / "runtime" / "polymarket_quality_windows.json"
+            ),
+            asset_ids=store.token_ids,
+            start_at=snapshot_start,
+            end_at=snapshot_end,
+            transaction_hashes={
+                trade.transaction_hash
+                for trade in public_trade_values
+                if trade.transaction_hash
+            },
+        )
+        trade_events, trade_source_validation = build_shadow_trade_events(
+            ws_trade_result.trades, public_trade_values
+        )
+        result = replay_quiet_window_store(
+            store,
+            trades=trade_events,
+            information_events=information_events,
+            config=strategy,
+            station_timezones=station_timezones,
+        )
+        result["analysis_cutoff"] = analysis_cutoff
+        result["quality_window"] = (
+            "paired_book_snapshots default exclusion: official maintenance/failure plus measured recovery"
+        )
+        result["weather_join"] = {
+            "observation_count": len(weather_observations),
+            "reason_counts": weather_join_reasons,
+            "strict_cutoff": "source_timestamp <= snapshot_at and received_at <= snapshot_at",
+            "historical_backfill_used": False,
+        }
+        ws_summary = ws_trade_result.as_json()
+        ws_summary.pop("trades", None)
+        result["trade_sources"] = {
+            "market_ws": ws_summary
+            | {"queue_trade_events": trade_source_validation["ws_shadow_trade_event_count"]},
+            "data_api": {
+                "trade_count": len(public_trade_values),
+                "queue_trade_events": trade_source_validation["data_api_shadow_trade_event_count"],
+            },
+            "side_validation": trade_source_validation
+            | {
+                "archive_unmatched_or_unverifiable_ws_trade_count": ws_summary.get(
+                    "filtered_identity_count", 0
+                )
+            },
+            "cross_source_dedupe": "transaction_hash first; same-second rows without sequence are skipped",
+        }
+        if size_grid:
+            primary_profile = result["models"].get(strategy.threshold_tier.value)
+            if primary_profile and not (
+                primary_profile.get("state_observation_counts") or {}
+            ).get("QUIET", 0):
+                result["size_grid"] = derive_size_grid_from_no_quiet_profile(
+                    primary_profile,
+                    strategy,
+                )
+            else:
+                result["size_grid"] = replay_quiet_window_size_grid_store(
+                    store,
+                    trades=trade_events,
+                    information_events=information_events,
+                    config=strategy,
+                    station_timezones=station_timezones,
+                )
+            write_quiet_window_result(result["size_grid"], size_grid_path)
+        clock_result = analyze_information_clock(information_events)
+        clock_result["models"] = result["models"]
+        render_information_reaction_report(clock_result, information_report_path)
+        render_quiet_window_report(result, output_path)
+        write_quiet_window_result(result, analysis_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "information_report_path": str(information_report_path.resolve()),
+            "size_grid_path": str(size_grid_path.resolve()) if size_grid else None,
+            "paired_snapshot_count": paired_snapshot_count,
+            "token_snapshot_count": token_snapshot_count,
+            "information_event_count": len(information_events),
+            "market_ws_trade_count": ws_summary.get("trade_count"),
             "execution_enabled": False,
         }
     )
