@@ -104,6 +104,25 @@ def test_ws_without_hash_keeps_distinct_same_second_sequences(tmp_path) -> None:
     assert len(result.trades) == 2
 
 
+def test_asset_scope_filters_before_parsing_unrelated_ws_trade_rows(tmp_path) -> None:
+    included = _row()
+    excluded = _row(rich=False)
+    excluded["asset_id"] = "other-asset"
+    excluded["raw"] = {**excluded["raw"], "asset_id": "other-asset"}
+    path = tmp_path / "events.jsonl"
+    path.write_text(
+        "\n".join(json.dumps(row) for row in (included, excluded)) + "\n",
+        encoding="utf-8",
+    )
+
+    result = load_market_ws_trades([path], asset_ids={"asset"})
+
+    assert len(result.trades) == 1
+    assert result.trades[0].asset_id == "asset"
+    assert result.skipped == 0
+    assert result.filtered_asset_count == 1
+
+
 def test_unmatched_ws_rows_fail_closed_but_api_supplement_remains() -> None:
     matched_ws = parse_market_ws_trade(_row())
     unmatched_row = _row()

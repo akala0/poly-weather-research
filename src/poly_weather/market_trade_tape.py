@@ -9,6 +9,7 @@ queue volume and is therefore never converted into a shadow trade.
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
@@ -30,6 +31,7 @@ WS_SIDE_SEMANTICS = (
     "queue consumption treats it as the aggressor side only after cross-source "
     "validation against canonical taker rows."
 )
+_LAST_TRADE_EVENT_RE = re.compile(r'"event_type"\s*:\s*"last_trade_price"')
 
 
 def _utc(value: datetime | str) -> datetime:
@@ -125,6 +127,7 @@ class MarketWsTradeLoadResult:
     skip_reasons: Mapping[str, int]
     source_file_count: int
     quality_excluded: int
+    filtered_asset_count: int = 0
 
     @property
     def side_semantics(self) -> str:
@@ -137,6 +140,7 @@ class MarketWsTradeLoadResult:
             "skip_reasons": dict(self.skip_reasons),
             "source_file_count": self.source_file_count,
             "quality_excluded": self.quality_excluded,
+            "filtered_asset_count": self.filtered_asset_count,
             "side_semantics": self.side_semantics,
             "trades": [trade.as_json() for trade in self.trades],
         }
@@ -208,13 +212,22 @@ def load_market_ws_trades(
     quality_windows: Sequence[UpstreamQualityWindow] = (),
     exclude_degraded: bool = True,
     require_transaction_hash: bool = False,
+    asset_ids: Iterable[str] | None = None,
 ) -> MarketWsTradeLoadResult:
-    """Load rich WS trade events, fail-closed on price-only rows."""
+    """Load rich WS trade events, fail-closed on price-only rows.
+
+    ``asset_ids`` is an optional token-native scope filter.  It is applied
+    before parsing so focused shadow replays do not materialise unrelated
+    websocket trades from the full raw archive.  It never substitutes one
+    token for another or changes the archive's ordering semantics.
+    """
     trades: dict[tuple[Any, ...], MarketWsTrade] = {}
     skipped = 0
     quality_excluded = 0
+    filtered_asset_count = 0
     reasons: Counter[str] = Counter()
     file_count = 0
+    selected_assets = frozenset(str(asset_id) for asset_id in asset_ids) if asset_ids else None
     for path in paths:
         if not path.exists():
             continue
@@ -226,10 +239,24 @@ def load_market_ws_trades(
             continue
         with handle:
             for line in handle:
+                # Raw CLOB archives are mostly book/price-change rows and can
+                # be tens of GiB.  Avoid allocating a Python object for every
+                # unrelated row: JSON parsing those rows made a focused
+                # read-only replay retain a machine-threatening working set.
+                # The regex is only a cheap prefilter; the parsed outer event
+                # type below remains the authority.
+                if not _LAST_TRADE_EVENT_RE.search(line):
+                    continue
                 try:
                     row = json.loads(line)
                     if not isinstance(row, Mapping) or row.get("event_type") != "last_trade_price":
                         continue
+                    if selected_assets is not None:
+                        raw = row.get("raw") if isinstance(row.get("raw"), Mapping) else row
+                        asset_id = str(raw.get("asset_id") or row.get("asset_id") or "")
+                        if asset_id not in selected_assets:
+                            filtered_asset_count += 1
+                            continue
                     parsed = parse_market_ws_trade(
                         row, require_transaction_hash=require_transaction_hash
                     )
@@ -285,7 +312,14 @@ def load_market_ws_trades(
             key=lambda item: (item.source_timestamp, item.received_at, item.sequence or 0),
         )
     )
-    return MarketWsTradeLoadResult(ordered, skipped, dict(reasons), file_count, quality_excluded)
+    return MarketWsTradeLoadResult(
+        ordered,
+        skipped,
+        dict(reasons),
+        file_count,
+        quality_excluded,
+        filtered_asset_count,
+    )
 
 
 def merge_trade_sources(

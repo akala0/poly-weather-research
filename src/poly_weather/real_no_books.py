@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import re
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from heapq import heappop, heappush
 from pathlib import Path
 from statistics import fmean, median
 from typing import Any
@@ -109,44 +110,116 @@ def _identity(row: Mapping[str, Any]) -> tuple[str, str, str] | None:
     return event_slug, base, outcome.casefold()
 
 
-def paired_book_snapshots(
+def _eligible_book_rows(
+    path: Path,
+    *,
+    exclude_upstream_degraded: bool,
+    quality_windows: Sequence[Any],
+) -> Iterator[dict[str, Any]]:
+    """Yield only fields needed for a paired token-native book replay."""
+    if not path.exists():
+        return
+    with open_jsonl_text(path) as handle:
+        for line in handle:
+            try:
+                source = json.loads(line)
+                timestamp = datetime.fromisoformat(str(source["received_at"])).astimezone(UTC)
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            if exclude_upstream_degraded and not market_record_is_analysis_eligible(
+                source, timestamp, quality_windows
+            ):
+                continue
+            if not (
+                source.get("book_complete")
+                and isinstance(source.get("bids"), list)
+                and isinstance(source.get("asks"), list)
+            ):
+                continue
+            # Do not retain the raw websocket payload, receipt diagnostics, or
+            # unrelated fields for every historical snapshot.  The full bid/
+            # ask ladders remain untouched because shadow fills require real
+            # token-native depth.
+            yield {
+                key: source[key]
+                for key in (
+                    "received_at",
+                    "event_type",
+                    "market_id",
+                    "market_slug",
+                    "asset_id",
+                    "bids",
+                    "asks",
+                    "book_complete",
+                    "tick_size",
+                    "min_order_size",
+                    "market_stale",
+                    "weather_stale",
+                    "settlement_verified",
+                    "in_season",
+                    "season_version",
+                    "warming_valid",
+                    "upstream_status",
+                    "quality_excluded",
+                )
+                if key in source
+            } | {"_timestamp": timestamp}
+
+
+def _chronological_book_rows(
+    checkpoint_paths: Sequence[Path],
+    *,
+    exclude_upstream_degraded: bool,
+    quality_windows: Sequence[Any],
+) -> Iterator[dict[str, Any]]:
+    """Merge archive files without materialising all historical book rows."""
+    streams = [
+        iter(
+            _eligible_book_rows(
+                path,
+                exclude_upstream_degraded=exclude_upstream_degraded,
+                quality_windows=quality_windows,
+            )
+        )
+        for path in checkpoint_paths
+    ]
+    pending: list[tuple[datetime, int, dict[str, Any]]] = []
+    for index, stream in enumerate(streams):
+        try:
+            row = next(stream)
+        except StopIteration:
+            continue
+        heappush(pending, (row["_timestamp"], index, row))
+    while pending:
+        _timestamp_value, index, row = heappop(pending)
+        yield row
+        try:
+            next_row = next(streams[index])
+        except StopIteration:
+            continue
+        heappush(pending, (next_row["_timestamp"], index, next_row))
+
+
+def iter_paired_book_snapshots(
     checkpoint_paths: Sequence[Path],
     *,
     minimum_interval: timedelta = timedelta(minutes=5),
     maximum_side_age: timedelta = timedelta(minutes=5),
     exclude_upstream_degraded: bool = True,
-) -> list[dict[str, Any]]:
-    """Pair YES/NO books without using a future update from either side."""
-    rows: list[dict[str, Any]] = []
+) -> Iterator[dict[str, Any]]:
+    """Stream YES/NO books without using a future update from either side."""
     quality_windows = ()
     if checkpoint_paths:
         quality_windows = load_quality_windows(
             checkpoint_paths[0].parents[3] / "runtime" / "polymarket_quality_windows.json"
         )
-    for path in checkpoint_paths:
-        if not path.exists():
-            continue
-        with open_jsonl_text(path) as handle:
-            for line in handle:
-                try:
-                    row = json.loads(line)
-                    timestamp = datetime.fromisoformat(str(row["received_at"])).astimezone(UTC)
-                except (KeyError, TypeError, ValueError, json.JSONDecodeError):
-                    continue
-                if exclude_upstream_degraded and not market_record_is_analysis_eligible(
-                    row, timestamp, quality_windows
-                ):
-                    continue
-                if row.get("book_complete") and isinstance(row.get("bids"), list) and isinstance(
-                    row.get("asks"), list
-                ):
-                    row["_timestamp"] = timestamp
-                    rows.append(row)
-    rows.sort(key=lambda row: row["_timestamp"])
     latest: dict[tuple[str, str], dict[str, Any]] = {}
     last_emitted: dict[str, datetime] = {}
-    output: list[dict[str, Any]] = []
-    for row in rows:
+    for row in _chronological_book_rows(
+        checkpoint_paths,
+        exclude_upstream_degraded=exclude_upstream_degraded,
+        quality_windows=quality_windows,
+    ):
         identity = _identity(row)
         if identity is None:
             continue
@@ -162,19 +235,32 @@ def paired_book_snapshots(
         if base in last_emitted and timestamp - last_emitted[base] < minimum_interval:
             continue
         last_emitted[base] = timestamp
-        output.append(
-            {
-                "observed_at": timestamp,
-                "event_slug": event_slug,
-                "market_slug": base,
-                "yes": yes,
-                "no": no,
-                "side_age_seconds": abs(
-                    (yes["_timestamp"] - no["_timestamp"]).total_seconds()
-                ),
-            }
+        yield {
+            "observed_at": timestamp,
+            "event_slug": event_slug,
+            "market_slug": base,
+            "yes": yes,
+            "no": no,
+            "side_age_seconds": abs((yes["_timestamp"] - no["_timestamp"]).total_seconds()),
+        }
+
+
+def paired_book_snapshots(
+    checkpoint_paths: Sequence[Path],
+    *,
+    minimum_interval: timedelta = timedelta(minutes=5),
+    maximum_side_age: timedelta = timedelta(minutes=5),
+    exclude_upstream_degraded: bool = True,
+) -> list[dict[str, Any]]:
+    """Materialise paired books for legacy analyses that need a full list."""
+    return list(
+        iter_paired_book_snapshots(
+            checkpoint_paths,
+            minimum_interval=minimum_interval,
+            maximum_side_age=maximum_side_age,
+            exclude_upstream_degraded=exclude_upstream_degraded,
         )
-    return output
+    )
 
 
 def _top(levels: tuple[tuple[str, str], ...], *, bids: bool) -> Decimal | None:

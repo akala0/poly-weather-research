@@ -342,6 +342,45 @@ def test_emergency_taker_exit_uses_real_bids_and_official_fee() -> None:
     assert engine.inventory_shares == 0
 
 
+def test_bounded_taker_hedge_entry_uses_real_ask_depth_and_fee() -> None:
+    snapshot = book(
+        0,
+        bids=(("0.60", "100"),),
+        asks=(("0.70", "2"), ("0.75", "10"), ("0.80", "100")),
+    )
+    engine = ShadowOrderEngine(fill_model=FillModel.QUEUE_AWARE, budget_usd="20")
+
+    fills = engine.simulate_taker_entry(snapshot, shares="10", max_price="0.75")
+
+    assert sum((fill.shares for fill in fills), start=Decimal("0")) == Decimal("10")
+    assert [fill.price for fill in fills] == [Decimal("0.70"), Decimal("0.75")]
+    assert all(fill.source == "hedge_taker_depth" for fill in fills)
+    assert engine.inventory_shares == Decimal("10")
+    assert engine.fees_usd > Decimal("0")
+
+
+def test_bounded_taker_hedge_returns_empty_when_no_ask_is_within_cap() -> None:
+    snapshot = BookSnapshot(
+        timestamp=BASE,
+        event_id="event-1",
+        market_id="market-1",
+        token_id="no-1",
+        bids=(("0.70", "100"),),
+        asks=(("0.80", "100"),),
+        station_id="KLAX",
+        market_day="2026-08-26",
+        min_order_size=Decimal("0"),
+        season_version="test-v1",
+    )
+    engine = ShadowOrderEngine(fill_model=FillModel.QUEUE_AWARE, budget_usd="20")
+
+    fills = engine.simulate_taker_entry(snapshot, shares="10", max_price="0.75")
+
+    assert fills == ()
+    assert engine.orders == ()
+    assert engine.inventory_shares == Decimal("0")
+
+
 def test_token_b_sell_is_rejected_after_token_a_buy_same_station_day() -> None:
     a = token_book("token-a")
     b = token_book("token-b")

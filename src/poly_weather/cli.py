@@ -38,6 +38,14 @@ from poly_weather.certainty_report import (
     render_certainty_summary_report,
     station_certainty_summary,
 )
+from poly_weather.complement_pair import (
+    default_complement_pair_config,
+    predefined_complement_pair_configs,
+    render_complement_pair_report,
+    replay_complement_pairs_streaming,
+    replay_complement_pairs_streaming_grid,
+    write_complement_pair_result,
+)
 from poly_weather.config import load_settlement_registry
 from poly_weather.depth_calibration import (
     build_depth_cost_calibration,
@@ -127,6 +135,7 @@ from poly_weather.real_no_books import (
     analyze_eliminated_no_exit,
     analyze_real_no_books,
     archived_event_metadata,
+    iter_paired_book_snapshots,
     paired_book_snapshots,
     render_eliminated_exit_report,
     render_real_no_report,
@@ -2749,6 +2758,180 @@ def shadow_spread_engine_command(
             runtime_seconds=runtime_seconds,
         )
     _emit({**status, "status_path": str(status_path.resolve()), "execution_enabled": False})
+
+
+@app.command("analyze-shadow-complement-pairs")
+def analyze_shadow_complement_pairs_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    warming_policy_path: Annotated[
+        Path, typer.Option("--warming-policy")
+    ] = DEFAULT_WARMING_POLICY,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/complement_pair_strategy_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/complement_pair_strategy_analysis.json"
+    ),
+    sensitivity_path: Annotated[Path, typer.Option("--sensitivity-output")] = Path(
+        "data/complement_pair_strategy_sensitivity.json"
+    ),
+    sensitivity_grid: Annotated[
+        bool,
+        typer.Option("--sensitivity-grid/--no-sensitivity-grid"),
+    ] = True,
+) -> None:
+    """Replay isolated YES+NO maker pairs; it never creates an exchange order."""
+    checkpoint_paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
+    event_slugs: set[str] = set()
+    target_asset_ids: set[str] = set()
+    paired_snapshot_count = 0
+    # Freeze one analysis vintage before any of the multiple sensitivity passes
+    # begin. The live checkpoint collector may append while this command runs.
+    analysis_cutoff = datetime.now(UTC)
+    # First pass retains only identities.  A full paired book has real depth
+    # on two sides, so holding every historical pair in memory is unnecessary
+    # and unsafe on a live collector host.
+    for pair in iter_paired_book_snapshots(checkpoint_paths):
+        observed_at = pair.get("observed_at")
+        if isinstance(observed_at, datetime) and observed_at > analysis_cutoff:
+            break
+        paired_snapshot_count += 1
+        event_slugs.add(str(pair["event_slug"]))
+        for side in (pair.get("yes"), pair.get("no")):
+            if isinstance(side, dict) and side.get("asset_id"):
+                target_asset_ids.add(str(side["asset_id"]))
+    if not paired_snapshot_count:
+        raise typer.BadParameter("no eligible paired order-book records found in checkpoints")
+    registry = load_settlement_registry(config)
+    metadata = archived_event_metadata(sorted(event_slugs), registry.specs)
+    policy_versions: dict[tuple[str, str], str] = {}
+    policy_windows: dict[tuple[str, str], bool] = {}
+    if warming_policy_path.exists():
+        policy_payload = json.loads(warming_policy_path.read_text(encoding="utf-8"))
+        for event_value in metadata.values():
+            station = str(event_value.get("station_id") or "")
+            target = str(event_value.get("target_date") or "")
+            for season in (policy_payload.get("stations") or {}).get(station, {}).get(
+                "seasons", ()
+            ):
+                start = str(season.get("window_start") or "")
+                end = str(season.get("window_end") or "")
+                if start and end and start <= target <= end:
+                    policy_versions[(station, target)] = str(
+                        season.get("threshold_version")
+                        or policy_payload.get("policy_version")
+                        or ""
+                    )
+                    policy_windows[(station, target)] = True
+                    break
+    def replay_pair_stream() -> Any:
+        for pair in iter_paired_book_snapshots(checkpoint_paths):
+            observed_at = pair.get("observed_at")
+            if isinstance(observed_at, datetime) and observed_at > analysis_cutoff:
+                break
+            event_value = metadata.get(str(pair.get("event_slug") or ""), {})
+            station = str(event_value.get("station_id") or "")
+            target = str(event_value.get("target_date") or "")
+            yield {
+                **pair,
+                "station_id": station or None,
+                "market_day": target or None,
+                "season_version": policy_versions.get((station, target), "unknown"),
+                "in_season": policy_windows.get((station, target), False),
+            }
+
+    public_trade_rows = (
+        load_event_trade_tapes(data_dir / "public_trades")
+        if (data_dir / "public_trades").exists()
+        else {}
+    )
+    public_trade_values = [
+        trade
+        for rows in public_trade_rows.values()
+        for trade in rows
+        if trade.asset_id in target_asset_ids
+    ]
+    ws_trade_result = load_market_ws_trades(
+        jsonl_archive_paths(data_dir / "raw" / "polymarket_clob_websocket"),
+        quality_windows=load_quality_windows(
+            data_dir / "runtime" / "polymarket_quality_windows.json"
+        ),
+        asset_ids=target_asset_ids,
+    )
+    trade_events, trade_source_validation = build_shadow_trade_events(
+        ws_trade_result.trades, public_trade_values
+    )
+    selected_config = default_complement_pair_config()
+    scenarios = predefined_complement_pair_configs(selected_config)
+    scenario_results: list[dict[str, Any]] = []
+    if sensitivity_grid:
+        # The full grid is a fixed 24-config diagnostic.  A single shared
+        # archive scan avoids moving the vintage boundary between scenarios;
+        # observed memory for all 24 configs is bounded by the read-only
+        # replay summaries (well below the host's available memory).  Keep the
+        # batch expression explicit so a constrained host can lower it without
+        # changing the predeclared scenario set.
+        batch_size = 24
+        for start in range(0, len(scenarios), batch_size):
+            scenario_results.extend(
+                replay_complement_pairs_streaming_grid(
+                    replay_pair_stream(),
+                    trades=trade_events,
+                    configs=scenarios[start : start + batch_size],
+                )
+            )
+        result = scenario_results[
+            next(index for index, scenario in enumerate(scenarios) if scenario == selected_config)
+        ]
+    else:
+        result = replay_complement_pairs_streaming(
+            replay_pair_stream(), trades=trade_events, config=selected_config
+        )
+    result["quality_window"] = (
+        "paired_book_snapshots default exclusion: official maintenance/failure plus measured recovery"
+    )
+    result["analysis_cutoff"] = analysis_cutoff.isoformat()
+    result["trade_sources"] = {
+        "target_asset_count": len(target_asset_ids),
+        "market_ws_trade_count": len(ws_trade_result.trades),
+        "market_ws_filtered_other_asset_count": ws_trade_result.filtered_asset_count,
+        "data_api_trade_count": len(public_trade_values),
+        "side_validation": trade_source_validation,
+        "cross_source_dedupe": "transaction_hash first; same-second rows without sequence are skipped",
+    }
+    render_complement_pair_report(result, output_path)
+    write_complement_pair_result(result, analysis_path)
+    sensitivity: list[dict[str, object]] = []
+    if sensitivity_grid:
+        for scenario_result in scenario_results:
+            scenario = scenario_result["strategy"]
+            sensitivity.append(
+                {
+                    "strategy": scenario,
+                    "touch": scenario_result["models"]["touch"],
+                    "queue_aware": scenario_result["models"]["queue_aware"],
+                    "trade_through": scenario_result["models"]["trade_through"],
+                    "execution_enabled": False,
+                }
+            )
+        sensitivity_path.parent.mkdir(parents=True, exist_ok=True)
+        sensitivity_path.write_text(
+            json.dumps(sensitivity, ensure_ascii=False, indent=2, default=str) + "\n",
+            encoding="utf-8",
+        )
+    queue_model = result["models"]["queue_aware"]
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "sensitivity_path": str(sensitivity_path.resolve()) if sensitivity_grid else None,
+            "pair_candidate_count": queue_model["pair_candidate_count"],
+            "submitted_pair_count": queue_model["submitted_pair_count"],
+            "completed_pair_count": queue_model["completed_pair_count"],
+            "execution_enabled": False,
+        }
+    )
 
 
 @app.command("analyze-eliminated-no-exit")

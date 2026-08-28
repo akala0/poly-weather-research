@@ -8,6 +8,7 @@ from poly_weather.polymarket_status import UpstreamQualityWindow, persist_qualit
 from poly_weather.real_no_books import (
     analyze_real_no_books,
     archived_event_metadata,
+    iter_paired_book_snapshots,
     paired_book_snapshots,
 )
 
@@ -50,6 +51,40 @@ def test_real_book_pairing_reads_retention_gzip(tmp_path: Path) -> None:
         handle.write("\n".join(json.dumps(row) for row in rows) + "\n")
 
     assert len(paired_book_snapshots([path])) == 1
+
+
+def test_streaming_pairer_merges_paths_chronologically_without_raw_payload(tmp_path: Path) -> None:
+    early = tmp_path / "early.jsonl"
+    late = tmp_path / "late.jsonl"
+    early.write_text(
+        "\n".join(
+            (
+                json.dumps(_row("2026-08-24T12:00:00+00:00", "Yes", "0.03", "0.04")),
+                json.dumps(_row("2026-08-24T12:01:00+00:00", "No", "0.96", "0.97")),
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    late.write_text(
+        "\n".join(
+            (
+                json.dumps(_row("2026-08-24T12:10:00+00:00", "Yes", "0.04", "0.05")),
+                json.dumps(_row("2026-08-24T12:11:00+00:00", "No", "0.95", "0.96")),
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    pairs = list(iter_paired_book_snapshots([late, early]))
+
+    assert [pair["observed_at"] for pair in pairs] == [
+        datetime(2026, 8, 24, 12, 1, tzinfo=UTC),
+        datetime(2026, 8, 24, 12, 11, tzinfo=UTC),
+    ]
+    assert "raw" not in pairs[0]["yes"]
+    assert "raw" not in pairs[0]["no"]
 
 
 def test_real_book_pairing_excludes_legacy_rows_by_official_window(tmp_path: Path) -> None:

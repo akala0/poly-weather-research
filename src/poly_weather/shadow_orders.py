@@ -23,7 +23,7 @@ import uuid
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_FLOOR, Decimal, InvalidOperation
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Self
@@ -1806,6 +1806,77 @@ class ShadowOrderEngine:
             if fill is not None:
                 fills.append(fill)
             remaining -= take
+        return tuple(fills)
+
+    def simulate_taker_entry(
+        self,
+        snapshot: BookSnapshot,
+        *,
+        shares: Decimal | float | str,
+        max_price: Decimal | float | str,
+        reason: str = "hedge_taker_entry",
+    ) -> tuple[ShadowFill, ...]:
+        """Walk the real ask ladder for a bounded read-only hedge entry.
+
+        This is intentionally a local depth simulation, never a POST/Relayer
+        action. Callers must provide both the desired token quantity and a
+        token-native price cap; the method never infers an ask from the
+        complement token, midpoint, or trade tape.
+        """
+        self._assert_snapshot_scope(snapshot)
+        if not snapshot.health_ok:
+            return ()
+        quantity = _decimal(shares)
+        cap = _decimal(max_price)
+        if quantity <= ZERO or cap <= ZERO:
+            return ()
+        limit_price = min(
+            ONE,
+            (min(ONE, cap) / snapshot.tick_size).to_integral_value(rounding=ROUND_FLOOR)
+            * snapshot.tick_size,
+        )
+        if limit_price <= ZERO:
+            return ()
+        available = sum(
+            (size for price, size in snapshot.asks if price <= limit_price), start=ZERO
+        )
+        requested = min(quantity, available)
+        if requested <= ZERO or requested < snapshot.min_order_size:
+            return ()
+        self.cancel_all(timestamp=snapshot.timestamp, reason=reason)
+        try:
+            order = self.submit_limit(
+                snapshot,
+                side=ShadowSide.BUY,
+                limit_price=limit_price,
+                shares=requested,
+                maker_assumption=False,
+                idempotency_key=(
+                    f"{snapshot.event_id}:{snapshot.market_id}:{snapshot.token_id}:"
+                    f"{snapshot.timestamp.isoformat()}:taker-entry:{limit_price}:{requested}"
+                ),
+                trigger_reason=reason,
+            )
+        except ShadowOrderRejected:
+            return ()
+        fills: list[ShadowFill] = []
+        remaining = requested
+        for price, level_size in sorted(snapshot.asks, key=lambda row: row[0]):
+            if remaining <= ZERO or price > limit_price:
+                break
+            take = min(remaining, level_size)
+            fill = self._apply_fill(
+                order,
+                timestamp=snapshot.timestamp,
+                shares=take,
+                price=price,
+                model=FillModel.TRADE_THROUGH,
+                source="hedge_taker_depth",
+                asset_id=snapshot.token_id,
+            )
+            if fill is not None:
+                fills.append(fill)
+                remaining -= fill.shares
         return tuple(fills)
 
     def _find(self, order_id: str) -> ShadowOrder:
