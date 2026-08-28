@@ -1,3 +1,6 @@
+import json
+from datetime import UTC, datetime
+
 from typer.testing import CliRunner
 
 from poly_weather.cli import app
@@ -62,3 +65,28 @@ def test_shadow_runtime_requires_supervised_flag_and_is_read_only(tmp_path) -> N
     )
     assert continuous.exit_code == 0
     assert '"read_only_shadow_continuous"' in continuous.stdout
+
+
+def test_stream_status_surfaces_only_token_scoped_shadow_status(tmp_path) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    updated_at = datetime.now(UTC).isoformat()
+    (runtime / "shadow_spread_status.json").write_text(
+        json.dumps({"schema_version": 1, "updated_at": updated_at, "state": "legacy"}),
+        encoding="utf-8",
+    )
+    (runtime / "shadow_spread_status_v2_token_scoped.json").write_text(
+        json.dumps({"schema_version": 2, "updated_at": updated_at, "state": "healthy"}),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(app, ["stream-status", "--data-dir", str(tmp_path)])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["shadow"]["schema_version"] == 2
+    assert payload["shadow"]["state"] == "healthy"
+    assert payload["shadow"]["legacy_status"] == "superseded_v1_read_only"
+    assert payload["shadow"]["legacy_status_path"].endswith(
+        "shadow_spread_status_v1_legacy_read_only.json"
+    )

@@ -2734,6 +2734,13 @@ def shadow_spread_engine_command(
     cursor_path: Annotated[Path, typer.Option("--cursor")] = Path(
         "data/runtime/shadow_spread_cursor_v2_token_scoped.json"
     ),
+    replay_existing: Annotated[
+        bool,
+        typer.Option(
+            "--replay-existing",
+            help="Explicitly replay existing archives; the continuous default begins at current tails.",
+        ),
+    ] = False,
 ) -> None:
     """Run a supervised, read-only shadow follower (or explicit ``--once`` pass)."""
     if not supervised:
@@ -2756,6 +2763,7 @@ def shadow_spread_engine_command(
             supervised=True,
             poll_seconds=poll_seconds,
             runtime_seconds=runtime_seconds,
+            bootstrap_at_tail=not replay_existing,
         )
     _emit({**status, "status_path": str(status_path.resolve()), "execution_enabled": False})
 
@@ -3234,6 +3242,10 @@ def stream_status(
         ("supervisor", "market_supervisor_status.json"),
         ("weather", "weather_daemon_status.json"),
         ("signal", "signal_engine_status.json"),
+        # v1 used a station-day-wide inventory scope and is evidence only.
+        # Keep it out of the live status surface so an operator cannot mistake
+        # it for the token-scoped read-only shadow daemon.
+        ("shadow", "shadow_spread_status_v2_token_scoped.json"),
     ):
         path = data_dir / "runtime" / filename
         if not path.exists():
@@ -3257,6 +3269,9 @@ def stream_status(
                 "error": str(exc),
                 "status_path": str(path.resolve()),
             }
+    legacy_shadow_status = data_dir / "runtime" / "shadow_spread_status_v1_legacy_read_only.json"
+    statuses["shadow"]["legacy_status_path"] = str(legacy_shadow_status.resolve())
+    statuses["shadow"]["legacy_status"] = "superseded_v1_read_only"
     _emit(statuses)
 
 
