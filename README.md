@@ -53,6 +53,8 @@ uv run poly-weather analyze-price-band-accessibility
 uv run poly-weather analyze-price-paths
 uv run poly-weather analyze-shadow-spread --strategy-config configs/shadow_spread_strategy.json
 uv run poly-weather shadow-spread-engine --supervised
+uv run poly-weather analyze-shadow-complement-pairs
+uv run poly-weather audit-bias-significance
 ```
 
 默认实际结算 registry 为 `configs/settlements.json`。原来的
@@ -111,8 +113,16 @@ fail-closed。`shadow-spread-engine --supervised` 默认持续只读跟随本地
 重启代数和 token-scoped v2 永久账本/状态 JSON；默认新路径为
 `shadow_orders_v2_token_scoped.jsonl`、`shadow_spread_status_v2_token_scoped.json` 与
 `shadow_spread_cursor_v2_token_scoped.json`。旧 v1 station-day 账本只读隔离，不能载入新状态。
-`--once` 仅用于有限归档烟测。它保留活动影子单、queue ahead、部分成交、库存和分批退出，并扫描执行依赖；
+首次持续运行从归档尾部开始，只积累之后的新前向证据；如需显式重放已有归档，使用
+`--replay-existing`，而 `--once` 仅用于有限归档烟测。它保留活动影子单、queue ahead、部分成交、库存和分批退出，并扫描执行依赖；
 维护或 stale 时只撤销影子单，绝不访问钱包、签名、User WebSocket 或 POST/DELETE order。
+
+`analyze-shadow-complement-pairs` 是与单方向 weather lead-lag 状态完全隔离的 YES+NO 配对 maker
+影子回放。它在同一 binary market 的两条 token-native 队列上分别模拟 post-only BUY；只有两腿的实际
+queue-aware/trade-through 影子成交按相同 shares 配平，且实际 VWAP 加费用低于 $1，才记为 locked pair。
+计划限价之和小于 $1 不是成交或收益。单腿超时/超额只会用同 token 的真实深度做影子 hedge/unwind，
+不会连接任何执行接口。`audit-bias-significance` 只读审计当前校准的 walk-forward 行为与提议的
+`|mean bias|/SE > 2` 门槛；它不改阈值、不改校准，也不启用执行。
 
 默认实时信号健康闸门为：NWS 数据年龄不超过 75 分钟、METAR 不超过 70 分钟、两源温差不超过 2°F、市场 WebSocket 心跳不超过 1 分钟、天气守护进程心跳不超过 3 分钟、Open-Meteo 网格距离不超过 3 km、候选净边际不超过 15%。主 NOAA、deterministic 预报、守护进程或 CLOB 失效会把信号标记为 `stale`；METAR 交叉检查、盘口不完整或异常边际标记为 `warning`。监测器没有钱包、签名、下单或资金代码路径。
 

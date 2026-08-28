@@ -1,6 +1,6 @@
 # 当前研究结论（唯一入口）
 
-生成时间：2026-08-27 18:43:15 +08:00。影子回放订单簿数据截止：2026-08-27 18:34:55 +08:00。
+生成时间：2026-08-28 14:59:40 +08:00。互补配对影子回放订单簿数据截止：2026-08-28 14:01:40 +08:00；固定分析上限：14:01:46 +08:00。
 
 本文件是当前结论的唯一入口。下方明确区分稳定判断和会随归档增长的快照；历史报告若与本文件冲突，
 以本文件及其链接的当前报告为准。
@@ -51,6 +51,19 @@
   随后 2026-08-27 19:00 +08:00 的 `shadow-spread-engine --supervised --once` 烟测实测 v2 ledger
   schema=2、26 个订单、3 个 fills、无 HALTED/不变量差异且 `execution_enabled=false`；运行期间归档
   新增 102 个快照，但订单/成交/PnL 状态与主回放一致。
+- **YES+NO 互补配对回放没有形成 locked pair。** 截至 2026-08-28 14:01:40 +08:00（固定分析上限
+  14:01:46），103,991 个可用配对盘口快照、43,543 个 token-native 成交事件中，预先声明的默认配置在
+  queue-aware 模型下提交 293 个 pair、3 个单腿成交、已配平 **N=0**；KLAX 为 28/1/0、KLGA 为
+  32/0/0（提交/单腿/配平）。trade-through 更保守，为 293/2/0，touch 仅作乐观上界为 293/8/0。
+  按 station-day 聚类，整体 58 个 cluster，KLAX/KLGA 分别 5/6 个；Wilson 区间均应按 n<30 的站点
+  分层视为统计不可靠。未配平仓位走同 token 真实 bid 影子 unwind，queue-aware 汇总 unwind PnL 为
+  `-$0.2844544674`。这是排队/风险处置诊断，不是实际订单或正期望，不能把计划 YES+NO 成本低于 1
+  当作收益。固定 2×3×4 敏感性网格共 24 个预先声明场景，只用于诊断，不选择最优格子。
+- **Bias significance gate 仅完成只读审计，未改变校准或策略。** 321 个 `lead_days>=1` 样本、
+  4 个 station/model 组中，增加 `|mean bias|/SE > 2` 只会额外禁用 KLGA `multi_model_blend`
+  （n=81，z=1.777）；已应用的 KLAX `gfs_seamless` 为 z=2.598。该提议的门槛在一个当前应用组
+  会改变 gate，但 gated OOS 的 Brier/LogLoss 变差；两个不显著折合计 20 个测试样本中，
+  无条件 bias 修正在折级 MAE/RMSE 变差。证据不足以自动改 gate，详见审计报告。
 - **能进不等于能按 $200 卖出。** 同一报告另算了未来 bid 深度能完整承接原始 shares 的达标率；
   KLAX +5/+10/+13/+20¢ 为 65.7%（56.2–74.1%）/27.6%（20.0–36.8%）/23.8%（16.7–32.8%）/
   8.6%（4.6–15.5%），KLGA 为 50.9%（41.6–60.3%）/50.9%（41.6–60.3%）/50.9%（41.6–60.3%）/
@@ -79,6 +92,9 @@
 | 价格路径（前向快照） | 订单簿配对 55,682，市场时间线 440；可用 $200 入场 2,379（候选 2,385，因深度不足排除 6），其中 KLAX 主区间 105、KLGA 主区间 106。已结算目录 22 个事件与深度事件重叠 **N=0**、已结算可用入场 **N=0**；其余 2,379 是未结算连续路径，realized PnL 仍 N/A。KLAX p90 成本 37.74¢、KLGA 25.95¢；两站 +5/+10/+13/+20¢ 的 p90 净价差均为负。 | 订单簿截止 2026-08-26 21:01:21 +08:00；生成 21:02:01 +08:00；详见价格路径报告 |
 | 影子天气严格 join | 9,829 条 realtime 观测；81,349 个快照中 77,748 次重复对齐、3,448 次新观测、153 次因 source/receipt 双截止无可用观测；不使用 historical_backfill，不把状态复制造成新事件。 | 回放生成 2026-08-27 18:43:15 +08:00 |
 | 只读影子限价/价差回放 | v2 token-scoped：50 个独立 station/market-day、81,349 个快照、1,187 个真实 ask 价带候选；固定 price-band queue-aware 26 单/3 fills，weather-market-lag 207 单/7 fills；整体净 PnL N/A（未平仓 token 不用代理估值），KDAL 仅 1 个合法同-token round trip `+$15.0684931507`，n=1 统计不可靠。canonical 成交带与归档 token 交集 26,686 条事件，WS 26,875 条经 hash+token 验证、504 条未匹配 fail-closed；旧 `$13.56` 已确认全为跨 token 串账并归档对账。22 个已结算事件与深度仍重叠 **N=0**。 | 订单簿截止 2026-08-27 18:34:55 +08:00；生成 18:43:15 +08:00 |
+| v2 长期只读 follower | 首次连续观察 30.08 分钟；随后重启恢复 `restart_count=1`。cursor/heartbeat 前进，26 条 ledger orders 与 3 fills 未重复，`halted=false`、discrepancy=0；仅从已有归档尾部开始积累前向证据。 | 首次启动 2026-08-28 11:05:03 +08:00；重启 11:35:32 +08:00 |
+| YES+NO 互补配对影子 | 103,991 个配对快照、43,543 个 token-native 成交事件；默认 queue-aware 293 个提交、3 个单腿 fill、已配平 **N=0**；KLAX 28/1/0、KLGA 32/0/0。trade-through 293/2/0，touch 293/8/0；station-day 聚类 58 个，KLAX/KLGA 为 5/6（n<30 分层不可靠）。固定敏感性网格 24 个场景；queue-aware unwind `-$0.2844544674`。 | 订单簿截止 2026-08-28 14:01:40 +08:00；固定分析上限 14:01:46；报告生成 14:59:40 +08:00 |
+| Bias significance gate 审计 | 321 个 lead_days≥1 样本、4 组；提议 `|bias|/SE>2` 只额外禁用 KLGA multi_model_blend。未改校准；walk-forward/OOS 证据不足以自动采用该 gate。 | 审计生成 2026-08-28 |
 
 当前报告：
 
@@ -89,6 +105,8 @@
 - [中间 NO 价位可达性](data/price_band_accessibility_report.md)
 - [中间 NO 价格路径成功率](data/price_path_report.md)
 - [只读影子限价/价差策略回放](data/shadow_spread_strategy_report.md)
+- [YES+NO 互补配对影子策略](data/complement_pair_strategy_report.md)
+- [Bias significance gate 审计](data/bias_significance_audit.md)
 - [上游质量窗口](data/polymarket_maintenance_audit.md)
 - [WRH 高频重算](data/high_frequency_weather_reanalysis.md)
 - [同季前向进度](data/no_forward_validation_report.md)
@@ -104,3 +122,7 @@
 - `shadow-spread-engine --supervised` 默认是持续只读跟随，使用原子 cursor + 永久 append-only ledger；
   `--once` 仅用于有限归档烟测。状态会显示 heartbeat、cursor/restart、活动影子单、库存、成交和
   `upstream_maintenance`；启动时执行依赖扫描，`execution_enabled` 始终为 `false`。
+- v2 follower 已按上述证据实际运行并完成一次精确重启验证；当前状态只展示
+  `shadow_spread_status_v2_token_scoped.json`，旧 `shadow_spread_status.json` 保留为
+  `shadow_spread_status_v1_legacy_read_only.json` 只读证据，不再作为 live 状态。互补配对分析同样
+  只读、离线、独立账本；其 24 格敏感性结果不改变默认配置或执行边界。

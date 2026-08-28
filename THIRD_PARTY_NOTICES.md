@@ -32,3 +32,24 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## Strategy-reference survey (conceptual references only)
+
+The sources below informed the research discussion in
+`docs/strategy_reference_survey.md`.  They were consulted only for strategy,
+state-machine, queue-accounting, and risk-control ideas.  No source code,
+wallet logic, credentials, order-submission code, or other implementation was
+copied or adapted from these sources into this repository.
+
+- `warproxxx/poly-maker`: https://github.com/warproxxx/poly-maker
+- `spencerfletcher/market-maker`: https://github.com/spencerfletcher/market-maker
+- Oracle3: https://github.com/YichengYang-Ethan/oracle3
+- Polymarket `poly-market-maker`: https://github.com/Polymarket/poly-market-maker
+- `prediction-market-maker`: https://github.com/octavi42/prediction-market-maker
+- `market-maker-forensics`: https://github.com/pascal-labs/market-maker-forensics
+- Hummingbot: https://github.com/hummingbot/hummingbot
+- Paradigm pm-AMM article: https://www.paradigm.xyz/2024/11/pm-amm
+- `pm-bot`: https://github.com/Xeron2000/pm-bot
+- `polymarket-weather-edge`: https://github.com/BallesJr/polymarket-weather-edge
+- `polymarket-weather-bot`: https://github.com/natestokens/polymarket-weather-bot
+- `kalshi-weather-bot`: https://github.com/jffrz78/kalshi-weather-bot
+- `weather-edge`: https://github.com/jattree/weather-edge

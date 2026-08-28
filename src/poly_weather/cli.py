@@ -27,6 +27,11 @@ from poly_weather.adapters.open_meteo import OpenMeteoDeterministicClient
 from poly_weather.adapters.polymarket import GammaClient, is_weather_market
 from poly_weather.adapters.polymarket_data import PolymarketDataClient
 from poly_weather.archive_io import jsonl_archive_paths
+from poly_weather.bias_significance_audit import (
+    audit_bias_significance,
+    load_calibration_samples,
+    render_bias_significance_audit,
+)
 from poly_weather.calibration import (
     evaluate_bucket_skill,
     fit_bias_calibration,
@@ -870,6 +875,46 @@ def evaluate_calibration(
         }
     )
     _emit(payload)
+
+
+@app.command("audit-bias-significance")
+def audit_bias_significance_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/bias_significance_audit.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/bias_significance_audit.json"
+    ),
+    min_train_size: Annotated[int, typer.Option(min=2)] = 30,
+    test_size: Annotated[int, typer.Option(min=1)] = 10,
+    significance_threshold: Annotated[float, typer.Option(min=0.0)] = 2.0,
+) -> None:
+    """Audit a proposed bias-significance gate without changing live calibration."""
+    samples = load_calibration_samples(data_dir / "research.duckdb")
+    result = audit_bias_significance(
+        samples,
+        min_train_size=min_train_size,
+        test_size=test_size,
+        significance_threshold=significance_threshold,
+    )
+    render_bias_significance_audit(result, output_path)
+    analysis_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "sample_count": len(samples),
+            "group_count": result["group_count"],
+            "would_disable_count": result["would_disable_count"],
+            "execution_enabled": False,
+            "strict_no_lookahead": True,
+        }
+    )
 
 
 @app.command("evaluate-bucket-skill")

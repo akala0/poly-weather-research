@@ -62,6 +62,39 @@ POST/DELETE order 或 Relayer。
 历史盘口驱动的只读模型估计，不是实际订单记录；缺少真实订单 ID、确切排队位置或可验证季节版本时
 继续 fail-closed。
 
+2026-08-28 起，默认 continuous follower 的首次启动会把 cursor 放在已有归档尾部，确保只积累其后
+的新前向证据；旧归档只能通过 `--once` 或显式 `--replay-existing` 回放。该 v2 follower 已实际连续观察
+30.08 分钟并做过一次 cursor 恢复：heartbeat/cursor 前进、无 HALTED/discrepancy，26 条既有 ledger
+orders 与 3 个 fills 未在重启后重复。`stream-status` 只显示 v2 状态，并把
+`shadow_spread_status_v1_legacy_read_only.json` 明确标为 superseded 证据，不得把 v1 状态当作 live 状态。
+
+YES+NO complement pair 是独立的只读影子策略族：每个 binary market 的 YES/NO 各有 token-scoped
+库存、订单和队列，station-day 只汇总 $200 风险及相关统计。计划 maker 限价和 `< $1` 的计划成本不是
+locked edge；只有相同 shares 的两腿实际 queue-aware/trade-through fill 配平、真实 VWAP 加费用 `< $1`
+才记为 locked pair。单腿到达时间/美元上限后只允许 token-native 深度的影子 hedge/unwind；维护、stale、
+规则变化或任意 token 作用域不一致都立即撤未成交腿或 HALTED。它绝不能共享单方向 weather lead-lag 的账本。
+
+### 数据更新间隔内的“安静窗口”策略假设
+
+用户提出：每次天气/模型数据到达并完成首轮市场反应后，到下一次可见外生数据到达前，价格波动可能主要是
+盘口与交易者行为噪音，适合 maker 限价反复赚 spread。这个假设与 lead-lag 是同一数据周期的两个阶段，
+不能混成一个策略：
+
+1. **EVENT**：新信息刚到，撤旧单或只做严格 lead-lag；
+2. **DIGESTION**：市场仍在分批消化同一信息，可能持续单向，不能先验当均值回归；
+3. **QUIET**：新锚点稳定、无新的可见外生信息，才是 noise/spread harvesting 候选；
+4. **PRE-RELEASE**：下一次预期更新前撤单/缩量，避免被新信息打穿。
+
+“无下一次定时数据”不等于“无新信息”：SPECI、WRH 高频观测、NWS/TAF 修订、模型 run 到达、相关站天气、
+云层/海风/雷暴、Polymarket 大单和撤单都可能改变条件分布。必须建立统一的 external-information clock。
+
+首轮反应结束不能写死 5/15 分钟，要按站点和数据源实测：价格斜率/跳跃、成交强度、spread、order-book imbalance、
+跨桶概率质量与撤单强度恢复稳定后才进入 QUIET。连续若干窗口无新信息且各指标回到基线才算结束；
+下一条新信息立即重置为 EVENT。mid/microprice 只能用于状态诊断，PnL 与 fill 仍必须用真实 bid/ask 和 queue 模型。
+
+该假设尚未验证，不得在报告里把整个更新间隔称为“噪音”。需要对比 EVENT/DIGESTION/QUIET/PRE-RELEASE
+四态的均值回归率、maker fill、markout、spread capture、跳空和 adverse selection，按 market-day 聚类且 OOS 验证。
+
 **不要把价差策略当成需要重新论证的新想法。** 要做的是用真实数据算它的期望。
 
 ### 但逆转率仍然绕不开（这一点要讲清，不是反对）
@@ -346,6 +379,21 @@ JJA（6/7/8 月）是气象学惯例，不是各城市实际热季。按固定�
 
 影子账本作用域已修正为 `event_id + market_id + token_id + market_day`：每个 token 独立库存、成本、活动单、累计买入成本、PnL 和 round trip；`(station_id, market_day)` 只作相关统计与 $200 风险聚类。v2 重放覆盖 50 个 station-day、81,349 个真实深度快照；price-band 为 26 单/3 fills，weather-market-lag 为 207 单/7 fills。后者只有 KDAL 1 个合法同-token round trip、realized `+$15.0684931507`，因 KMIA token 仍有未验证出场而整体净 PnL 为 N/A；旧 `$13.5571351545` 已确认全部是跨 token 串账，详见 `data/shadow_token_scope_reconciliation_report.md`。旧 v1 账本只读隔离，新默认账本为 `shadow_orders_v2_token_scoped.jsonl`，`execution_enabled=false`。
 
+YES+NO 互补配对影子离线回放（数据截止 2026-08-28 14:01:40 +08:00，固定分析上限 14:01:46）覆盖
+103,991 个可用配对盘口快照和 43,543 个 token-native 成交事件。默认 queue-aware 配置提交 293 个 pair、
+3 个单腿 fill、已配平 **N=0**；KLAX 为 28/1/0、KLGA 为 32/0/0，trade-through 为 293/2/0，touch
+为 293/8/0。58 个 station-day 聚类中 KLAX 5 个、KLGA 6 个，站点分层 n<30 不可靠；queue-aware
+未配平仓位的同 token 真实 bid 影子 unwind 汇总为 `-$0.2844544674`。计划成本低于 1 不计为 locked
+edge；该结果是排队/风险诊断，不能宣称正期望或执行可行。固定 2×3×4 敏感性网格共 24 个预先声明场景，
+仅作诊断、不选择最优参数，详见 `data/complement_pair_strategy_report.md`。
+
+Bias significance gate 已完成只读审计，未改变 live calibration：当前 gate 并非只有样本量，仍要求
+严格 walk-forward RMSE/Brier/LogLoss。321 个 `lead_days>=1` 样本分为 4 个 station/model 组；提议的
+`|mean bias|/SE > 2` 只会额外禁用 KLGA `multi_model_blend`（n=81，0.439°F/0.247°F=1.777）的当前 bias，
+其余当前已应用组 KLAX `gfs_seamless` 为 2.598。该组的 gated OOS RMSE 略降但 Brier/LogLoss 变差，且
+在两个不显著折（合计 20 个测试样本）中无条件修正使折级 MAE/RMSE 变差；证据不支持自动改 gate，详见
+`data/bias_significance_audit.md`。
+
 ### 6.2 前向样本进度（主要卡点）
 
 季节阈值重定后**时钟归零**：
@@ -382,7 +430,7 @@ T8 双侧分层、T10 动态加仓、T11 邻桶价差都缺"已结算结果 × �
 
 （本机 `uv` 不在 PATH，直接用 venv 里的 python）
 
-- 当前基线：**174 passed**，Ruff 全绿
+- 当前基线：**237 passed**，Ruff 全绿
 - 提交前确认无密钥进入版本控制。注意 `adapters/wrh.py` 会从 weather.gov 抓公开 Synoptic token——必须是运行时动态获取，不能硬编码或写进配置
 - `data/` 保持在 `.gitignore` 里
 - 不要 push 到远端，除非用户明确要求

@@ -1,6 +1,6 @@
 # Poly Weather 开发交接说明
 
-更新日期：2026-08-27
+更新日期：2026-08-28
 
 > **接手的 AI 助手请先读 [AGENTS.md](AGENTS.md)。** 那里有长期铁律、架构判断、数据源能力边界、
 > 已被推翻的旧结论和当前进度——都是从大量试错中得来的，重犯代价很高。本文件只讲环境安装和运行状态。
@@ -46,12 +46,31 @@
 - 最新只读回放已完成 v2 token-scoped 重跑：550 个 token portfolios、50 个独立 station/market-day、81,349 个深度快照和 1,187 个价带候选；固定 price-band queue-aware 26 单/3 fills，weather-market-lag 207 单/7 fills。所有订单、库存、成本、PnL 和 round trip 按 `event_id + market_id + token_id + market_day` 隔离，station-day 只作相关统计和 $200 累计预算聚类。weather-market-lag 仅 KDAL 有 1 个合法同-token round trip、realized PnL `+$15.0684931507`；KMIA 库存未验证同-token 出场，整体净 PnL 为 N/A，不能宣称正期望。旧诊断 `$13.5571351545` 已确认全部来自跨 token 串账，逐笔对账见 `data/shadow_token_scope_reconciliation_report.md`。
 - `shadow-spread-engine --supervised` 默认持续跟随，使用原子 cursor、重启代数和新的 token-scoped v2 永久账本；默认路径为 `shadow_orders_v2_token_scoped.jsonl`、`shadow_spread_status_v2_token_scoped.json` 与 `shadow_spread_cursor_v2_token_scoped.json`。旧 v1 账本只读隔离；如显式指向它，运行时 HALTED 而不改写。状态暴露 heartbeat、cursor、每 token 库存、station-day 预算、活动单、成交、上游维护和执行依赖扫描，`execution_enabled` 始终为 `false`。
 - 2026-08-27 19:00 +08:00 已完成一次有限 `--once` 烟测：v2 schema、26 个账本订单、3 个 fills、无 HALTED/不变量差异；与主回放的订单/成交/PnL 状态一致，运行期间仅因归档继续写入而多出 102 个快照。
+- 2026-08-28 已上线默认 v2 长期只读 follower：启动前市场为 `connected`、天气与 signal 为 `running`、官方质量窗没有活动的 CLOB 排除窗，且 v2 ledger 的 token-scope 不变量和执行依赖扫描均通过。首次启动为 `2026-08-28T11:05:03+08:00`，wrapper PID 为 `41128`（PID 仅作当时证据，不能复用），日志为 `data/runtime/shadow_spread_engine_v2_continuous.{stdout,stderr}.log`。首次启动以 25 个已有归档文件的尾部为 cursor 边界，不把旧归档误记成前向证据。
+- 首次 follower 已观察 30.08 分钟：heartbeat/cursor 持续前进，最后观测 cycle 为 357，最近一轮消费 6 条盘口、176 条 WS 成交带和 40 条 signal 行；无 HALTED、无 discrepancy、无活动影子单。随后在不触碰市场/天气/signal 守护的前提下重启该影子进程：`2026-08-28T11:35:32+08:00` 的新 wrapper PID 为 `31148`，日志为 `data/runtime/shadow_spread_engine_v2_restart.{stdout,stderr}.log`。恢复后 cursor `restart_count=1`、heartbeat 正常、26 条 ledger orders 和 3 个 fills 均未重复，`halted=false`。`stream-status` 只显示 v2 状态，并将 `shadow_spread_status_v1_legacy_read_only.json` 标记为 superseded 证据路径；旧 `shadow_spread_status.json` 未删除。
+- 当前 Windows 运行命令（不要加执行参数，也不要接 user/order API）：
+
+  ```powershell
+  .\.venv\Scripts\poly-weather.exe shadow-spread-engine --supervised --runtime 0 --data-dir D:\poly\data
+  ```
+
+  默认初次 continuous 启动只从已有归档尾部开始；只有审计旧数据时才显式加 `--replay-existing`，而不是把历史重放伪装成前向样本。
+- 2026-08-28 14:59 +08:00 完成固定 vintage 的互补配对离线重放：103,991 个可用配对盘口快照、43,543 个
+  token-native 成交事件（数据截止 14:01:40，分析上限 14:01:46）。默认 queue-aware 配置提交 293 个
+  pair、3 个单腿 fill、已配平 N=0；KLAX 为 28/1/0、KLGA 为 32/0/0（提交/单腿/配平）。
+  trade-through 为 293/2/0，touch 为 293/8/0；58 个 station-day 聚类，KLAX 5、KLGA 6，站点层
+  n<30 不可靠。未配平仓位只用同 token 真实 bid 影子 unwind，queue-aware 汇总为 `-$0.2844544674`；
+  计划成本低于 1 没有计入 locked edge。固定 2×3×4 敏感性网格共 24 个预先声明场景，仅作诊断，
+  不选择最优参数，详见 `data/complement_pair_strategy_report.md`。
+- 2026-08-28 12:02 +08:00 的 bias significance 审计为只读：321 个 lead_days≥1 样本、4 个组，
+  `|mean bias|/SE>2` 只会额外禁用 KLGA multi_model_blend；未改校准或 gate，详见
+  `data/bias_significance_audit.md`。
 - 链上 SQL 路径已完成只读评估，当前不接入；宏观类别/地址/持仓研究出现明确需求时再启用。
 - `signal_snapshot` 已启用 NTFS 透明压缩并纳入 2 日 gzip/30 日删除；T7 完整订单簿证据由不参与过期的 `no_forward_validation` 独立保留。
 - 当前结论唯一入口为仓库根目录 `CURRENT_CONCLUSIONS.md`；IEM 小时版 `multi_city_certainty_report.md` 已明确废弃。
 - 市场、天气、信号心跳监测与过期阻断。
 - 候选净边际超过 15% 时强制告警并阻止 paper alert。
-- 210 项单元测试全部通过，Ruff 静态检查全绿；最近一次验收时间为 2026-08-27。
+- 237 项单元测试全部通过，Ruff 静态检查全绿；最近一次验收时间为 2026-08-28。
 
 ## 当前校准结论
 
