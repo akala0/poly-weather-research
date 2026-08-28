@@ -92,7 +92,7 @@ class ShadowCursor:
     """Atomic line/byte positions for the append-only local feeds."""
 
     path: Path
-    sources: dict[str, dict[str, int]] = field(default_factory=dict)
+    sources: dict[str, dict[str, int | bool]] = field(default_factory=dict)
     generation: str | None = None
     restart_count: int = 0
     pair_latest: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -108,7 +108,7 @@ class ShadowCursor:
         except (OSError, json.JSONDecodeError):
             return cls(destination)
         rows = payload.get("sources") if isinstance(payload, Mapping) else {}
-        sources: dict[str, dict[str, int]] = {}
+        sources: dict[str, dict[str, int | bool]] = {}
         for key, value in (rows or {}).items():
             if not isinstance(value, Mapping):
                 continue
@@ -117,7 +117,13 @@ class ShadowCursor:
                 line = max(0, int(value.get("line", 0)))
             except (TypeError, ValueError):
                 continue
-            sources[str(key)] = {"offset": offset, "line": line}
+            position: dict[str, int | bool] = {"offset": offset, "line": line}
+            # Gzip archives are immutable retention artifacts, not an
+            # appendable live feed. A tail bootstrap must never reopen all of
+            # them on every continuous-daemon restart.
+            if bool(value.get("skip_existing_gzip", False)):
+                position["skip_existing_gzip"] = True
+            sources[str(key)] = position
         try:
             restart_count = max(0, int(payload.get("restart_count") or 0)) + 1
         except (TypeError, ValueError):
@@ -141,8 +147,33 @@ class ShadowCursor:
             pair_last_emitted,
         )
 
-    def position(self, path: Path) -> dict[str, int]:
+    def position(self, path: Path) -> dict[str, int | bool]:
         return self.sources.setdefault(str(path.resolve()), {"offset": 0, "line": 0})
+
+    def bootstrap_at_tail(self, paths: Sequence[Path]) -> int:
+        """Commit current archive ends without replaying pre-daemon history.
+
+        The long-running follower is a forward evidence collector. Its
+        separate archive-pass command is the explicit way to replay old data.
+        On a first continuous start, processing every historical CLOB JSONL
+        would both mislabel old data as forward evidence and monopolize disk
+        I/O. Plain JSONL can safely seek to its present byte end; retention
+        gzip files are immutable and are permanently ignored by the follower.
+        """
+        seeded = 0
+        for source in paths:
+            try:
+                size = source.stat().st_size
+            except OSError:
+                continue
+            position = self.position(source)
+            position["offset"] = size
+            position["line"] = 0
+            position.pop("skip_existing_gzip", None)
+            if source.suffix == ".gz":
+                position["skip_existing_gzip"] = True
+            seeded += 1
+        return seeded
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -164,22 +195,31 @@ class ShadowCursor:
         temporary.replace(self.path)
 
 
-def _incremental_jsonl_rows(path: Path, position: dict[str, int]) -> list[dict[str, Any]]:
+def _incremental_jsonl_rows(
+    path: Path, position: dict[str, int | bool]
+) -> list[dict[str, Any]]:
     """Read only newly appended complete lines; gzip uses a line watermark."""
     if not path.exists():
         return []
     # A supervisor may rotate a plain JSONL file in place.  Never seek beyond
     # the new file and silently lose its first rows.
-    if path.suffix != ".gz" and path.stat().st_size < position.get("offset", 0):
+    offset = int(position.get("offset", 0))
+    if path.suffix != ".gz" and path.stat().st_size < offset:
         position["offset"] = 0
         position["line"] = 0
     rows: list[dict[str, Any]] = []
     if path.suffix == ".gz":
+        if bool(position.get("skip_existing_gzip", False)):
+            # Retention gzip files are rewritten as whole files, not appended.
+            # Treat a rewrite as a fresh immutable baseline rather than
+            # replaying history under a later continuous-run timestamp.
+            position["offset"] = path.stat().st_size
+            return []
         from poly_weather.archive_io import open_jsonl_text
 
         with open_jsonl_text(path) as handle:
             for index, line in enumerate(handle):
-                if index < position.get("line", 0):
+                if index < int(position.get("line", 0)):
                     continue
                 try:
                     value = json.loads(line)
@@ -191,7 +231,7 @@ def _incremental_jsonl_rows(path: Path, position: dict[str, int]) -> list[dict[s
         position["offset"] = path.stat().st_size
         return rows
     with path.open("rb") as handle:
-        handle.seek(position.get("offset", 0))
+        handle.seek(int(position.get("offset", 0)))
         payload = handle.read()
         complete = payload.rsplit(b"\n", 1)
         if not payload.endswith(b"\n"):
@@ -204,7 +244,7 @@ def _incremental_jsonl_rows(path: Path, position: dict[str, int]) -> list[dict[s
             continue
         if isinstance(value, dict):
             rows.append(value)
-        position["line"] = position.get("line", 0) + 1
+        position["line"] = int(position.get("line", 0)) + 1
     return rows
 
 
@@ -984,6 +1024,7 @@ def run_shadow_spread_continuous(
     poll_seconds: float = 5.0,
     runtime_seconds: float = 0.0,
     max_cycles: int | None = None,
+    bootstrap_at_tail: bool = False,
 ) -> dict[str, Any]:
     """Follow local market/weather archives as a continuous read-only daemon.
 
@@ -1007,7 +1048,23 @@ def run_shadow_spread_continuous(
     )
     strategy.validate()
     ledger = ShadowLedger(ledger_path)
-    cursor = ShadowCursor.load(cursor_path)
+    cursor_destination = Path(cursor_path)
+    cursor_existed = cursor_destination.exists()
+    cursor = ShadowCursor.load(cursor_destination)
+    bootstrap_source_count = 0
+    if bootstrap_at_tail and not cursor_existed:
+        bootstrap_paths: list[Path] = []
+        for source in (
+            "polymarket_book_checkpoints",
+            "weather_daemon",
+            "polymarket_clob_websocket",
+            "signal_snapshot",
+        ):
+            bootstrap_paths.extend(jsonl_archive_paths(root / "raw" / source))
+        bootstrap_source_count = cursor.bootstrap_at_tail(bootstrap_paths)
+        # Persist before the first poll. If the process crashes while
+        # initializing, a restart must retain the same forward-only boundary.
+        cursor.save()
     registry_path = root / ".." / "configs" / "settlements.json"
     if not registry_path.exists():
         registry_path = Path("configs/settlements.json")
@@ -1067,6 +1124,7 @@ def run_shadow_spread_continuous(
             except OSError:
                 continue
     started = time.monotonic()
+    started_at = datetime.now(UTC).isoformat()
     cycles = 0
     last_error: str | None = None
     current_generation: str | None = None
@@ -1241,6 +1299,7 @@ def run_shadow_spread_continuous(
             last_error = f"cycle:{type(exc).__name__}: {exc}"
         runtime_status = {
             "schema_version": 2,
+            "started_at": started_at,
             "checked_at": datetime.now(UTC).isoformat(),
             "heartbeat": datetime.now(UTC).isoformat(),
             "execution_enabled": False,
@@ -1254,6 +1313,12 @@ def run_shadow_spread_continuous(
                 "generation": cursor.generation,
                 "restart_count": cursor.restart_count,
                 "sources": cursor.sources,
+                "bootstrap_mode": (
+                    "tail_of_existing_archives"
+                    if bootstrap_at_tail and not cursor_existed
+                    else "resumed_or_explicit_replay"
+                ),
+                "bootstrap_source_count": bootstrap_source_count,
             },
             "cycle_count": cycles,
             "last_error": last_error,

@@ -112,10 +112,45 @@ def test_shadow_continuous_cursor_is_idempotent_and_read_only(tmp_path) -> None:
         max_cycles=1,
     )
     assert first["execution_enabled"] is False
+    assert first["started_at"]
     assert first["cursor"]["sources"]
     assert second["cycle_count"] == 1
     assert second["cursor"]["restart_count"] >= 1
     assert second["data_coverage"]["new_market_rows"] == 0
+
+
+def test_continuous_tail_bootstrap_skips_existing_archive_history(tmp_path) -> None:
+    root = tmp_path / "data"
+    path = root / "raw" / "polymarket_book_checkpoints" / "2026-08-27" / "events.jsonl"
+    path.parent.mkdir(parents=True)
+    row = {
+        "received_at": "2026-08-27T12:00:00+00:00",
+        "market_slug": "event/market:Yes",
+        "asset_id": "yes",
+        "book_complete": True,
+        "bids": [{"price": "0.40", "size": "100"}],
+        "asks": [{"price": "0.50", "size": "100"}],
+    }
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    cursor_path = root / "runtime" / "cursor.json"
+
+    status = run_shadow_spread_continuous(
+        data_dir=root,
+        ledger_path=root / "raw" / "shadow_orders.jsonl",
+        status_path=root / "runtime" / "status.json",
+        cursor_path=cursor_path,
+        supervised=True,
+        max_cycles=1,
+        runtime_seconds=0.01,
+        bootstrap_at_tail=True,
+    )
+
+    saved = json.loads(cursor_path.read_text(encoding="utf-8"))
+    position = saved["sources"][str(path.resolve())]
+    assert status["data_coverage"]["new_market_rows"] == 0
+    assert status["cursor"]["bootstrap_mode"] == "tail_of_existing_archives"
+    assert status["cursor"]["bootstrap_source_count"] == 1
+    assert position["offset"] == path.stat().st_size
 
 
 def test_shadow_continuous_restores_pair_context_after_restart(tmp_path) -> None:
