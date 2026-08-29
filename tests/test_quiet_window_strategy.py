@@ -1,9 +1,10 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
-from poly_weather.information_clock import InformationEvent
+from poly_weather.information_clock import ImpactClass, InformationEvent
 from poly_weather.market_regime import RegimeState, RegimeThresholds
 from poly_weather.quiet_window_strategy import (
     QuietWindowConfig,
@@ -13,6 +14,7 @@ from poly_weather.quiet_window_strategy import (
     compute_decision_regret,
     derive_size_grid_from_no_quiet_profile,
     replay_quiet_window,
+    replay_quiet_window_size_grid,
 )
 from poly_weather.shadow_orders import (
     BookSnapshot,
@@ -160,11 +162,46 @@ def test_decision_regret_is_after_the_fact_only() -> None:
     regrets = compute_decision_regret(
         [decision],
         rows,
-        [_event("future")],
+        [
+            replace(
+                _event("future"),
+                source_at=BASE + timedelta(minutes=1),
+                available_at=BASE + timedelta(minutes=1),
+            )
+        ],
     )
     assert len(regrets) == 1
     assert regrets[0].lookahead_only is True
     assert regrets[0].no_cancel_best_bid_change == 0.10
+    assert regrets[0].next_event_gap == 60
+
+
+def test_replay_with_quiet_quote_and_later_event_records_regret_gap() -> None:
+    first = replace(_event("initial"), impact_class=ImpactClass.HARD_RESET)
+    later = replace(
+        _event("later"),
+        source_at=BASE + timedelta(minutes=7),
+        available_at=BASE + timedelta(minutes=7),
+        impact_class=ImpactClass.HARD_RESET,
+    )
+    result = replay_quiet_window(
+        [_snapshot(minute) for minute in range(8)],
+        information_events=[first, later],
+    )
+    profile = result["models"]["neutral"]
+    assert profile["state_observation_counts"]["QUIET"] >= 1
+    regrets = profile["causal_metrics"]["decision_regret"]
+    assert regrets["count"] >= 1
+    assert any(row["next_event_gap"] == 60 for row in regrets["rows"])
+    size_grid = replay_quiet_window_size_grid(
+        [_snapshot(minute) for minute in range(8)],
+        information_events=[first, later],
+    )
+    assert set(size_grid["grid"]) == {"20", "50", "100", "200"}
+    assert all(
+        row["causal_metrics"]["decision_regret"]["count"] >= 1
+        for row in size_grid["grid"].values()
+    )
 
 
 def test_global_status_is_expanded_to_observed_station_days() -> None:

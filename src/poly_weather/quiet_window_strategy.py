@@ -30,10 +30,12 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from poly_weather.information_clock import (
+    ImpactClass,
     InformationClock,
     InformationEvent,
     deduplicate_information_events,
 )
+from poly_weather.market_microstructure import L2ChurnIndex, TradeIntensityTracker
 from poly_weather.market_regime import (
     MarketMetrics,
     MarketRegimeStateMachine,
@@ -69,7 +71,8 @@ ZERO = Decimal("0")
 GLOBAL_INFORMATION_KINDS = frozenset({"official_status", "market_health_status"})
 ONE = Decimal("1")
 QUIET_FAMILY = "quiet_window_noise_maker"
-DEFAULT_QUIET_LEDGER = Path("data/raw/shadow_orders/shadow_orders_quiet_window_v1_token_scoped.jsonl")
+LEGACY_QUIET_V1_LEDGER = Path("data/raw/shadow_orders/shadow_orders_quiet_window_v1_token_scoped.jsonl")
+DEFAULT_QUIET_LEDGER = Path("data/raw/shadow_orders/shadow_orders_quiet_window_v2_token_scoped.jsonl")
 DEFAULT_FAMILY_LEDGER_IDENTITIES = {
     "weather_lead_lag_maker": "data/raw/shadow_orders/shadow_orders_v2_token_scoped.jsonl",
     QUIET_FAMILY: str(DEFAULT_QUIET_LEDGER),
@@ -215,6 +218,27 @@ class QuietSnapshotStore:
         finally:
             connection.close()
 
+    def snapshot_times_by_token(self) -> dict[str, tuple[datetime, ...]]:
+        """Return exact replay timestamps for sparse causal L2 aggregation."""
+        values: dict[str, list[datetime]] = defaultdict(list)
+        connection = sqlite3.connect(self.path)
+        try:
+            cursor = connection.execute(
+                "SELECT token_id, timestamp_iso FROM snapshots "
+                "ORDER BY token_id, timestamp, sequence"
+            )
+            for token_id, timestamp_text in cursor:
+                try:
+                    timestamp = datetime.fromisoformat(str(timestamp_text))
+                except (TypeError, ValueError):
+                    continue
+                if timestamp.tzinfo is None:
+                    continue
+                values[str(token_id)].append(timestamp.astimezone(UTC))
+        finally:
+            connection.close()
+        return {token_id: tuple(rows) for token_id, rows in values.items()}
+
 
 def _snapshot_store_payload(snapshot: BookSnapshot) -> dict[str, Any]:
     return _json_value(
@@ -258,15 +282,24 @@ def write_quiet_snapshot_store(
     with sqlite3.connect(target) as connection:
         connection.execute(
             "CREATE TABLE snapshots ("
-            "timestamp REAL NOT NULL, sequence INTEGER NOT NULL, payload TEXT NOT NULL"
+            "timestamp REAL NOT NULL, sequence INTEGER NOT NULL, "
+            "token_id TEXT NOT NULL, timestamp_iso TEXT NOT NULL, payload TEXT NOT NULL"
             ")"
         )
         for value in values:
             snapshot = _as_snapshot(value)
             payload = json.dumps(_snapshot_store_payload(snapshot), separators=(",", ":"))
             connection.execute(
-                "INSERT INTO snapshots(timestamp, sequence, payload) VALUES (?, ?, ?)",
-                (snapshot.timestamp.timestamp(), count, payload),
+                "INSERT INTO snapshots("
+                "timestamp, sequence, token_id, timestamp_iso, payload"
+                ") VALUES (?, ?, ?, ?, ?)",
+                (
+                    snapshot.timestamp.timestamp(),
+                    count,
+                    snapshot.token_id,
+                    snapshot.timestamp.isoformat(),
+                    payload,
+                ),
             )
             if first is None or snapshot.timestamp < first:
                 first = snapshot.timestamp
@@ -283,6 +316,10 @@ def write_quiet_snapshot_store(
         connection.execute(
             "CREATE INDEX snapshots_timestamp_sequence_idx "
             "ON snapshots(timestamp, sequence)"
+        )
+        connection.execute(
+            "CREATE INDEX snapshots_token_timestamp_idx "
+            "ON snapshots(token_id, timestamp, sequence)"
         )
     if count == 0 or first is None or last is None:
         raise ValueError("quiet snapshot store cannot be empty")
@@ -312,7 +349,7 @@ class StrategyFamily(StrEnum):
 class QuietWindowConfig:
     """A finite, versioned candidate configuration for one replay family."""
 
-    version: str = "quiet-window-v1-token-scoped"
+    version: str = "quiet-window-v2-token-scoped"
     strategy_family: str = QUIET_FAMILY
     quote_mode: QuoteMode = QuoteMode.BEST_BID
     fill_model: FillModel = FillModel.QUEUE_AWARE
@@ -459,7 +496,7 @@ class QuietWindowConfig:
             return timedelta(seconds=float(value))
 
         config = cls(
-            version=str(payload.get("version") or "quiet-window-v1-token-scoped"),
+            version=str(payload.get("version") or "quiet-window-v2-token-scoped"),
             strategy_family=str(payload.get("strategy_family") or QUIET_FAMILY),
             quote_mode=QuoteMode(str(payload.get("quote_mode") or QuoteMode.BEST_BID)),
             fill_model=FillModel(str(payload.get("fill_model") or FillModel.QUEUE_AWARE)),
@@ -994,7 +1031,7 @@ def compute_decision_regret(
             else None
         )
         gap = (
-            float(next_event.available_at - decision.timestamp)
+            (next_event.available_at - decision.timestamp).total_seconds()
             if next_event is not None and next_event.available_at is not None
             else None
         )
@@ -1029,6 +1066,9 @@ class QuietWindowEngine:
         retain_snapshots: bool = True,
         retain_diagnostics: bool = True,
         lazy_engines: bool = False,
+        l2_churn_index: L2ChurnIndex | None = None,
+        station_timezones: Mapping[str, str] | None = None,
+        use_real_microstructure: bool = False,
     ) -> None:
         self.config = config or default_quiet_window_config()
         self.config.validate()
@@ -1055,6 +1095,13 @@ class QuietWindowEngine:
         self.retain_snapshots = retain_snapshots
         self.retain_diagnostics = retain_diagnostics
         self.lazy_engines = lazy_engines
+        self.l2_churn_index = l2_churn_index
+        self.use_real_microstructure = use_real_microstructure
+        self._trade_intensity_tracker = (
+            TradeIntensityTracker(station_timezones=station_timezones or {})
+            if use_real_microstructure
+            else None
+        )
         self.engines: dict[TokenPortfolioKey, ShadowOrderEngine] = {}
         self.machines: dict[tuple[str, str, str], MarketRegimeStateMachine] = {}
         self._scope_by_key: dict[TokenPortfolioKey, tuple[str, str]] = {}
@@ -1063,6 +1110,9 @@ class QuietWindowEngine:
         self._canonical_scopes: dict[tuple[str, str], tuple[str, str]] = {}
         self._previous_metrics: dict[TokenPortfolioKey, _CompactLastMetric] = {}
         self._anchors: dict[TokenPortfolioKey, Decimal] = {}
+        self._physical_state_by_key: dict[
+            TokenPortfolioKey, tuple[str | None, str | None, str | None]
+        ] = {}
         self._information_keys: dict[TokenPortfolioKey, set[tuple[str, str, str]]] = defaultdict(set)
         self._accepted_information_events: list[InformationEvent] = []
         self._accepted_information_keys: set[tuple[str, str, str, str, str]] = set()
@@ -1072,6 +1122,12 @@ class QuietWindowEngine:
         self.diagnostic_snapshots: list[SnapshotDiagnostic] = []
         self._snapshot_count = 0
         self.state_observation_counts: Counter[str] = Counter()
+        self.metric_coverage_counts: Counter[tuple[str, str]] = Counter()
+        self.non_quiet_reason_counts: Counter[str] = Counter()
+        self.coverage_blocking_counts: Counter[str] = Counter()
+        self.true_violation_counts: Counter[str] = Counter()
+        self.information_impact_counts: Counter[str] = Counter()
+        self.quiet_machine_keys: set[tuple[str, str, str]] = set()
         self._observed_scopes: set[tuple[str, str]] = set()
         self.trades: list[TradeEvent] = []
         self.discrepancies: list[StopEverythingInvariant] = []
@@ -1578,6 +1634,109 @@ class QuietWindowEngine:
             return "QUIET_QUOTES_SUBMITTED", tuple(order_ids), tuple(submitted_quotes), False
         return "", (), (), True
 
+    @staticmethod
+    def _merge_metric_context(
+        snapshot: BookSnapshot, context: Mapping[str, Any]
+    ) -> BookSnapshot:
+        metadata = dict(snapshot.metadata) if isinstance(snapshot.metadata, Mapping) else {}
+        statuses = (
+            dict(metadata.get("metric_status"))
+            if isinstance(metadata.get("metric_status"), Mapping)
+            else {}
+        )
+        incoming = context.get("metric_status")
+        if isinstance(incoming, Mapping):
+            statuses.update({str(key): str(value) for key, value in incoming.items()})
+        metadata.update({key: value for key, value in context.items() if key != "metric_status"})
+        if statuses:
+            metadata["metric_status"] = statuses
+        return replace(snapshot, metadata=metadata)
+
+    def _physical_state_event(
+        self, snapshot: BookSnapshot, key: TokenPortfolioKey
+    ) -> InformationEvent | None:
+        metadata = snapshot.metadata if isinstance(snapshot.metadata, Mapping) else {}
+        state = (
+            str(metadata.get("physical_margin_f"))
+            if metadata.get("physical_margin_f") is not None
+            else None,
+            str(metadata.get("physical_margin_tier"))
+            if metadata.get("physical_margin_tier") is not None
+            else None,
+            str(metadata.get("physical_eliminated"))
+            if metadata.get("physical_eliminated") is not None
+            else None,
+        )
+        if state == (None, None, None):
+            return None
+        previous = self._physical_state_by_key.get(key)
+        self._physical_state_by_key[key] = state
+        # The first available value establishes this token's own baseline.  A
+        # later settlement-rounded margin/tier/elimination transition is a
+        # real physical state change and must reset only this token's anchor.
+        if previous is None or previous == state:
+            return None
+        return InformationEvent(
+            event_id=(
+                f"physical:{key.identifier}:{snapshot.timestamp.isoformat()}:"
+                f"{state[0]}:{state[1]}:{state[2]}"
+            ),
+            source="derived_token_physical_state",
+            kind="physical_margin",
+            source_at=snapshot.timestamp,
+            available_at=snapshot.timestamp,
+            station_id=snapshot.station_id,
+            market_day=snapshot.market_day,
+            payload_hash="|".join(value or "" for value in state),
+            changed_physical_margin=True,
+            impact_class=ImpactClass.HARD_RESET,
+            impact_reason="token_physical_margin_tier_or_elimination_changed",
+            metadata={
+                "token_id": snapshot.token_id,
+                "physical_margin_f": state[0],
+                "physical_margin_tier": state[1],
+                "physical_eliminated": state[2],
+            },
+        )
+
+    def _record_metric_coverage(
+        self, metrics: MarketMetrics
+    ) -> None:
+        for name in (
+            "mid",
+            "spread",
+            "top_bid_depth",
+            "top_ask_depth",
+            "imbalance",
+            "price_slope",
+            "cumulative_move",
+            "trade_intensity_multiple",
+            "churn_rate",
+            "cross_bucket_mass_error",
+        ):
+            self.metric_coverage_counts[(name, metrics.knowledge_for(name).value)] += 1
+
+    @staticmethod
+    def _global_health_ok(snapshot: BookSnapshot) -> bool:
+        """Keep station-wide safety gates separate from one token's quote gap.
+
+        A missing side on one token must cancel/disable that token through the
+        mandatory UNQUOTABLE metric, but it cannot halt another healthy token
+        in the same station-day.  Maintenance, stale weather, rule, season and
+        quality failures remain stop-everything conditions.
+        """
+        return bool(
+            not snapshot.market_stale
+            and not snapshot.weather_stale
+            and snapshot.settlement_verified
+            and snapshot.in_season
+            and snapshot.warming_valid
+            and snapshot.season_version
+            and snapshot.season_version.casefold() not in {"unknown", "none"}
+            and not snapshot.quality_excluded
+            and snapshot.upstream_status.casefold() == "normal"
+        )
+
     def process_snapshot(
         self,
         snapshot: BookSnapshot,
@@ -1592,6 +1751,20 @@ class QuietWindowEngine:
         snapshot = _as_snapshot(snapshot)
         canonical_key = self._canonical_key(snapshot)
         canonical_scope = self._canonical_scope(snapshot, canonical_key)
+        previous = self._previous_metrics.get(canonical_key)
+        if self.use_real_microstructure:
+            context: dict[str, Any] = {}
+            if self._trade_intensity_tracker is not None:
+                context.update(
+                    self._trade_intensity_tracker.observe(
+                        snapshot,
+                        previous_at=previous.timestamp if previous is not None else None,
+                        trades=trades_since_previous,
+                    )
+                )
+            if self.l2_churn_index is not None:
+                context.update(self.l2_churn_index.lookup(snapshot.token_id, snapshot.timestamp))
+            snapshot = self._merge_metric_context(snapshot, context)
         self._observed_scopes.add(canonical_scope)
         self._snapshot_count += 1
         if self.retain_snapshots:
@@ -1641,14 +1814,15 @@ class QuietWindowEngine:
             self.stop_everything(exc.code, timestamp=snapshot.timestamp, details=exc.details, snapshot=snapshot)
             machine = self._machine(canonical_key, scope)
             return self._record_decision(snapshot, machine, action="HALTED", reason=exc.code, reduce_only=True)
-        previous = self._previous_metrics.get(canonical_key)
         metrics = metrics_from_snapshot(
             snapshot,
             previous=previous,
             trades=trades_since_previous,
         )
-        self._previous_metrics[canonical_key] = _compact_metric(metrics)
-        observed_health = snapshot.health_ok if health_ok is None else bool(health_ok)
+        self._record_metric_coverage(metrics)
+        observed_health = (
+            self._global_health_ok(snapshot) if health_ok is None else bool(health_ok)
+        )
         scoped_events: list[InformationEvent] = []
         for event in information_events:
             scoped = self._event_for_snapshot(event, snapshot)
@@ -1658,6 +1832,12 @@ class QuietWindowEngine:
             if not self._validate_information_event(scoped, snapshot):
                 continue
             scoped_events.append(scoped)
+        physical_event = self._physical_state_event(snapshot, canonical_key)
+        if physical_event is not None:
+            scoped_events.append(physical_event)
+        for event in scoped_events:
+            impact = event.impact_class or ImpactClass.HARD_RESET
+            self.information_impact_counts[ImpactClass(impact).value] += 1
         transitions = []
         if not observed_health:
             transitions.append(
@@ -1697,6 +1877,21 @@ class QuietWindowEngine:
                     )
                 )
         transition = transitions[-1]
+        if any(item.hard_reset for item in transitions):
+            anchored_metadata = dict(metrics.metadata)
+            if metrics.mid is not None:
+                anchored_metadata["anchor_mid"] = str(metrics.mid)
+            metrics = replace(metrics, metadata=anchored_metadata)
+            machine.last_metric = metrics
+        self._previous_metrics[canonical_key] = _compact_metric(metrics)
+        if transition.state is not RegimeState.QUIET:
+            self.non_quiet_reason_counts[transition.reason] += 1
+            for reason in transition.coverage_reasons:
+                self.coverage_blocking_counts[reason] += 1
+            for reason in transition.true_violations:
+                self.true_violation_counts[reason] += 1
+        else:
+            self.quiet_machine_keys.add((scope[0], scope[1], canonical_key.token_id))
         event_ids = tuple(event.event_id for event in scoped_events)
         if not observed_health or transition.state is RegimeState.HALTED:
             self.stop_everything(
@@ -1817,6 +2012,20 @@ class QuietWindowEngine:
             except ShadowPortfolioInvariantError:
                 pass
         flat = all(engine.inventory_shares == ZERO for engine in self.engines.values())
+        metric_coverage: dict[str, dict[str, Any]] = {}
+        for name in sorted({name for name, _status in self.metric_coverage_counts}):
+            counts = {
+                status: count
+                for (metric_name, status), count in self.metric_coverage_counts.items()
+                if metric_name == name
+            }
+            total = sum(counts.values())
+            metric_coverage[name] = {
+                "observation_count": total,
+                "status_counts": dict(sorted(counts.items())),
+                "known_count": counts.get("OK", 0),
+                "known_fraction": counts.get("OK", 0) / total if total else None,
+            }
         return {
             "strategy_family": self.config.strategy_family,
             "strategy_version": self.config.version,
@@ -1836,6 +2045,15 @@ class QuietWindowEngine:
             "station_day_cluster_count": len(self._observed_scopes),
             "state_observation_counts": dict(
                 sorted(self.state_observation_counts.items())
+            ),
+            "metric_coverage": metric_coverage,
+            "non_quiet_reason_counts": dict(sorted(self.non_quiet_reason_counts.items())),
+            "coverage_blocking_counts": dict(sorted(self.coverage_blocking_counts.items())),
+            "true_violation_counts": dict(sorted(self.true_violation_counts.items())),
+            "information_impact_counts": dict(sorted(self.information_impact_counts.items())),
+            "quiet_token_machine_count": len(self.quiet_machine_keys),
+            "quiet_station_day_count": len(
+                {(station, day) for station, day, _token in self.quiet_machine_keys}
             ),
             "inventory_scope": "event_id + market_id + token_id + market_day",
             "risk_scope": "station_id + market_day; three strategy families aggregated only for cap",
@@ -2395,6 +2613,8 @@ def _replay_one(
     snapshot_count: int | None = None,
     snapshot_cutoff: datetime | None = None,
     scoped_events: Sequence[InformationEvent] | None = None,
+    l2_churn_index: L2ChurnIndex | None = None,
+    station_timezones: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     selected = replace(
         config,
@@ -2411,6 +2631,9 @@ def _replay_one(
         retain_snapshots=False,
         retain_diagnostics=True,
         lazy_engines=True,
+        l2_churn_index=l2_churn_index,
+        station_timezones=station_timezones,
+        use_real_microstructure=True,
     )
     if callable(snapshots):
         snapshot_factory = snapshots
@@ -2569,6 +2792,8 @@ def _replay_profile_result(
     tier: ThresholdTier,
     quote_size_usd: Decimal,
     scoped_events: Sequence[InformationEvent],
+    l2_churn_index: L2ChurnIndex | None = None,
+    station_timezones: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     return _replay_one(
         store.iter_snapshots,
@@ -2580,6 +2805,8 @@ def _replay_profile_result(
         snapshot_count=store.snapshot_count,
         snapshot_cutoff=store.end_at,
         scoped_events=scoped_events,
+        l2_churn_index=l2_churn_index,
+        station_timezones=station_timezones,
     )
 
 
@@ -2635,6 +2862,7 @@ def replay_quiet_window_store(
     information_events: Iterable[InformationEvent] = (),
     config: QuietWindowConfig | None = None,
     station_timezones: Mapping[str, str] | None = None,
+    l2_churn_index: L2ChurnIndex | None = None,
 ) -> dict[str, Any]:
     """Replay a disk-backed source without materialising full depth in RAM."""
     selected = config or default_quiet_window_config()
@@ -2655,6 +2883,8 @@ def replay_quiet_window_store(
             tier=tier,
             quote_size_usd=selected.quote_size_usd,
             scoped_events=scoped_events,
+            l2_churn_index=l2_churn_index,
+            station_timezones=station_timezones,
         )
         for tier in ThresholdTier
     }
@@ -2733,6 +2963,7 @@ def replay_quiet_window_size_grid_store(
     information_events: Iterable[InformationEvent] = (),
     config: QuietWindowConfig | None = None,
     station_timezones: Mapping[str, str] | None = None,
+    l2_churn_index: L2ChurnIndex | None = None,
 ) -> dict[str, Any]:
     """Run the declared size scenarios against a disk-backed snapshot source."""
     selected = config or default_quiet_window_config()
@@ -2754,6 +2985,8 @@ def replay_quiet_window_size_grid_store(
             tier=selected.threshold_tier,
             quote_size_usd=size,
             scoped_events=scoped_events,
+            l2_churn_index=l2_churn_index,
+            station_timezones=station_timezones,
         )
         grid[str(size)] = {
             "quote_size_usd": size,
@@ -2826,21 +3059,50 @@ def analyze_information_clock(events: Iterable[InformationEvent]) -> dict[str, A
     accepted = clock.ingest_many(events)
     by_source: defaultdict[str, int] = defaultdict(int)
     by_kind: defaultdict[str, int] = defaultdict(int)
+    by_kind_impact: defaultdict[str, Counter[str]] = defaultdict(Counter)
+    by_station_impact: defaultdict[str, Counter[str]] = defaultdict(Counter)
     revisions: defaultdict[tuple[str, str, str | None], int] = defaultdict(int)
     for event in accepted:
         by_source[event.source] += 1
         by_kind[event.kind] += 1
+        impact = (event.impact_class or ImpactClass.NO_OP).value
+        by_kind_impact[event.kind][impact] += 1
+        by_station_impact[event.station_id or "GLOBAL"][
+            impact
+        ] += 1
         revisions[(event.source, event.kind, event.source_at.isoformat() if event.source_at else None)] += 1
+    for rejected in clock.invalid_events:
+        event = rejected.get("event")
+        if not isinstance(event, Mapping):
+            continue
+        kind = str(event.get("kind") or "UNKNOWN")
+        station = str(event.get("station_id") or "GLOBAL")
+        by_kind_impact[kind][ImpactClass.INVALID.value] += 1
+        by_station_impact[station][ImpactClass.INVALID.value] += 1
     return {
         "clock": clock.as_dict(),
         "accepted_event_count": len(accepted),
         "events_by_source": dict(sorted(by_source.items())),
         "events_by_kind": dict(sorted(by_kind.items())),
+        "events_by_kind_and_impact_class": {
+            kind: dict(sorted(counts.items()))
+            for kind, counts in sorted(by_kind_impact.items())
+        },
+        "events_by_station_and_impact_class": {
+            station: dict(sorted(counts.items()))
+            for station, counts in sorted(by_station_impact.items())
+        },
         "same_source_time_revision_groups": sum(count > 1 for count in revisions.values()),
         "revision_group_max_size": max(revisions.values(), default=0),
         "receipt_gate": "source_at <= available_at <= decision_at",
         "missing_receipt_policy": "phase ineligible; never resets EVENT/DIGESTION/QUIET/PRE_RELEASE",
         "open_meteo_run_initialization_policy": "explicit initialization required; missing remains N/A",
+        "impact_policy": {
+            "HARD_RESET": "new daily high, verified forecast distribution, physical state, settlement/status or critical weather-regime change",
+            "SOFT_UPDATE": "visible risk-field change without a hard anchor; fixed DIGESTION/cancel rule",
+            "NO_OP": "new receipt timestamp alone or unchanged semantic state; diagnostic only",
+            "INVALID": "missing/inconsistent receipt or unknown non-global scope; rejected",
+        },
         "execution_enabled": False,
     }
 
@@ -2868,6 +3130,41 @@ def render_information_reaction_report(result: Mapping[str, Any], output_path: P
         lines.append(f"| {kind} | {count} |")
     lines.extend(
         [
+            "",
+            "## Event importance (v2 present-time classification)",
+            "",
+            "| Kind | HARD_RESET | SOFT_UPDATE | NO_OP | INVALID |",
+            "|---|---:|---:|---:|---:|",
+        ]
+    )
+    by_kind_impact = (
+        result.get("events_by_kind_and_impact_class")
+        or clock.get("events_by_kind_and_impact_class")
+        or {}
+    )
+    for kind, counts in sorted(by_kind_impact.items()):
+        lines.append(
+            f"| {kind} | {counts.get('HARD_RESET', 0)} | {counts.get('SOFT_UPDATE', 0)} | {counts.get('NO_OP', 0)} | {counts.get('INVALID', 0)} |"
+        )
+    by_station_impact = result.get("events_by_station_and_impact_class") or {}
+    if by_station_impact:
+        lines.extend(
+            [
+                "",
+                "## Event importance by station",
+                "",
+                "| Station | HARD_RESET | SOFT_UPDATE | NO_OP | INVALID |",
+                "|---|---:|---:|---:|---:|",
+            ]
+        )
+        for station, counts in sorted(by_station_impact.items()):
+            lines.append(
+                f"| {station} | {counts.get('HARD_RESET', 0)} | {counts.get('SOFT_UPDATE', 0)} | {counts.get('NO_OP', 0)} | {counts.get('INVALID', 0)} |"
+            )
+    lines.extend(
+        [
+            "",
+            "`INVALID` rows are rejected before state progression.  A new report timestamp alone is not a reset.  Regular weather products use fixed material-risk bands (wind, cloud, phenomena, dew point); decimal/report-format jitter inside a band is NO_OP.",
             "",
             "## Reaction samples by fixed threshold tier",
             "",
@@ -2900,6 +3197,8 @@ def render_information_reaction_report(result: Mapping[str, Any], output_path: P
         [
             "",
             "No tier is selected by realized PnL. State thresholds are declared before replay and reported as sensitivity diagnostics.",
+            "",
+            "A v1 result with `QUIET=0` is N/A under incomplete event semantics/metric coverage; it is not evidence that no quiet interval exists.",
         ]
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -2943,7 +3242,62 @@ def render_quiet_window_report(result: Mapping[str, Any], output_path: Path | st
         lines.append(
             f"| {tier} | {counts.get('EVENT', 0)} | {counts.get('DIGESTION', 0)} | {counts.get('QUIET', 0)} | {counts.get('PRE_RELEASE', 0)} | {counts.get('HALTED', 0)} |"
         )
+    lines.extend(
+        [
+            "",
+            "## Mandatory metric coverage (primary profile)",
+            "",
+            "Unknown is never converted to zero.  `WARMUP_INSUFFICIENT_BASELINE`, `UNQUOTABLE_INCOMPLETE_BOOK`, `UNKNOWN_TAPE_GAP`, and `UNKNOWN_CROSS_BUCKET_SYNC` are coverage states; `UNSTABLE_TRUE_VIOLATION:*` is a known failed stability check.",
+            "",
+            "| Metric | Known / observations | Known % | Status counts |",
+            "|---|---:|---:|---|",
+        ]
+    )
     primary = result.get("primary_profile") or {}
+    for metric, coverage in sorted((primary.get("metric_coverage") or {}).items()):
+        total = coverage.get("observation_count", 0)
+        known = coverage.get("known_count", 0)
+        fraction = coverage.get("known_fraction")
+        lines.append(
+            f"| {metric} | {known} / {total} | {fraction:.1%} | {coverage.get('status_counts')} |"
+            if isinstance(fraction, (int, float))
+            else f"| {metric} | {known} / {total} | N/A | {coverage.get('status_counts')} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Non-QUIET reason distribution (primary profile)",
+            "",
+            "| Reason | Observations |",
+            "|---|---:|",
+        ]
+    )
+    for reason, count in sorted((primary.get("non_quiet_reason_counts") or {}).items()):
+        lines.append(f"| {reason} | {count} |")
+    lines.extend(
+        [
+            "",
+            "## Why mandatory gates blocked QUIET (primary profile)",
+            "",
+            "Coverage states are unavailable observations, not zero-valued stability metrics.  True violations are separately observed failed checks.",
+            "",
+            "| Coverage state | Non-QUIET observations |",
+            "|---|---:|",
+        ]
+    )
+    coverage_blocks = primary.get("coverage_blocking_counts") or {}
+    if coverage_blocks:
+        for reason, count in sorted(coverage_blocks.items()):
+            lines.append(f"| {reason} | {count} |")
+    else:
+        lines.append("| none | 0 |")
+    lines.extend(["", "| True stability violation | Non-QUIET observations |", "|---|---:|"])
+    true_violations = primary.get("true_violation_counts") or {}
+    if true_violations:
+        for reason, count in sorted(true_violations.items()):
+            lines.append(f"| {reason} | {count} |")
+    else:
+        lines.append("| none | 0 |")
     causal = primary.get("causal_metrics") or {}
     lines.extend(
         [
@@ -2983,7 +3337,7 @@ def render_quiet_window_report(result: Mapping[str, Any], output_path: Path | st
             "- All ratios carry Wilson 95% bounds and n<30 is marked statistically unreliable. Station/market-day is the independent cluster.",
             "- `1-p`, midpoint, trade price, and the other token's book are never used as a quote or exit price.",
             "",
-            "Conclusion: diagnostic evidence only; this report does not establish positive expectation or execution feasibility.",
+            "Conclusion: diagnostic evidence only; this report does not establish positive expectation or execution feasibility. If QUIET remains zero, read the coverage and true-violation tables before interpreting it as a market result.",
         ]
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")

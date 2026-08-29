@@ -87,6 +87,11 @@ from poly_weather.maintenance_audit import (
     load_reconnect_rows,
     render_maintenance_audit,
 )
+from poly_weather.market_microstructure import (
+    CROSS_BUCKET_SYNC_TOLERANCE,
+    build_cross_bucket_mass_index,
+    build_l2_churn_index,
+)
 from poly_weather.market_stream import EventArchivePolicy, MarketWebSocketBot
 from poly_weather.market_supervisor import (
     MarketEventSupervisor,
@@ -155,6 +160,7 @@ from poly_weather.real_no_books import (
     analyze_eliminated_no_exit,
     analyze_real_no_books,
     archived_event_metadata,
+    bucket_upper_and_unit,
     iter_paired_book_snapshots,
     paired_book_snapshots,
     render_eliminated_exit_report,
@@ -178,6 +184,7 @@ from poly_weather.signal_engine import (
     LiveSignalConfig,
     LiveSignalEngine,
     build_live_calibration,
+    physical_bucket_state,
 )
 from poly_weather.signal_migration import migrate_signal_snapshots_from_jsonl
 from poly_weather.storage import CatalogStore, RawEventArchive
@@ -2774,15 +2781,30 @@ def analyze_shadow_spread_command(
 def analyze_information_clock_command(
     data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
     output_path: Annotated[Path, typer.Option("--output")] = Path(
-        "data/information_reaction_report.md"
+        "data/information_reaction_report_v2.md"
     ),
     analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
-        "data/information_clock_analysis.json"
+        "data/information_clock_analysis_v2.json"
     ),
+    quiet_analysis_path: Annotated[
+        Path | None, typer.Option("--quiet-analysis")
+    ] = None,
 ) -> None:
     """Normalize weather/status archives into a strict external-information clock."""
     events = load_external_information_events(data_dir)
     result = analyze_information_clock(events)
+    if quiet_analysis_path is not None:
+        try:
+            quiet_result = json.loads(quiet_analysis_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise typer.BadParameter(
+                f"unable to read QUIET analysis: {quiet_analysis_path}"
+            ) from exc
+        models = quiet_result.get("models")
+        if not isinstance(models, Mapping):
+            raise typer.BadParameter("QUIET analysis does not contain threshold models")
+        result["models"] = models
+        result["analysis_cutoff"] = quiet_result.get("analysis_cutoff")
     render_information_reaction_report(result, output_path)
     write_quiet_window_result(result, analysis_path)
     _emit(
@@ -2810,17 +2832,17 @@ def analyze_quiet_window_command(
         Path | None, typer.Option("--strategy-config")
     ] = None,
     output_path: Annotated[Path, typer.Option("--output")] = Path(
-        "data/quiet_window_strategy_report.md"
+        "data/quiet_window_strategy_v2_report.md"
     ),
     analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
-        "data/quiet_window_strategy_analysis.json"
+        "data/quiet_window_strategy_v2_analysis.json"
     ),
     size_grid_path: Annotated[Path, typer.Option("--size-grid-output")] = Path(
-        "data/quiet_window_size_grid.json"
+        "data/quiet_window_v2_size_grid.json"
     ),
     information_report_path: Annotated[
         Path, typer.Option("--information-report")
-    ] = Path("data/information_reaction_report.md"),
+    ] = Path("data/information_reaction_report_v2.md"),
     size_grid: Annotated[
         bool, typer.Option("--size-grid/--no-size-grid")
     ] = True,
@@ -2828,12 +2850,17 @@ def analyze_quiet_window_command(
     """Replay the independent QUIET maker using token-native archived books."""
     checkpoint_paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
     analysis_cutoff = datetime.now(UTC)
+
+    def _pairs_until_cutoff() -> Any:
+        for pair in iter_paired_book_snapshots(checkpoint_paths):
+            observed_at = pair.get("observed_at")
+            if isinstance(observed_at, datetime) and observed_at > analysis_cutoff:
+                break
+            yield pair
+
     paired_snapshot_count = 0
     event_slugs: set[str] = set()
-    for pair in iter_paired_book_snapshots(checkpoint_paths):
-        observed_at = pair.get("observed_at")
-        if isinstance(observed_at, datetime) and observed_at > analysis_cutoff:
-            break
+    for pair in _pairs_until_cutoff():
         paired_snapshot_count += 1
         if pair.get("event_slug"):
             event_slugs.add(str(pair["event_slug"]))
@@ -2846,6 +2873,10 @@ def analyze_quiet_window_command(
         for value in metadata.values()
         if value.get("station_id") and value.get("timezone")
     }
+    cross_bucket_index = build_cross_bucket_mass_index(
+        _pairs_until_cutoff,
+        synchronization_tolerance=CROSS_BUCKET_SYNC_TOLERANCE,
+    )
     policy_payload = (
         json.loads(warming_policy_path.read_text(encoding="utf-8"))
         if warming_policy_path.exists()
@@ -2855,6 +2886,7 @@ def analyze_quiet_window_command(
     weather_observations = load_realtime_weather_observations(weather_paths)
     weather_join_reasons: dict[str, int] = {}
     join_state: dict[str, Any] = {}
+    running_high_by_scope: dict[tuple[str, str], Decimal] = {}
 
     def _enriched_pair(pair: Mapping[str, Any]) -> dict[str, Any]:
         event_value = metadata.get(str(pair.get("event_slug") or ""), {})
@@ -2883,6 +2915,34 @@ def analyze_quiet_window_command(
         }
         enriched["station_id"] = station or None
         enriched["market_day"] = target or None
+        observed_at = pair.get("observed_at")
+        market_slug = str(pair.get("market_slug") or "")
+        if isinstance(observed_at, datetime) and market_slug:
+            mass = cross_bucket_index.lookup(market_slug, observed_at)
+            metadata_value = enriched.get("metadata")
+            metric_status = (
+                dict(metadata_value.get("metric_status"))
+                if isinstance(metadata_value, Mapping)
+                and isinstance(metadata_value.get("metric_status"), Mapping)
+                else {}
+            )
+            metric_status["cross_bucket_mass_error"] = mass.status
+            enriched["metadata"] = {
+                **(dict(metadata_value) if isinstance(metadata_value, Mapping) else {}),
+                "cross_bucket_mass_error": str(mass.error)
+                if mass.error is not None
+                else None,
+                "cross_bucket_mass_interval_lower": str(mass.lower)
+                if mass.lower is not None
+                else None,
+                "cross_bucket_mass_interval_upper": str(mass.upper)
+                if mass.upper is not None
+                else None,
+                "cross_bucket_observed_bucket_count": mass.observed_bucket_count,
+                "cross_bucket_expected_bucket_count": mass.expected_bucket_count,
+                "cross_bucket_maximum_age_seconds": mass.maximum_age_seconds,
+                "metric_status": metric_status,
+            }
         seasons = (
             (policy_payload.get("stations") or {}).get(station, {}).get("seasons", ())
         )
@@ -2911,19 +2971,79 @@ def analyze_quiet_window_command(
             for reason, count in reasons.items():
                 weather_join_reasons[reason] = weather_join_reasons.get(reason, 0) + count
             for aligned_pair in aligned:
+                pair_metadata = dict(aligned_pair.get("metadata") or {})
+                station = str(aligned_pair.get("station_id") or "").upper()
+                market_day = str(aligned_pair.get("market_day") or "")
+                temperature = None
+                try:
+                    temperature = Decimal(str(pair_metadata.get("weather_temperature_f")))
+                except (ArithmeticError, TypeError, ValueError):
+                    pass
+                source_at = None
+                try:
+                    source_at = datetime.fromisoformat(
+                        str(pair_metadata.get("weather_source_timestamp") or "").replace(
+                            "Z", "+00:00"
+                        )
+                    )
+                    if source_at.tzinfo is None:
+                        source_at = source_at.replace(tzinfo=UTC)
+                    source_at = source_at.astimezone(UTC)
+                except (TypeError, ValueError):
+                    source_at = None
+                timezone_name = station_timezones.get(station)
+                target_day_observation = False
+                if source_at is not None and timezone_name and market_day:
+                    try:
+                        target_day_observation = (
+                            source_at.astimezone(ZoneInfo(timezone_name)).date().isoformat()
+                            == market_day
+                        )
+                    except (KeyError, TypeError, ValueError):
+                        target_day_observation = False
+                if temperature is not None and target_day_observation:
+                    scope = (station, market_day)
+                    prior_high = running_high_by_scope.get(scope)
+                    running_high = max(prior_high or temperature, temperature)
+                    running_high_by_scope[scope] = running_high
+                    pair_metadata["running_high_f"] = str(running_high)
+                    pair_metadata["latest_temperature_f"] = str(temperature)
+                    pair_metadata["temperature_minus_running_high_f"] = str(
+                        temperature - running_high
+                    )
                 for token_side in ("yes", "no"):
                     side = aligned_pair.get(token_side)
                     if not isinstance(side, Mapping) or not side.get("asset_id"):
                         continue
                     row = dict(aligned_pair)
+                    token_metadata = dict(pair_metadata)
+                    parsed_bucket = bucket_upper_and_unit(
+                        str(aligned_pair.get("market_slug") or "")
+                    )
+                    try:
+                        running_high = Decimal(
+                            str(token_metadata.get("running_high_f"))
+                        )
+                    except (ArithmeticError, TypeError, ValueError):
+                        running_high = None
+                    if parsed_bucket is not None and running_high is not None:
+                        upper, unit = parsed_bucket
+                        margin, tier, eliminated = physical_bucket_state(
+                            running_high, upper=upper, unit=unit
+                        )
+                        token_metadata.update(
+                            {
+                                "physical_margin_f": margin,
+                                "physical_margin_tier": tier,
+                                "physical_eliminated": eliminated,
+                            }
+                        )
+                    row["metadata"] = token_metadata
                     row["no"] = dict(side)
                     row["token_id"] = str(side["asset_id"])
                     yield row
 
-        for pair in iter_paired_book_snapshots(checkpoint_paths):
-            observed_at = pair.get("observed_at")
-            if isinstance(observed_at, datetime) and observed_at > analysis_cutoff:
-                break
+        for pair in _pairs_until_cutoff():
             chunk.append(_enriched_pair(pair))
             if len(chunk) >= 2048:
                 yield from emit_chunk(chunk)
@@ -2976,12 +3096,21 @@ def analyze_quiet_window_command(
         trade_events, trade_source_validation = build_shadow_trade_events(
             ws_trade_result.trades, public_trade_values
         )
+        l2_churn_index = build_l2_churn_index(
+            jsonl_archive_paths(data_dir / "raw" / "polymarket_clob_websocket"),
+            asset_ids=store.token_ids,
+            trades=trade_events,
+            start_at=snapshot_start,
+            end_at=snapshot_end,
+            lookup_times_by_asset=store.snapshot_times_by_token(),
+        )
         result = replay_quiet_window_store(
             store,
             trades=trade_events,
             information_events=information_events,
             config=strategy,
             station_timezones=station_timezones,
+            l2_churn_index=l2_churn_index,
         )
         result["analysis_cutoff"] = analysis_cutoff
         result["quality_window"] = (
@@ -2992,6 +3121,17 @@ def analyze_quiet_window_command(
             "reason_counts": weather_join_reasons,
             "strict_cutoff": "source_timestamp <= snapshot_at and received_at <= snapshot_at",
             "historical_backfill_used": False,
+        }
+        result["microstructure_inputs"] = {
+            "trade_intensity": {
+                "source": "canonical receipt-available WS/Data API trades",
+                "baseline": "strict-prior same station/token price-band/local-hour rolling samples",
+                "minimum_baseline_samples": 3,
+                "baseline_window_samples": 96,
+                "warmup_status": "WARMUP_INSUFFICIENT_BASELINE / UNKNOWN_BASELINE",
+            },
+            "l2_churn": l2_churn_index.summary(),
+            "cross_bucket_mass": cross_bucket_index.summary(),
         }
         ws_summary = ws_trade_result.as_json()
         ws_summary.pop("trades", None)
@@ -3026,6 +3166,7 @@ def analyze_quiet_window_command(
                     information_events=information_events,
                     config=strategy,
                     station_timezones=station_timezones,
+                    l2_churn_index=l2_churn_index,
                 )
             write_quiet_window_result(result["size_grid"], size_grid_path)
         clock_result = analyze_information_clock(information_events)

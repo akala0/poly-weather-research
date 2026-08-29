@@ -427,7 +427,7 @@ def analyze_real_no_books(
     }
 
 
-def _bucket_upper_and_unit(market_slug: str) -> tuple[int | None, str] | None:
+def bucket_upper_and_unit(market_slug: str) -> tuple[int | None, str] | None:
     import re
 
     slug = market_slug.lower()
@@ -444,6 +444,11 @@ def _bucket_upper_and_unit(market_slug: str) -> tuple[int | None, str] | None:
     if re.search(r"-(-?\d+)c(?:or)?higher$", slug):
         return None, "celsius"
     return None
+
+
+# Older analyses import the private spelling; retain it while the v2 replay
+# uses the public helper to derive token-specific physical state.
+_bucket_upper_and_unit = bucket_upper_and_unit
 
 
 def analyze_eliminated_no_exit(

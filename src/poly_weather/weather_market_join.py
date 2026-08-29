@@ -304,6 +304,12 @@ def align_weather_to_snapshots(
                 "weather_observation_id": observation.observation_id,
                 "weather_source_timestamp": observation.source_timestamp.isoformat(),
                 "weather_received_at": observation.received_at.isoformat(),
+                "weather_temperature_f": (
+                    str(observation.temperature_f)
+                    if observation.temperature_f is not None
+                    else None
+                ),
+                "weather_observation_product": observation.product,
                 "weather_observation_new": is_new,
                 "weather_improving": improving,
                 "weather_worsening": worsening,
