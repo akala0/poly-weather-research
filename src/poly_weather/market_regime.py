@@ -17,7 +17,7 @@ from enum import StrEnum
 from statistics import fmean, median
 from typing import Any
 
-from poly_weather.information_clock import InformationEvent
+from poly_weather.information_clock import ImpactClass, InformationEvent
 from poly_weather.shadow_orders import BookSnapshot, TradeEvent
 
 ZERO = Decimal("0")
@@ -52,6 +52,17 @@ class ThresholdTier(StrEnum):
     STRICT = "strict"
     NEUTRAL = "neutral"
     LENIENT = "lenient"
+
+
+class MetricKnowledge(StrEnum):
+    """Why a mandatory metric is usable, warming up, or deliberately unknown."""
+
+    OK = "OK"
+    WARMUP_INSUFFICIENT_BASELINE = "WARMUP_INSUFFICIENT_BASELINE"
+    UNQUOTABLE_INCOMPLETE_BOOK = "UNQUOTABLE_INCOMPLETE_BOOK"
+    UNKNOWN_TAPE_GAP = "UNKNOWN_TAPE_GAP"
+    UNKNOWN_CROSS_BUCKET_SYNC = "UNKNOWN_CROSS_BUCKET_SYNC"
+    UNSTABLE_TRUE_VIOLATION = "UNSTABLE_TRUE_VIOLATION"
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,6 +185,7 @@ class MarketMetrics:
     cross_bucket_mass_error: Decimal | None = None
     trade_count: int = 0
     trade_volume: Decimal = ZERO
+    metric_status: Mapping[str, str] = field(default_factory=dict)
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -202,7 +214,42 @@ class MarketMetrics:
 
     @property
     def complete_for_quiet(self) -> bool:
-        return self.mid is not None and self.spread is not None
+        return (
+            self.mid is not None
+            and self.spread is not None
+            and self.knowledge_for("mid") is MetricKnowledge.OK
+            and self.knowledge_for("spread") is MetricKnowledge.OK
+        )
+
+    def knowledge_for(self, name: str) -> MetricKnowledge:
+        """Return an explicit coverage reason without silently treating it as 0."""
+        raw = self.metric_status.get(name)
+        if raw is not None:
+            try:
+                return MetricKnowledge(str(raw))
+            except ValueError:
+                return MetricKnowledge.UNKNOWN_TAPE_GAP
+        values = {
+            "mid": self.mid,
+            "spread": self.spread,
+            "top_bid_depth": self.top_bid_depth,
+            "top_ask_depth": self.top_ask_depth,
+            "imbalance": self.imbalance,
+            "price_slope": self.price_slope,
+            "cumulative_move": self.cumulative_move,
+            "trade_intensity_multiple": self.trade_intensity_multiple,
+            "churn_rate": self.churn_rate,
+            "cross_bucket_mass_error": self.cross_bucket_mass_error,
+        }
+        if values.get(name) is not None:
+            return MetricKnowledge.OK
+        if name in {"mid", "spread", "top_bid_depth", "top_ask_depth", "imbalance"}:
+            return MetricKnowledge.UNQUOTABLE_INCOMPLETE_BOOK
+        if name in {"price_slope", "cumulative_move", "trade_intensity_multiple"}:
+            return MetricKnowledge.WARMUP_INSUFFICIENT_BASELINE
+        if name == "cross_bucket_mass_error":
+            return MetricKnowledge.UNKNOWN_CROSS_BUCKET_SYNC
+        return MetricKnowledge.UNKNOWN_TAPE_GAP
 
     def as_dict(self) -> dict[str, Any]:
         def value(item: Any) -> Any:
@@ -232,6 +279,21 @@ class MarketMetrics:
                 )
             },
             "trade_count": self.trade_count,
+            "metric_status": {
+                key: self.knowledge_for(key).value
+                for key in (
+                    "mid",
+                    "spread",
+                    "top_bid_depth",
+                    "top_ask_depth",
+                    "imbalance",
+                    "price_slope",
+                    "cumulative_move",
+                    "trade_intensity_multiple",
+                    "churn_rate",
+                    "cross_bucket_mass_error",
+                )
+            },
             "metadata": dict(self.metadata),
         }
 
@@ -272,6 +334,18 @@ def metrics_from_snapshot(
         anchor_value = _decimal(anchor)
         cumulative = abs(mid - anchor_value) if anchor_value is not None else None
     metadata = snapshot.metadata if isinstance(snapshot.metadata, Mapping) else {}
+    raw_status = metadata.get("metric_status")
+    metric_status = (
+        {str(key): str(value) for key, value in raw_status.items()}
+        if isinstance(raw_status, Mapping)
+        else {}
+    )
+    quotable = bool(snapshot.book_complete and bid is not None and ask is not None)
+    if not quotable:
+        for field_name in ("mid", "spread", "top_bid_depth", "top_ask_depth", "imbalance"):
+            metric_status.setdefault(
+                field_name, MetricKnowledge.UNQUOTABLE_INCOMPLETE_BOOK.value
+            )
     baseline = _decimal(
         baseline_trade_intensity
         if baseline_trade_intensity is not None
@@ -282,12 +356,50 @@ def metrics_from_snapshot(
         if baseline is not None and baseline > ZERO
         else _decimal(metadata.get("trade_intensity_multiple"))
     )
+    if intensity is None:
+        metric_status.setdefault(
+            "trade_intensity_multiple",
+            MetricKnowledge.WARMUP_INSUFFICIENT_BASELINE.value,
+        )
+    else:
+        metric_status.setdefault("trade_intensity_multiple", MetricKnowledge.OK.value)
     churn = _decimal(metadata.get("churn_rate"))
+    if churn is None:
+        metric_status.setdefault("churn_rate", MetricKnowledge.UNKNOWN_TAPE_GAP.value)
+    else:
+        metric_status.setdefault("churn_rate", MetricKnowledge.OK.value)
     cross_bucket = _decimal(
         metadata.get("cross_bucket_mass_error")
         if metadata.get("cross_bucket_mass_error") is not None
         else metadata.get("probability_mass_error")
     )
+    if cross_bucket is None:
+        metric_status.setdefault(
+            "cross_bucket_mass_error", MetricKnowledge.UNKNOWN_CROSS_BUCKET_SYNC.value
+        )
+    else:
+        metric_status.setdefault("cross_bucket_mass_error", MetricKnowledge.OK.value)
+    if slope is None and _decimal(metadata.get("price_slope")) is None:
+        metric_status.setdefault(
+            "price_slope", MetricKnowledge.WARMUP_INSUFFICIENT_BASELINE.value
+        )
+    else:
+        metric_status.setdefault("price_slope", MetricKnowledge.OK.value)
+    if cumulative is None and _decimal(metadata.get("cumulative_move")) is None:
+        metric_status.setdefault(
+            "cumulative_move", MetricKnowledge.WARMUP_INSUFFICIENT_BASELINE.value
+        )
+    else:
+        metric_status.setdefault("cumulative_move", MetricKnowledge.OK.value)
+    for field_name, value in {
+        "mid": mid,
+        "spread": spread,
+        "top_bid_depth": bid_depth,
+        "top_ask_depth": ask_depth,
+        "imbalance": imbalance,
+    }.items():
+        if value is not None and quotable:
+            metric_status.setdefault(field_name, MetricKnowledge.OK.value)
     values = dict(metadata)
     if mid is not None and "anchor_mid" not in values:
         values["anchor_mid"] = str(previous.mid if previous and previous.mid is not None else mid)
@@ -312,6 +424,7 @@ def metrics_from_snapshot(
         cross_bucket_mass_error=cross_bucket,
         trade_count=len(trades),
         trade_volume=sum((trade.size for trade in trades), start=ZERO),
+        metric_status=metric_status,
         metadata=values,
     )
 
@@ -324,12 +437,17 @@ class RegimeTransition:
     reason: str
     scope: tuple[str, str]
     event_id: str | None = None
+    impact_class: ImpactClass | None = None
+    impact_reason: str | None = None
+    hard_reset: bool = False
     reaction_duration_seconds: float | None = None
     allow_new_orders: bool = False
     reduce_only: bool = False
     cancel_required: bool = False
     stable_window_count: int = 0
     violations: tuple[str, ...] = ()
+    coverage_reasons: tuple[str, ...] = ()
+    true_violations: tuple[str, ...] = ()
     next_release_at: datetime | None = None
     schedule_verified: bool = False
     metrics: MarketMetrics | None = None
@@ -342,12 +460,17 @@ class RegimeTransition:
             "reason": self.reason,
             "scope": {"station_id": self.scope[0], "market_day": self.scope[1]},
             "event_id": self.event_id,
+            "impact_class": self.impact_class.value if self.impact_class else None,
+            "impact_reason": self.impact_reason,
+            "hard_reset": self.hard_reset,
             "reaction_duration_seconds": self.reaction_duration_seconds,
             "allow_new_orders": self.allow_new_orders,
             "reduce_only": self.reduce_only,
             "cancel_required": self.cancel_required,
             "stable_window_count": self.stable_window_count,
             "violations": list(self.violations),
+            "coverage_reasons": list(self.coverage_reasons),
+            "true_violations": list(self.true_violations),
             "next_release_at": self.next_release_at.isoformat()
             if self.next_release_at
             else None,
@@ -524,7 +647,7 @@ class MarketRegimeStateMachine:
 
     def _stable_violations(self, metrics: MarketMetrics) -> tuple[str, ...]:
         threshold = self.thresholds
-        missing: list[str] = []
+        coverage: list[str] = []
         violations: list[str] = []
         required = {
             "mid": metrics.mid,
@@ -540,29 +663,33 @@ class MarketRegimeStateMachine:
         if threshold.require_cross_bucket_quality:
             required["cross_bucket_mass_error"] = metrics.cross_bucket_mass_error
         for name, value in required.items():
-            if value is None:
-                missing.append(f"missing_{name}")
-        if missing:
-            return tuple(missing)
+            knowledge = metrics.knowledge_for(name)
+            if knowledge is not MetricKnowledge.OK or value is None:
+                coverage.append(knowledge.value)
+        if coverage:
+            # Do not conceal actual instability behind a coverage issue, but
+            # do not invent a zero-valued metric either.  The report can now
+            # distinguish a warmup/gap from a true failed stability check.
+            return tuple(dict.fromkeys(coverage))
         if abs(metrics.price_slope or ZERO) > threshold.max_abs_price_slope:
-            violations.append("price_slope_unstable")
+            violations.append("UNSTABLE_TRUE_VIOLATION:price_slope_unstable")
         if (metrics.cumulative_move or ZERO) > threshold.max_cumulative_move:
-            violations.append("cumulative_move_unstable")
+            violations.append("UNSTABLE_TRUE_VIOLATION:cumulative_move_unstable")
         if (metrics.trade_intensity_multiple or ZERO) > threshold.max_trade_intensity_multiple:
-            violations.append("trade_intensity_elevated")
+            violations.append("UNSTABLE_TRUE_VIOLATION:trade_intensity_elevated")
         if (metrics.spread or ZERO) > threshold.max_spread:
-            violations.append("spread_wide")
+            violations.append("UNSTABLE_TRUE_VIOLATION:spread_wide")
         if (metrics.top_bid_depth or ZERO) < threshold.min_top_depth:
-            violations.append("bid_depth_thin")
+            violations.append("UNSTABLE_TRUE_VIOLATION:bid_depth_thin")
         if (metrics.top_ask_depth or ZERO) < threshold.min_top_depth:
-            violations.append("ask_depth_thin")
+            violations.append("UNSTABLE_TRUE_VIOLATION:ask_depth_thin")
         if abs(metrics.imbalance or ZERO) > threshold.max_abs_imbalance:
-            violations.append("imbalance_extreme")
+            violations.append("UNSTABLE_TRUE_VIOLATION:imbalance_extreme")
         if (metrics.churn_rate or ZERO) > threshold.max_churn_rate:
-            violations.append("book_churn_elevated")
+            violations.append("UNSTABLE_TRUE_VIOLATION:book_churn_elevated")
         if (metrics.cross_bucket_mass_error or ZERO) > threshold.max_cross_bucket_mass_error:
-            violations.append("cross_bucket_probability_inconsistent")
-        return tuple((*missing, *violations))
+            violations.append("UNSTABLE_TRUE_VIOLATION:cross_bucket_probability_inconsistent")
+        return tuple(violations)
 
     def _record(
         self,
@@ -571,6 +698,9 @@ class MarketRegimeStateMachine:
         previous: RegimeState,
         reason: str,
         event_id: str | None = None,
+        impact_class: ImpactClass | None = None,
+        impact_reason: str | None = None,
+        hard_reset: bool = False,
         cancel_required: bool = False,
         violations: Sequence[str] = (),
         next_release_at: datetime | None = None,
@@ -588,6 +718,22 @@ class MarketRegimeStateMachine:
                     (metrics.timestamp - self.last_event.available_at).total_seconds(),
                 )
                 self.reaction_durations_seconds.append(reaction)
+        coverage_reasons = tuple(
+            value
+            for value in violations
+            if value
+            in {
+                MetricKnowledge.WARMUP_INSUFFICIENT_BASELINE.value,
+                MetricKnowledge.UNQUOTABLE_INCOMPLETE_BOOK.value,
+                MetricKnowledge.UNKNOWN_TAPE_GAP.value,
+                MetricKnowledge.UNKNOWN_CROSS_BUCKET_SYNC.value,
+            }
+        )
+        true_violations = tuple(
+            value
+            for value in violations
+            if value.startswith(f"{MetricKnowledge.UNSTABLE_TRUE_VIOLATION.value}:")
+        )
         transition = RegimeTransition(
             timestamp=metrics.timestamp,
             previous_state=previous,
@@ -595,12 +741,17 @@ class MarketRegimeStateMachine:
             reason=reason,
             scope=self.scope,
             event_id=event_id,
+            impact_class=impact_class,
+            impact_reason=impact_reason,
+            hard_reset=hard_reset,
             reaction_duration_seconds=reaction,
             allow_new_orders=self.allow_new_orders,
             reduce_only=self.reduce_only,
             cancel_required=cancel_required,
             stable_window_count=self._stable_windows,
             violations=tuple(violations),
+            coverage_reasons=coverage_reasons,
+            true_violations=true_violations,
             next_release_at=next_release_at,
             schedule_verified=schedule_verified,
             metrics=metrics,
@@ -623,12 +774,22 @@ class MarketRegimeStateMachine:
         if self.last_metric is None:
             return None
         previous = self.state
+        impact = ImpactClass(accepted.impact_class or ImpactClass.HARD_RESET)
         return self._record(
             metrics=self.last_metric,
             previous=previous,
-            reason="new_external_information",
+            reason=(
+                "new_external_information"
+                if impact is ImpactClass.HARD_RESET
+                else "soft_external_information_update"
+                if impact is ImpactClass.SOFT_UPDATE
+                else "information_no_op_recorded"
+            ),
             event_id=accepted.event_id,
-            cancel_required=True,
+            impact_class=impact,
+            impact_reason=accepted.impact_reason,
+            hard_reset=impact is ImpactClass.HARD_RESET,
+            cancel_required=impact is not ImpactClass.NO_OP,
         )
 
     def _accept_event(
@@ -654,14 +815,27 @@ class MarketRegimeStateMachine:
                 {"event_id": event.event_id, "reason": "information_not_strictly_available"}
             )
             return None
+        if event.impact_class is ImpactClass.INVALID:
+            self.invalid_information_events.append(
+                {"event_id": event.event_id, "reason": "information_declared_invalid"}
+            )
+            return None
         key = (event.source, event.kind, event.payload_hash)
         if self.retain_event_keys and key in self._seen_event_keys:
             return None
         if self.retain_event_keys:
             self._seen_event_keys.add(key)
-        self.last_event = event
-        self._stable_windows = 0
-        self.state = RegimeState.EVENT
+        impact = ImpactClass(event.impact_class or ImpactClass.HARD_RESET)
+        if impact is ImpactClass.HARD_RESET:
+            self.last_event = event
+            self._stable_windows = 0
+            self.state = RegimeState.EVENT
+        elif impact is ImpactClass.SOFT_UPDATE:
+            # Fixed conservative policy for every threshold profile: SOFT does
+            # not replace the information anchor, but it cancels a resting
+            # quote and requires a fresh stable-window confirmation.
+            self._stable_windows = 0
+            self.state = RegimeState.DIGESTION
         return event
 
     def observe(
@@ -700,21 +874,37 @@ class MarketRegimeStateMachine:
                 timestamp=metrics.timestamp,
             )
         accepted_event = None
+        event_previous = self.state
         if information_event is not None:
             accepted_event = self._accept_event(
                 information_event,
                 decision_at=metrics.timestamp,
             )
             if accepted_event is not None:
-                previous = self.state
-                self.last_metric = metrics
-                return self._record(
-                    metrics=metrics,
-                    previous=previous,
-                    reason="new_external_information",
-                    event_id=accepted_event.event_id,
-                    cancel_required=True,
-                )
+                impact = ImpactClass(accepted_event.impact_class or ImpactClass.HARD_RESET)
+                if impact is ImpactClass.HARD_RESET:
+                    self.last_metric = metrics
+                    return self._record(
+                        metrics=metrics,
+                        previous=event_previous,
+                        reason="new_external_information",
+                        event_id=accepted_event.event_id,
+                        impact_class=impact,
+                        impact_reason=accepted_event.impact_reason,
+                        hard_reset=True,
+                        cancel_required=True,
+                    )
+                if impact is ImpactClass.SOFT_UPDATE:
+                    self.last_metric = metrics
+                    return self._record(
+                        metrics=metrics,
+                        previous=event_previous,
+                        reason="soft_external_information_update",
+                        event_id=accepted_event.event_id,
+                        impact_class=impact,
+                        impact_reason=accepted_event.impact_reason,
+                        cancel_required=True,
+                    )
         if self.last_metric is not None:
             spacing = metrics.timestamp - self.last_metric.timestamp
             if spacing < self.thresholds.minimum_observation_spacing:
