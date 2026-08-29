@@ -237,22 +237,25 @@ uv run poly-weather signal-engine --supervised --runtime 0
 
 先实现联合历史重放与报告，要求每个决策点只能看到当时已经发布的数据，并输出候选次数、命中率、Brier/LogLoss、理论边际、盘口可成交深度和最大不利偏差。回放通过后再接只读告警；真实交易执行继续保持隔离。
 
-## 2026-08-28 数据周期四态与 QUIET maker
+## 2026-08-29 数据周期四态与 QUIET maker v2
 
-该阶段已经实现并完成一次全量离线验证。新增模块为：
+v1 `QUIET=0` 的正确口径是 `N/A: QUIET unreachable under incomplete event semantics/metric coverage`，不是没有安静窗口。v1 产物保留，只读；以下是独立 v2 的完成状态：
 
-- `src/poly_weather/information_clock.py`：统一 external-information clock，保留 source/receipt 双截止、payload hash、修订和不可预测 SPECI；缺 receipt 的事件只作 N/A 诊断。
-- `src/poly_weather/market_regime.py`：每个 token portfolio 的 EVENT/DIGESTION/QUIET/PRE_RELEASE/HALTED 状态机，预声明 strict/neutral/lenient 阈值和 PRE_RELEASE 诊断。
-- `src/poly_weather/quiet_window_strategy.py`：独立 QUIET maker、token-scoped queue replay、因果匹配、Wilson/cluster bootstrap、after-the-fact decision regret、stop-everything 和三策略风险隔离。
+- `information_clock.py` 对 receipt-eligible 事件作 present-time `HARD_RESET/SOFT_UPDATE/NO_OP/INVALID` 分类，跟踪日高、token-specific physical margin、forecast hash、结算/状态版本和固定天气风险带。SPECI 只有关键字段变化才 HARD；普通报文的新 timestamp 或无实质变化是 NO_OP。
+- `market_microstructure.py` 从 canonical WS/Data API trades 生成严格此前的 intensity baseline；从本地真实 L2 delta 区分 traded 与 `cancelled_at_level`，gap/reconnect 为 UNKNOWN；跨桶只使用 300 秒内同步的 token-native bid/ask 区间。
+- `market_regime.py` 和 `quiet_window_strategy.py` 把 warmup/unquotable/tape-gap/cross-bucket UNKNOWN 与真实 stability violation 分开；每 token machine fail-closed，且一个坏簿不 HALT 同站其他 token。QUIET ledger 是 `quiet-window-v2-token-scoped`，不共享 lead-lag 或 complement ledger。
 
 复现命令（只读，默认包含预声明 size grid）：
 
 ```powershell
-.venv\Scripts\poly-weather.exe analyze-quiet-window --data-dir data
+.venv\Scripts\python.exe -m poly_weather analyze-quiet-window
+.venv\Scripts\python.exe -m poly_weather analyze-information-clock --data-dir data --quiet-analysis data\quiet_window_strategy_v2_analysis.json
 .venv\Scripts\python.exe -m pytest -q
 .venv\Scripts\python.exe -m ruff check src tests
 ```
 
-最后一次归档结果：`106,724` 配对快照、`213,448` token 快照、`18,052` 输入信息事件、`43,543` public trades、`60` 个 station-day cluster。三档固定阈值都没有 QUIET 观测；neutral 为 `EVENT=82,185`、`DIGESTION=130,504`、`PRE_RELEASE=759`。订单、成交、matched control 和 regret 均为 0/N/A，size grid 对 `$20/$50/$100/$200` 做了明确的 no-entry-gate short-circuit。该结果是证据不足，不是 maker 策略的正负收益结论。
+最终 v2 vintage：`124,301` 配对快照、`248,602` token 快照、`20,344` 输入信息事件、`43,543` canonical public trades、`62` station-day clusters。information clock 接受 `19,369` 事件、拒绝 `975` INVALID，kind/station×四分类位于报告。状态计数：strict `QUIET=0`、neutral `QUIET=37`（18 token machines / 4 station-days）、lenient `QUIET=147`（49 / 7）。这证实旧版零值是可达性问题，但样本仍小。
 
-产物位于 `data/information_reaction_report.md`、`data/quiet_window_strategy_report.md`、`data/quiet_window_strategy_analysis.json` 和 `data/quiet_window_size_grid.json`。`data/` 被 Git 忽略；本次未启动实时 QUIET follower，也未改变现有 v2 weather lead-lag shadow 主策略。
+neutral coverage：churn `92.3%`、cross-bucket mass `0.9%`、slope/cumulative move `60.2%`、完整簿指标 `61.0%`、trade intensity `40.6%`；未知覆盖仍是最主要的 non-QUIET 原因，不能填零或调宽阈值。strict/neutral/lenient 影子 order 为 `0/13/72`，fill 全为 `0`；`$20/$50/$100/$200` grid 为 `13/13/11/6` order、全为零 fill、无 risk discrepancy。故 fill、markout、spread capture、PnL 均仍 N/A，matched control/decision regret 只作事后诊断，不能成为盈利或因果主张。
+
+产物为 `data/information_reaction_report_v2.md`、`data/information_clock_analysis_v2.json`、`data/quiet_window_strategy_v2_report.md`、`data/quiet_window_strategy_v2_analysis.json` 和 `data/quiet_window_v2_size_grid.json`。`data/` 被 Git 忽略；没有启动实时 QUIET follower，也没有改动正在运行的 lead-lag、complement 或 continuous follower。`execution_enabled=false` 保持不变。

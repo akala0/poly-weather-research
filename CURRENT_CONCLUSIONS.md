@@ -111,23 +111,25 @@
 - [WRH 高频重算](data/high_frequency_weather_reanalysis.md)
 - [同季前向进度](data/no_forward_validation_report.md)
 
-## 数据周期四态与 QUIET maker（2026-08-28）
+## 数据周期四态与 QUIET maker v2（2026-08-29）
 
-已完成只读实现和一次全量归档验证：
+v1 `QUIET=0` 仅表示在不完整的事件语义和微观结构覆盖下不可达（N/A），不能被解释为“没有安静窗口”。v2 以真实、receipt-gated 输入重跑后，得到如下当前结论：
 
-- `information_clock.py` 将 WRH/Synoptic、NWS、METAR/SPECI、TAF、模型 run、结算/Gamma 与官方状态统一为 source/receipt 双时间事件；重复 payload 去重，同一 source time 的内容修订保留。模型预期发布时间只用于 PRE_RELEASE，缺失 receipt 不重置状态。
-- `market_regime.py` 为每个 token portfolio 绑定 station/market-day 的 `EVENT → DIGESTION → QUIET → PRE_RELEASE` 状态机；维护、stale、质量、结算、scope、receipt、ledger 或风险不变量异常进入永久 `HALTED`。状态阈值为预先声明的 strict/neutral/lenient 三档，不按 PnL 选档。
-- `quiet_window_strategy.py` 使用独立 `quiet_window_noise_maker` 版本和账本身份，复用 token-native queue shadow engine；只有 QUIET 能开 post-only maker，其他阶段撤未成交单并只允许 reduce-only；补仓受 anchor/天气未恶化条件约束。三策略账本仍独立，station-day 仅由共同 `$200` 风险聚合器限额。
-- 全量 replay（固定启动截止线）覆盖 `106,724` 个配对 book 快照、`213,448` 个 token 快照、`18,052` 个输入信息事件和 `43,543` 个 token-native public trades，涉及 `60` 个 station/market-day cluster。neutral 档状态计数为 `EVENT=82,185`、`DIGESTION=130,504`、`QUIET=0`、`PRE_RELEASE=759`；strict/lenient 同样 `QUIET=0`。
-- 因当前固定阈值没有任何 QUIET 观测，四个预声明规模 `$20/$50/$100/$200` 使用精确的 no-entry-gate short-circuit，未做参数优选；三档均 `0` shadow orders、`0` fills、无 invariant discrepancy。maker fill、markout、spread capture、matched control、decision regret 与 PnL 均为 N/A/无样本，不能据此宣称正期望，也不能据此宣称负期望。
-- replay 只消费 token 自身真实 bid/ask、经过 canonical hash+side 验证的成交和 queue 模型；没有钱包、密钥、签名、POST/DELETE order、Relayer 或真实执行路径，`execution_enabled=false`。
+- 事件时钟现在区分 `HARD_RESET/SOFT_UPDATE/NO_OP/INVALID`，而不是把每条新 payload/timestamp 都当 EVENT。station-day 日高、token-specific physical margin/tier、forecast distribution、结算/官方状态和天气风险带均有状态跟踪；新 timestamp、重复规则和小数抖动不能重置 anchor。
+- trade intensity 来自 canonical WS/Data API 的严格此前 baseline；L2 churn 来自真实 `book`/`price_change`，撤档不等于 fill、archive/reconnect gap 为 UNKNOWN；cross-bucket mass 只由 300 秒同步的 token-native bid/ask interval 给出。未知覆盖与 `UNSTABLE_TRUE_VIOLATION:*` 分开，绝不用 0 伪装。
+- 固定 vintage 覆盖 `124,301` 配对 books、`248,602` token snapshots、`20,344` 信息事件、`43,543` canonical trades、`62` 个 station-day clusters。另有 `19,369` accepted / `975` INVALID 信息事件，kind 和 station 的四分类均已落盘。
+- strict / neutral / lenient 的 QUIET 计数为 `0 / 37 / 147`；neutral 的 37 个观测来自 18 个 token machines 和仅 4 个 station-days，lenient 为 49 / 7。故“QUIET 不存在”被推翻，但小样本不构成可交易性结论。
+- neutral 已知覆盖为 churn `92.3%`、cross-bucket mass `0.9%`、slope/cumulative `60.2%`、完整簿指标 `61.0%`、trade intensity `40.6%`。cross-bucket 同步、warmup、空/不完整簿与 tape gap 仍是主要阻断因素，必须继续 fail-closed。
+- strict / neutral / lenient 实际 shadow order 为 `0 / 13 / 72`，fill 均为 `0`；预声明 `$20/$50/$100/$200` grid 为 `13/13/11/6` orders，仍全部零 fill 且无风险不变量差异。maker fill、markout、spread capture、PnL 均为 N/A。neutral 的 29 条 after-the-fact decision regret 与 37 个 matched control 仅供诊断，不能改变历史决策或构成因果/盈利声明。
+- replay 和账本仍完全只读：`execution_enabled=false`；token inventory 的作用域是 `event_id + market_id + token_id + market_day`，station-day 只聚合三策略 `$200` cap。没有修改、重启或启动三个常驻策略。
 
 报告与机器结果：
 
-- [external-information clock / 四态报告](data/information_reaction_report.md)
-- [QUIET maker 验证报告](data/quiet_window_strategy_report.md)
-- [QUIET replay JSON](data/quiet_window_strategy_analysis.json)
-- [QUIET size grid JSON](data/quiet_window_size_grid.json)
+- [external-information clock / 四态报告 v2](data/information_reaction_report_v2.md)
+- [external-information clock v2 JSON](data/information_clock_analysis_v2.json)
+- [QUIET maker 验证报告 v2](data/quiet_window_strategy_v2_report.md)
+- [QUIET replay JSON v2](data/quiet_window_strategy_v2_analysis.json)
+- [QUIET size grid JSON v2](data/quiet_window_v2_size_grid.json)
 
 ## 运行与数据治理
 

@@ -417,18 +417,20 @@ Bias significance gate 已完成只读审计，未改变 live calibration：当�
 
 T8 双侧分层、T10 动态加仓、T11 邻桶价差都缺"已结算结果 × 真实深度"重叠样本，按停止条件保持 N/A，**没有用代理数据强行回测**。最新重跑仍是 0 个重叠事件。T6 当前有 25 个未结算前向出局桶，质量窗口剔除后 15 分钟深度覆盖率 76.0%（Wilson 95% 56.6%–88.5%），n<30，统计不可靠，不能视为结论。
 
-### 6.5 数据周期四态与 QUIET maker 验证（2026-08-28）
+### 6.5 数据周期四态与 QUIET maker 验证 v2（2026-08-29）
 
-该任务已完成实现，但结论仍是诊断性 N/A：
+v1 的 `QUIET=0` 保留为诊断性 **N/A：在不完整事件语义/指标覆盖下不可达**，不是“市场不存在安静窗口”的证据；v1 报告和账本不覆盖。v2 完成真实输入闭环后，已出现有限的 QUIET 观测，但仍没有 maker fill，因此结论仍是诊断性 N/A，而非正/负收益结论：
 
-- `information_clock.py` 统一 WRH/Synoptic、NWS、METAR/SPECI、TAF、模型 run、结算/Gamma、supervisor/官方状态的 source+receipt 外部信息时钟；重复 payload 不重置，same-source-time 修订保留，缺 receipt 不参与阶段判定。
-- `market_regime.py` 使用预先声明的 strict/neutral/lenient 三档阈值，按 token portfolio 维护 `EVENT/DIGESTION/QUIET/PRE_RELEASE/HALTED`；只有实际 receipt 触发 EVENT，预测发布时间只作 PRE_RELEASE 诊断。
-- `quiet_window_strategy.py` 是独立 `quiet_window_noise_maker` shadow family/ledger，只有 QUIET 允许 post-only maker；其他阶段撤单、reduce-only，天气恶化不无条件摊平。inventory/PnL 作用域为 `event_id + market_id + token_id + market_day`，station-day 只作相关聚类和三策略共同 `$200` 风险上限。
-- 全量 replay 覆盖 `106,724` 配对 book、`213,448` token 快照、`18,052` 输入信息事件、`43,543` public trades、`60` 个 station-day cluster。neutral 状态计数为 `EVENT=82,185`、`DIGESTION=130,504`、`QUIET=0`、`PRE_RELEASE=759`；strict/lenient 也为 `QUIET=0`。
-- 由于没有 QUIET 入口，`$20/$50/$100/$200` size grid 使用精确 no-entry-gate short-circuit，不允许把它解释为四次独立 fill replay 或参数搜索。三档订单/成交为 0；fill、markout、因果对照、decision regret、PnL 均没有样本，必须保持 N/A。
-- 实现和全量验证没有引入任何执行能力；`execution_enabled=false`，无 key、钱包、签名、Relayer、POST/DELETE order 或 User WebSocket。
+- `information_clock.py` 以 source+receipt 时钟区分 `HARD_RESET`、`SOFT_UPDATE`、`NO_OP`、`INVALID`。日高、每 token 的 physical margin/tier、forecast hash、结算/官方状态和固定天气风险带都在当前可见状态内跟踪；新报文时刻、同语义 settlement/status 和温度/格式抖动不重置状态。`INVALID` 在状态推进前拒绝。
+- `market_microstructure.py` 用 canonical receipt-available WS/Data API trades 建立严格此前、同站/token/price-band/local-hour 的 trade-intensity baseline；从真实 `book`/`price_change` 重建 L2 churn，明确把同价位撤除与可验证 traded volume 分开，archive/reconnect gap 为 UNKNOWN；跨桶 mass 只由同一事件、300 秒同步的 token-native bid/ask 区间诊断得出，绝不用 `1-p` 或对侧 token 代理。
+- `market_regime.py` 将 `WARMUP_INSUFFICIENT_BASELINE`、`UNQUOTABLE_INCOMPLETE_BOOK`、`UNKNOWN_TAPE_GAP`、`UNKNOWN_CROSS_BUCKET_SYNC` 与 `UNSTABLE_TRUE_VIOLATION:*` 分开。未知绝不填 0；一个 token 的不完整簿不会污染同 station-day 的健康 token。HARD 无条件回 EVENT，SOFT 以预声明规则回/留 DIGESTION，NO_OP 不重置 anchor。
+- 最终固定 vintage replay 覆盖 `124,301` 个配对 book、`248,602` 个 token 快照、`20,344` 个输入信息事件、`43,543` 个 canonical token-native trades、`62` 个 station-day cluster。信息报告另列 `19,369` 个 accepted 与 `975` 个 INVALID 事件，并按 kind/station 给出四类计数。
+- 状态计数为 strict `EVENT=15,497`、`DIGESTION=228,474`、`QUIET=0`、`PRE_RELEASE=4,631`；neutral `15,497/231,022/37/2,046`；lenient `15,497/231,696/147/1,262`（顺序同前）。neutral 的 37 个 QUIET 来自 18 个 token machine / 4 个 station-day，lenient 为 49 / 7；不能把快照或 token 当独立样本。
+- neutral mandatory coverage：churn `92.3%`、cross-bucket mass `0.9%`、价格斜率/累计移动 `60.2%`、完整双边簿指标 `61.0%`、trade intensity `40.6%`。主要未进入 QUIET 的原因仍是 `UNKNOWN_CROSS_BUCKET_SYNC`、warmup、unquotable book 与 tape gap；这些是 coverage 限制，和已知的真实 instability 分开报告，不能靠放宽阈值制造 QUIET。
+- 实际 QUIET 入口后，strict/neutral/lenient 分别产生 `0/13/72` 个影子 order，但全为 `0` fill、`0` round trip，所有 PnL/markout 为 N/A。预声明 `$20/$50/$100/$200` grid 分别有 `13/13/11/6` order、均为零 fill，风险账本无 discrepancy；neutral 有 29 条 strictly-later decision-regret 记录和 37 个诊断性 matched control，但它们不能反向改变历史订单，也不构成因果或盈利声明。
+- 三个策略族仍使用隔离账本；inventory/PnL 作用域为 `event_id + market_id + token_id + market_day`，仅 station-day 由共同 `$200` cap 聚合。v2 仅离线读取归档，`execution_enabled=false`，没有 key、钱包、签名、Relayer、POST/DELETE order、User WebSocket，也未启动/停止/改写任何常驻策略。
 
-报告与机器结果：`data/information_reaction_report.md`、`data/quiet_window_strategy_report.md`、`data/quiet_window_strategy_analysis.json`、`data/quiet_window_size_grid.json`。重跑命令为 `.venv\Scripts\poly-weather.exe analyze-quiet-window --data-dir data`；本次全量测试为 **253 passed**，Ruff 全绿。未来只有在新的前向归档产生实际 QUIET observations 后，才可测量 maker fill/markout/spread capture 并独立按 market-day 聚类。
+机器产物：`data/information_reaction_report_v2.md`、`data/information_clock_analysis_v2.json`、`data/quiet_window_strategy_v2_report.md`、`data/quiet_window_strategy_v2_analysis.json`、`data/quiet_window_v2_size_grid.json`。全量重跑为 `.venv\Scripts\python.exe -m poly_weather analyze-quiet-window`；只有新的前向归档使 QUIET 及实际 queue-aware fill 数量足够后，才可按 station-day 聚类评估 maker fill、markout、spread capture 与 PnL。
 
 ---
 
@@ -443,7 +445,7 @@ T8 双侧分层、T10 动态加仓、T11 邻桶价差都缺"已结算结果 × �
 
 （本机 `uv` 不在 PATH，直接用 venv 里的 python）
 
-- 当前基线：**253 passed**，Ruff 全绿
+- 当前基线：**275 passed**，Ruff 全绿
 - 提交前确认无密钥进入版本控制。注意 `adapters/wrh.py` 会从 weather.gov 抓公开 Synoptic token——必须是运行时动态获取，不能硬编码或写进配置
 - `data/` 保持在 `.gitignore` 里
 - 不要 push 到远端，除非用户明确要求

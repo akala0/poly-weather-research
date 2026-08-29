@@ -338,6 +338,14 @@
 - REDUCE_ONLY：库存或时间压力下只减仓；
 - HALTED：stale/维护/闸门失败全部撤单。
 
+#### 2026-08-29 v2 验证边界
+
+这里的 `QUIET` 不是按固定分钟数推断，而是 receipt-gated external-information clock、完整双边簿、真实成交强度、L2 churn 和跨桶质量共同满足后的状态。v1 的 `QUIET=0` 是事件语义/指标覆盖不完整时的 N/A，不能作为“盘口没有安静窗口”的反证。
+
+v2 固定阈值重放首次得到 strict / neutral / lenient 分别 `0 / 37 / 147` 个 QUIET snapshots；neutral 只覆盖 18 个 token machines、4 个 station-days，lenient 为 49 / 7。因此它验证的是状态可达性，不是 spread alpha。neutral 的 13 个 post-only shadow orders 与 lenient 的 72 个均没有 queue-aware fill；预声明 `$20/$50/$100/$200` size grid 也全为零 fill、PnL N/A。不能把 matched control 或 strictly-later decision regret 当成因果证明或可执行收益。
+
+当前最大的 coverage 限制是跨桶同步 mass（neutral 仅 `0.9%` 已知），其次是 trade-intensity warmup（`40.6%` 已知）、完整双边簿（`61.0%`）和 L2 tape gap。UNKNOWN 必须保持 fail-closed，不能填零、删掉 mandatory gate 或按 PnL 放宽阈值来制造 QUIET。所有报价/填单/PnL 仍只能用 token 自身真实 bid/ask 与 queue 模型；这套 overlay 也不引入执行能力。
+
 ### D. Adjacent-bucket ladder（低优先）
 
 - 仅当相邻桶模型概率接近且组合可达性/成本达标；
