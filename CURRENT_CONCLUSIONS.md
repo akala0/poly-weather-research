@@ -1,9 +1,23 @@
 # 当前研究结论（唯一入口）
 
-生成时间：2026-08-28 14:59:40 +08:00。互补配对影子回放订单簿数据截止：2026-08-28 14:01:40 +08:00；固定分析上限：14:01:46 +08:00。
+生成时间：2026-08-31 17:30 +08:00。
 
 本文件是当前结论的唯一入口。下方明确区分稳定判断和会随归档增长的快照；历史报告若与本文件冲突，
 以本文件及其链接的当前报告为准。
+
+## 守护链恢复（2026-08-31）
+
+2026-08-29 00:08–2026-08-31 08:50 UTC 发生本地 daemon outage，约 50 小时无前向数据。原因：天气 DuckDB writer OOM（当时无内存限制）、市场 ws status 文件全 NUL、shadow cursor 文件损坏。质量窗口已关闭（`local-daemon-outage-2026-08-29`），该时段所有分析默认排除。
+
+修复后四个守护进程已重启，状态正常：
+- market-supervisor: PID 42956, running, 440/440 book complete
+- weather-daemon: PID 36568, running, WRH/NWS/METAR 持续更新
+- signal-engine: PID 27704, running, 20 events, generation 已更新
+- shadow-follower: PID 17508, running, cursor 从新数据开始，195 订单/3 fills 未重复
+
+所有 status 文件现在有 SHA256 checksum、`.last_good` 备份、PID 存活检查。Windows Task Scheduler 已注册四个 daemon 任务（开机/登录自动启动，非零退出自动重启）。
+
+OOM 防护已到位：DuckDB memory_limit=256MB、batch=16、single thread、4GB temp directory 限制。
 
 ## 稳定判断
 
@@ -147,10 +161,16 @@ v1 `QUIET=0` 仅表示在不完整的事件语义和微观结构覆盖下不可�
 - [QUIET forensic JSON](data/quiet_order_forensics.json)
 - [QUIET 报告 canonical 路径](docs/quiet_report_canonical_paths.md)
 
+**QUIET 状态：CHALLENGER_PAUSED。** 85 单审计已证明当前 join-best-bid 报价在候选区间不可达（TOUCH=0），暂停进一步开发。保留代码和前向日志，等 KLAX/KLGA 累计 ≥30 station-day 且出现真实 touch 后才重新评估。
+
+## Lead-lag 主线前向状态（恢复后待积累）
+
+2026-08-29 00:08–2026-08-31 08:50 UTC 的约 50 小时 outage 造成前向样本断流。恢复后 shadow follower 已从新数据开始（cursor 含4个今日源），前向样本正在积累中。outage 期间的影子订单（195 订单/3 fills）来自 outage 前，与恢复后的样本明确分段，不混算。
+
 ## 运行与数据治理
 
-- market stream 当前 run `328905f1-979b-4beb-b4f4-7462c732c9d8`：440/440 book complete、0 重连、官方状态 normal。
-- 2026-08-26 部署的完整订阅采集空档为 09:15:22.749–09:16:03.879 UTC，约 41.1 秒；当天首批 220 token 在 7.2 秒恢复，次日热订阅完成后才达到完整 440。
+- market stream：PID 42956，state=running，440/440 book complete，upstream status normal。2026-08-26 的完整订阅采集空档仍保留为历史记录。
+- 2026-08-29 00:08–2026-08-31 08:50 UTC 的约 50 小时 local daemon outage 已记录并关闭质量窗口（`local-daemon-outage-2026-08-29`），该时段默认排除。故障原因：天气 DuckDB writer OOM（当时无内存限制）、市场 ws status 全 NUL、shadow cursor 损坏。修复：DuckDB memory_limit=256MB/batch=16/single thread；所有 status 文件加 SHA256 checksum + `.last_good` 备份 + Windows PID liveness 检测；Windows Task Scheduler 注册四个 daemon 任务（开机/登录启动，非零退出自动重启）。
 - `signal_snapshot` 已启用 NTFS 透明压缩并纳入 2 天 gzip/30 天删除策略；本次按目录分配字节净回收 6.34 GiB。
 - T7 触发点、完整 NO 订单簿和里程碑独立保存在 `data/raw/no_forward_validation`，不受上述 30 天删除影响。
 - 任意非触发 signal 的原始 17 位浮点只能在 30 天窗口内逐行审计；规范化库永久保留约定精度，
