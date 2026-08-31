@@ -216,17 +216,31 @@ def pid_is_alive(pid: int) -> bool:
 
     if pid <= 0:
         return False
+    if os.name == "nt":
+        # On Windows, os.kill(pid, 0) always raises OSError winerror=87
+        # (ERROR_INVALID_PARAMETER) regardless of whether the PID exists.
+        # Use ctypes to call OpenProcess which gives a reliable answer.
+        try:
+            import ctypes.wintypes
+
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            handle = ctypes.windll.kernel32.OpenProcess(
+                PROCESS_QUERY_LIMITED_INFORMATION, False, pid
+            )
+            if handle:
+                ctypes.windll.kernel32.CloseHandle(handle)
+                return True
+            # Error 87 = invalid parameter (PID doesn't exist)
+            return ctypes.GetLastError() != 87
+        except Exception:
+            return True  # assume alive if we can't check
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     except PermissionError:
         return True
-    except OSError as exc:
-        # Windows reports ERROR_INVALID_PARAMETER for a missing PID.  An
-        # access-denied result still means that the process exists.
-        if getattr(exc, "winerror", None) == 5:
-            return True
+    except OSError:
         return False
     return True
 
