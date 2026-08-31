@@ -120,7 +120,7 @@ v1 `QUIET=0` 仅表示在不完整的事件语义和微观结构覆盖下不可�
 - 固定 vintage 覆盖 `124,301` 配对 books、`248,602` token snapshots、`20,344` 信息事件、`43,543` canonical trades、`62` 个 station-day clusters。另有 `19,369` accepted / `975` INVALID 信息事件，kind 和 station 的四分类均已落盘。
 - strict / neutral / lenient 的 QUIET 计数为 `0 / 37 / 147`；neutral 的 37 个观测来自 18 个 token machines 和仅 4 个 station-days，lenient 为 49 / 7。故“QUIET 不存在”被推翻，但小样本不构成可交易性结论。
 - neutral 已知覆盖为 churn `92.3%`、cross-bucket mass `0.9%`、slope/cumulative `60.2%`、完整簿指标 `61.0%`、trade intensity `40.6%`。cross-bucket 同步、warmup、空/不完整簿与 tape gap 仍是主要阻断因素，必须继续 fail-closed。
-- strict / neutral / lenient 实际 shadow order 为 `0 / 13 / 72`，fill 均为 `0`；预声明 `$20/$50/$100/$200` grid 为 `13/13/11/6` orders，仍全部零 fill 且无风险不变量差异。maker fill、markout、spread capture、PnL 均为 N/A。neutral 的 29 条 after-the-fact decision regret 与 37 个 matched control 仅供诊断，不能改变历史决策或构成因果/盈利声明。
+- 历史 tick/min-order provenance 修复后的 strict / neutral / lenient shadow order 为 `0 / 22 / 90`，fill 均为 `0`；预声明 `$20/$50/$100/$200` grid 为 `22/22/20/10` orders，仍全部零 fill 且无风险不变量差异。maker fill、markout、spread capture、PnL 均为 N/A。neutral 的 after-the-fact decision regret 与 matched control 仅供诊断，不能改变历史决策或构成因果/盈利声明。
 - replay 和账本仍完全只读：`execution_enabled=false`；token inventory 的作用域是 `event_id + market_id + token_id + market_day`，station-day 只聚合三策略 `$200` cap。没有修改、重启或启动三个常驻策略。
 
 报告与机器结果：
@@ -130,6 +130,22 @@ v1 `QUIET=0` 仅表示在不完整的事件语义和微观结构覆盖下不可�
 - [QUIET maker 验证报告 v2](data/quiet_window_strategy_v2_report.md)
 - [QUIET replay JSON v2](data/quiet_window_strategy_v2_analysis.json)
 - [QUIET size grid JSON v2](data/quiet_window_v2_size_grid.json)
+
+## QUIET v2 零成交逐单归因（2026-08-31）
+
+- 先前保存的 `85` 张 v2 订单已逐单复核。归档 Gamma market metadata 提供了 `93` 条、覆盖 `40` 个 token 的下单前 tick/min-order 证据；`85/85` 均为 `VALID_ARCHIVED`，所以“min order 默认为 0”不再是零成交解释。
+- 机械归因是 `82` 张 `NEVER_TOUCHED`、`3` 张 `CANCELLED_BEFORE_LATER_TOUCH`。没有任何订单在实际生命周期内以 token 自己的真实 ask 触达 BUY limit；后者的三张只是在撤单后的 30 分钟诊断窗中才触价，不能回填为 fill。
+- 在 `7` 个 station-day 独立簇上，`TOUCH_UPPER_BOUND`、`QUEUE_UPPER_BOUND`、`CONSERVATIVE_FILL` 都是 `0/7`；订单级为 `0/85`，订单 Wilson 95% 上界 `4.32%`、station-day 上界 `35.43%`，`n<30`，不可作为负期望或可交易性证明。因为 TOUCH 已为零，当前结论是报价路径/被动性问题，不是队列或成交带覆盖问题。
+- `$5/$10/$20/$50` 的固定小额敏感性没有任何 min-order 拒绝，也全部保持三层 `0`；它只是固定历史容量上界，不是选择生产 size 的参数搜索。
+- 重建出的 `100` 个 QUIET episode 时长 p50/p90 为 `381/1,229` 秒，每 episode 的同一配对 token-native book observation p50/p90 仅 `2/4`；保存订单暴露 p50/p90 为 `348/949` 秒，`12` 张短于五分钟。`91` 次是 coverage flicker、`9` 次是真实 instability；coverage 来源包括 `UNKNOWN_CROSS_BUCKET_SYNC=89`、`WARMUP_INSUFFICIENT_BASELINE=17`、`UNKNOWN_TAPE_GAP=1`，真实来源仅 `imbalance_extreme=9`。因此不能把全部 `stability_lost` 误写成市场波动或通过放宽标准制造成交。
+- cross-bucket known coverage 在 `1/2/5/10` 分钟窗口仅为 `0.047%/0.088%/0.887%/2.976%`；即使到 10 分钟仍有 `53,931` 个缺桶 checkpoint 和 `66,671` 个完整但超龄样本，mass interval 宽度 p50/p90 为 `0.146/0.297`。这些只作覆盖诊断，不改变 5 分钟 fail-closed 阈值。
+- 本轮 provenance-corrected v2 重跑产生 `0/22/90`（strict/neutral/lenient）新 shadow orders、仍是 `0` fill；这和固定保存的 85 单 forensic cohort 明确分开，不能混合成独立样本。当前不进入 Champion/Challenger 赛马。
+
+报告与路径：
+
+- [QUIET 零成交逐单审计](data/quiet_order_forensics_report.md)
+- [QUIET forensic JSON](data/quiet_order_forensics.json)
+- [QUIET 报告 canonical 路径](docs/quiet_report_canonical_paths.md)
 
 ## 运行与数据治理
 

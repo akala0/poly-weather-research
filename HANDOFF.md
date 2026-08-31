@@ -1,6 +1,6 @@
 # Poly Weather 开发交接说明
 
-更新日期：2026-08-28
+更新日期：2026-08-31
 
 > **接手的 AI 助手请先读 [AGENTS.md](AGENTS.md)。** 那里有长期铁律、架构判断、数据源能力边界、
 > 已被推翻的旧结论和当前进度——都是从大量试错中得来的，重犯代价很高。本文件只讲环境安装和运行状态。
@@ -237,7 +237,7 @@ uv run poly-weather signal-engine --supervised --runtime 0
 
 先实现联合历史重放与报告，要求每个决策点只能看到当时已经发布的数据，并输出候选次数、命中率、Brier/LogLoss、理论边际、盘口可成交深度和最大不利偏差。回放通过后再接只读告警；真实交易执行继续保持隔离。
 
-## 2026-08-29 数据周期四态与 QUIET maker v2
+## 2026-08-29–31 数据周期四态、QUIET maker v2 与零成交审计
 
 v1 `QUIET=0` 的正确口径是 `N/A: QUIET unreachable under incomplete event semantics/metric coverage`，不是没有安静窗口。v1 产物保留，只读；以下是独立 v2 的完成状态：
 
@@ -245,7 +245,11 @@ v1 `QUIET=0` 的正确口径是 `N/A: QUIET unreachable under incomplete event s
 - `market_microstructure.py` 从 canonical WS/Data API trades 生成严格此前的 intensity baseline；从本地真实 L2 delta 区分 traded 与 `cancelled_at_level`，gap/reconnect 为 UNKNOWN；跨桶只使用 300 秒内同步的 token-native bid/ask 区间。
 - `market_regime.py` 和 `quiet_window_strategy.py` 把 warmup/unquotable/tape-gap/cross-bucket UNKNOWN 与真实 stability violation 分开；每 token machine fail-closed，且一个坏簿不 HALT 同站其他 token。QUIET ledger 是 `quiet-window-v2-token-scoped`，不共享 lead-lag 或 complement ledger。
 
-复现命令（只读，默认包含预声明 size grid）：
+默认入口、旧 v1 证据和固定 cohort forensic 的路径见
+[`docs/quiet_report_canonical_paths.md`](docs/quiet_report_canonical_paths.md)。v1 产物保留只读，
+不删除、不覆盖，也不作为当前状态或默认结论来源。
+
+复现当前 v2（只读，默认包含预声明 size grid）：
 
 ```powershell
 .venv\Scripts\python.exe -m poly_weather analyze-quiet-window
@@ -254,8 +258,22 @@ v1 `QUIET=0` 的正确口径是 `N/A: QUIET unreachable under incomplete event s
 .venv\Scripts\python.exe -m ruff check src tests
 ```
 
+对当前 v2 结果做 forensic，或对显式保存的固定 cohort 做 forensic，与前向状态日志都必须分开运行：
+
+```powershell
+.venv\Scripts\python.exe -m poly_weather analyze-quiet-window --forensics
+.venv\Scripts\python.exe -m poly_weather analyze-quiet-window --forensics --forensics-source <保存的_JSON>
+.venv\Scripts\python.exe -m poly_weather analyze-quiet-window --forward-state-log --no-size-grid
+```
+
+这些命令均只读已有公开归档、硬编码 `execution_enabled=false`，不会启动、停止或修改 market/weather/signal、lead-lag 或 complement 常驻流程。无 `--forensics-source` 时审计当前 canonical v2；指定 source 时才固定历史 cutoff。`--forward-state-log` 首次只 tail-bootstrap、随后仅追加新证据，且与 `--forensics` 故意不可组合。若为状态日志设置人工/调度检查，频率不得快于每 5 分钟；这不改变 market stream 的实时 L2 采集频率。
+
 最终 v2 vintage：`124,301` 配对快照、`248,602` token 快照、`20,344` 输入信息事件、`43,543` canonical public trades、`62` station-day clusters。information clock 接受 `19,369` 事件、拒绝 `975` INVALID，kind/station×四分类位于报告。状态计数：strict `QUIET=0`、neutral `QUIET=37`（18 token machines / 4 station-days）、lenient `QUIET=147`（49 / 7）。这证实旧版零值是可达性问题，但样本仍小。
 
-neutral coverage：churn `92.3%`、cross-bucket mass `0.9%`、slope/cumulative move `60.2%`、完整簿指标 `61.0%`、trade intensity `40.6%`；未知覆盖仍是最主要的 non-QUIET 原因，不能填零或调宽阈值。strict/neutral/lenient 影子 order 为 `0/13/72`，fill 全为 `0`；`$20/$50/$100/$200` grid 为 `13/13/11/6` order、全为零 fill、无 risk discrepancy。故 fill、markout、spread capture、PnL 均仍 N/A，matched control/decision regret 只作事后诊断，不能成为盈利或因果主张。
+neutral coverage：churn `92.3%`、cross-bucket mass `0.9%`、slope/cumulative move `60.2%`、完整簿指标 `61.0%`、trade intensity `40.6%`；未知覆盖仍是最主要的 non-QUIET 原因，不能填零或调宽阈值。历史 tick/min-order provenance 修复后的 strict/neutral/lenient shadow order 为 `0/22/90`，fill 全为 `0`；`$20/$50/$100/$200` grid 为 `22/22/20/10` order、全为零 fill、无风险不变量差异。故 fill、markout、spread capture、PnL 均仍 N/A，matched control/decision regret 只作事后诊断，不能成为盈利或因果主张。
 
-产物为 `data/information_reaction_report_v2.md`、`data/information_clock_analysis_v2.json`、`data/quiet_window_strategy_v2_report.md`、`data/quiet_window_strategy_v2_analysis.json` 和 `data/quiet_window_v2_size_grid.json`。`data/` 被 Git 忽略；没有启动实时 QUIET follower，也没有改动正在运行的 lead-lag、complement 或 continuous follower。`execution_enabled=false` 保持不变。
+保存的旧 85 单 cohort 已单独逐笔审计：归档 Gamma metadata 提供 93 条、覆盖 40 个 token 的下单前 tick/min-order 证据，`85/85` 均为 `VALID_ARCHIVED`。其中 `82` 张从未触价、`3` 张只在撤单后的 30 分钟诊断窗中触价；所以 TOUCH / QUEUE / CONSERVATIVE 都为订单级 `0/85`（Wilson 上界 `4.32%`）、station-day `0/7`（上界 `35.43%`，`n<30`）。这说明当前零成交是被动报价路径问题，不是“触价后未清队列”或 tape gap 的结论。
+
+100 个重建 QUIET episode 的时长 p50/p90 为 `381/1,229` 秒，每 episode 的同一配对 token-native book observation p50/p90 仅 `2/4`；`91` 次结束是 coverage flicker、仅 `9` 次是真实 imbalance instability。cross-bucket known coverage 在 1/2/5/10 分钟为 `0.047%/0.088%/0.887%/2.976%`，因此只作数据覆盖诊断，不延长 timeout 或放宽稳定标准。固定 `$5/$10/$20/$50` 敏感性均无 min-order 拒绝、三层上界仍为零；不是生产 size 选择。
+
+产物为 `data/information_reaction_report_v2.md`、`data/information_clock_analysis_v2.json`、`data/quiet_window_strategy_v2_report.md`、`data/quiet_window_strategy_v2_analysis.json`、`data/quiet_window_v2_size_grid.json`、`data/quiet_order_forensics_report.md` 和 `data/quiet_order_forensics.json`。`data/` 被 Git 忽略；没有启动实时 QUIET follower，也没有改动正在运行的 lead-lag、complement 或 continuous follower。`execution_enabled=false` 保持不变，当前不进入 Champion/Challenger。
