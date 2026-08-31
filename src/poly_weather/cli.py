@@ -92,6 +92,7 @@ from poly_weather.market_microstructure import (
     build_cross_bucket_mass_index,
     build_l2_churn_index,
 )
+from poly_weather.market_regime import ThresholdTier
 from poly_weather.market_stream import EventArchivePolicy, MarketWebSocketBot
 from poly_weather.market_supervisor import (
     MarketEventSupervisor,
@@ -144,6 +145,20 @@ from poly_weather.public_trade_collection import (
     collect_depth_event_trades,
     discover_depth_event_coverage,
 )
+from poly_weather.quiet_order_forensics import (
+    QuietLifecycleCollector,
+    annotate_episode_book_observations,
+    audit_quiet_order_forensics,
+    cross_bucket_coverage_sensitivity,
+    render_quiet_order_forensics_report,
+    write_quiet_order_forensics,
+)
+from poly_weather.quiet_state_log import (
+    DEFAULT_QUIET_STATE_CURSOR_PATH,
+    DEFAULT_QUIET_STATE_LOG_PATH,
+    QuietForwardStateCollector,
+    append_forward_quiet_state_log,
+)
 from poly_weather.quiet_window_strategy import (
     QuietWindowConfig,
     analyze_information_clock,
@@ -160,6 +175,7 @@ from poly_weather.real_no_books import (
     analyze_eliminated_no_exit,
     analyze_real_no_books,
     archived_event_metadata,
+    archived_market_rule_index,
     bucket_upper_and_unit,
     iter_paired_book_snapshots,
     paired_book_snapshots,
@@ -220,6 +236,12 @@ app = typer.Typer(
 DEFAULT_CONFIG = Path("configs/settlements.json")
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_WARMING_POLICY = Path("configs/warming_window_no_thresholds.json")
+QUIET_V2_REPORT_PATH = Path("data/quiet_window_strategy_v2_report.md")
+QUIET_V2_ANALYSIS_PATH = Path("data/quiet_window_strategy_v2_analysis.json")
+QUIET_V2_SIZE_GRID_PATH = Path("data/quiet_window_v2_size_grid.json")
+INFORMATION_REACTION_V2_REPORT_PATH = Path("data/information_reaction_report_v2.md")
+QUIET_ORDER_FORENSICS_REPORT_PATH = Path("data/quiet_order_forensics_report.md")
+QUIET_ORDER_FORENSICS_ANALYSIS_PATH = Path("data/quiet_order_forensics.json")
 
 
 def _emit(payload: object) -> None:
@@ -2831,28 +2853,94 @@ def analyze_quiet_window_command(
     strategy_config_path: Annotated[
         Path | None, typer.Option("--strategy-config")
     ] = None,
-    output_path: Annotated[Path, typer.Option("--output")] = Path(
-        "data/quiet_window_strategy_v2_report.md"
-    ),
-    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
-        "data/quiet_window_strategy_v2_analysis.json"
-    ),
-    size_grid_path: Annotated[Path, typer.Option("--size-grid-output")] = Path(
-        "data/quiet_window_v2_size_grid.json"
-    ),
+    output_path: Annotated[Path, typer.Option("--output")] = QUIET_V2_REPORT_PATH,
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = QUIET_V2_ANALYSIS_PATH,
+    size_grid_path: Annotated[Path, typer.Option("--size-grid-output")] = QUIET_V2_SIZE_GRID_PATH,
     information_report_path: Annotated[
         Path, typer.Option("--information-report")
-    ] = Path("data/information_reaction_report_v2.md"),
+    ] = INFORMATION_REACTION_V2_REPORT_PATH,
     size_grid: Annotated[
         bool, typer.Option("--size-grid/--no-size-grid")
     ] = True,
+    forensics: Annotated[
+        bool,
+        typer.Option(
+            "--forensics/--no-forensics",
+            help="Audit a saved v2 zero-fill cohort without changing a live strategy.",
+        ),
+    ] = False,
+    forensics_source_path: Annotated[
+        Path, typer.Option("--forensics-source")
+    ] = QUIET_V2_ANALYSIS_PATH,
+    forensics_report_path: Annotated[
+        Path, typer.Option("--forensics-report")
+    ] = QUIET_ORDER_FORENSICS_REPORT_PATH,
+    forensics_analysis_path: Annotated[
+        Path, typer.Option("--forensics-analysis-output")
+    ] = QUIET_ORDER_FORENSICS_ANALYSIS_PATH,
+    forensics_source_archive_path: Annotated[
+        Path | None, typer.Option("--forensics-source-archive")
+    ] = None,
+    forward_state_log: Annotated[
+        bool,
+        typer.Option(
+            "--forward-state-log/--no-forward-state-log",
+            help="Append only new QUIET state evidence after a tail bootstrap.",
+        ),
+    ] = False,
+    state_log_path: Annotated[
+        Path, typer.Option("--state-log")
+    ] = DEFAULT_QUIET_STATE_LOG_PATH,
+    state_cursor_path: Annotated[
+        Path, typer.Option("--state-cursor")
+    ] = DEFAULT_QUIET_STATE_CURSOR_PATH,
 ) -> None:
     """Replay the independent QUIET maker using token-native archived books."""
     checkpoint_paths = jsonl_archive_paths(data_dir / "raw" / "polymarket_book_checkpoints")
-    analysis_cutoff = datetime.now(UTC)
+    market_rule_index = archived_market_rule_index(checkpoint_paths)
+    forensic_source: dict[str, Any] | None = None
+    saved_forensics_source_path: Path | None = None
+    if forensics:
+        if not forensics_source_path.exists():
+            raise typer.BadParameter(
+                f"saved v2 source does not exist: {forensics_source_path}",
+                param_hint="--forensics-source",
+            )
+        forensic_source = _read_json_with_retry(forensics_source_path)
+        source_cutoff = forensic_source.get("analysis_cutoff") or forensic_source.get(
+            "replay_cutoff"
+        )
+        if source_cutoff is None:
+            raise typer.BadParameter(
+                "saved v2 source has no analysis cutoff",
+                param_hint="--forensics-source",
+            )
+        analysis_cutoff = _parse_aware_datetime(
+            str(source_cutoff), label="saved v2 analysis cutoff"
+        ).astimezone(UTC)
+        saved_forensics_source_path = (
+            forensics_source_archive_path
+            if forensics_source_archive_path is not None
+            else forensics_source_path.with_name(
+                f"{forensics_source_path.stem}_forensic_source_"
+                f"{analysis_cutoff.strftime('%Y%m%dT%H%M%SZ')}.json"
+            )
+        )
+        # Preserve the exact source before canonical v2 output can be
+        # refreshed. This turns a saved 85-order cohort into durable evidence
+        # rather than silently replacing it with a provenance-corrected rerun.
+        write_quiet_window_result(forensic_source, saved_forensics_source_path)
+    else:
+        analysis_cutoff = datetime.now(UTC)
+    if forensics and forward_state_log:
+        raise typer.BadParameter(
+            "run --forensics and --forward-state-log separately: the former fixes a historical cutoff, while the latter must tail-bootstrap at the current archive boundary"
+        )
 
     def _pairs_until_cutoff() -> Any:
-        for pair in iter_paired_book_snapshots(checkpoint_paths):
+        for pair in iter_paired_book_snapshots(
+            checkpoint_paths, rule_index=market_rule_index
+        ):
             observed_at = pair.get("observed_at")
             if isinstance(observed_at, datetime) and observed_at > analysis_cutoff:
                 break
@@ -3104,6 +3192,44 @@ def analyze_quiet_window_command(
             end_at=snapshot_end,
             lookup_times_by_asset=store.snapshot_times_by_token(),
         )
+        lifecycle_collector: QuietLifecycleCollector | None = None
+        state_collector: QuietForwardStateCollector | None = None
+        if forensics:
+            assert forensic_source is not None
+            source_orders: list[dict[str, Any]] = []
+            for tier_name, model in (forensic_source.get("models") or {}).items():
+                if not isinstance(model, Mapping):
+                    continue
+                for order in model.get("orders") or ():
+                    if not isinstance(order, Mapping):
+                        continue
+                    source_orders.append(
+                        {
+                            **dict(order),
+                            "_tier": str(tier_name),
+                            "threshold_tier": str(
+                                order.get("threshold_tier") or tier_name
+                            ),
+                        }
+                    )
+            lifecycle_collector = QuietLifecycleCollector(
+                orders=source_orders,
+                station_timezones=station_timezones,
+            )
+        if forward_state_log:
+            state_collector = QuietForwardStateCollector()
+
+        def observe_lifecycle(
+            tier: Any,
+            snapshot: Any,
+            machine: Any,
+            transition: Any,
+        ) -> None:
+            if lifecycle_collector is not None:
+                lifecycle_collector.observe(tier, snapshot, machine, transition)
+            if state_collector is not None:
+                state_collector.observe(tier, snapshot, machine, transition)
+
         result = replay_quiet_window_store(
             store,
             trades=trade_events,
@@ -3111,7 +3237,27 @@ def analyze_quiet_window_command(
             config=strategy,
             station_timezones=station_timezones,
             l2_churn_index=l2_churn_index,
+            transition_observer=(
+                observe_lifecycle
+                if lifecycle_collector is not None or state_collector is not None
+                else None
+            ),
         )
+        if lifecycle_collector is not None:
+            lifecycle_collector.finalize(cutoff=store.end_at)
+            annotate_episode_book_observations(
+                lifecycle_collector.episodes,
+                _pairs_until_cutoff,
+                cutoff=analysis_cutoff,
+            )
+        state_log_result: dict[str, Any] | None = None
+        if state_collector is not None:
+            state_log_result = append_forward_quiet_state_log(
+                state_collector.records,
+                ledger_path=state_log_path,
+                cursor_path=state_cursor_path,
+                bootstrap_at_tail=True,
+            )
         result["analysis_cutoff"] = analysis_cutoff
         result["quality_window"] = (
             "paired_book_snapshots default exclusion: official maintenance/failure plus measured recovery"
@@ -3133,6 +3279,21 @@ def analyze_quiet_window_command(
             "l2_churn": l2_churn_index.summary(),
             "cross_bucket_mass": cross_bucket_index.summary(),
         }
+        if lifecycle_collector is not None:
+            result["lifecycle_diagnostic"] = {
+                "execution_enabled": False,
+                "observer_only": True,
+                "tiers": [tier.value for tier in ThresholdTier],
+                "quiet_lifecycle": lifecycle_collector.summary(),
+            }
+        if state_log_result is not None:
+            result["forward_state_log"] = {
+                **state_log_result,
+                "ledger_path": str(state_log_path),
+                "cursor_path": str(state_cursor_path),
+                "independent_ledger": True,
+                "does_not_start_or_modify_resident_strategies": True,
+            }
         ws_summary = ws_trade_result.as_json()
         ws_summary.pop("trades", None)
         result["trade_sources"] = {
@@ -3169,6 +3330,31 @@ def analyze_quiet_window_command(
                     l2_churn_index=l2_churn_index,
                 )
             write_quiet_window_result(result["size_grid"], size_grid_path)
+        forensics_result: dict[str, Any] | None = None
+        if forensic_source is not None:
+            forensics_result = audit_quiet_order_forensics(
+                forensic_source,
+                checkpoint_paths=checkpoint_paths,
+                trades=trade_events,
+                l2_churn_index=l2_churn_index,
+                lifecycle_collector=lifecycle_collector,
+                cross_bucket_sensitivity=cross_bucket_coverage_sensitivity(
+                    _pairs_until_cutoff
+                ),
+                cutoff=analysis_cutoff,
+            )
+            render_quiet_order_forensics_report(forensics_result, forensics_report_path)
+            write_quiet_order_forensics(forensics_result, forensics_analysis_path)
+            result["zero_fill_forensics"] = {
+                "report_path": str(forensics_report_path),
+                "analysis_path": str(forensics_analysis_path),
+                "saved_cohort_order_count": forensics_result["order_count"],
+                "source_path": str(forensics_source_path),
+                "saved_source_path": str(saved_forensics_source_path)
+                if saved_forensics_source_path is not None
+                else None,
+                "execution_enabled": False,
+            }
         clock_result = analyze_information_clock(information_events)
         clock_result["models"] = result["models"]
         render_information_reaction_report(clock_result, information_report_path)
@@ -3180,6 +3366,18 @@ def analyze_quiet_window_command(
             "analysis_path": str(analysis_path.resolve()),
             "information_report_path": str(information_report_path.resolve()),
             "size_grid_path": str(size_grid_path.resolve()) if size_grid else None,
+            "forensics_report_path": (
+                str(forensics_report_path.resolve()) if forensics_result is not None else None
+            ),
+            "forensics_analysis_path": (
+                str(forensics_analysis_path.resolve()) if forensics_result is not None else None
+            ),
+            "forensics_saved_source_path": (
+                str(saved_forensics_source_path.resolve())
+                if saved_forensics_source_path is not None
+                else None
+            ),
+            "forward_state_log": state_log_result,
             "paired_snapshot_count": paired_snapshot_count,
             "token_snapshot_count": token_snapshot_count,
             "information_event_count": len(information_events),

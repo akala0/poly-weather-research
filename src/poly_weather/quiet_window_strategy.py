@@ -41,6 +41,7 @@ from poly_weather.market_regime import (
     MarketRegimeStateMachine,
     RegimeState,
     RegimeThresholds,
+    RegimeTransition,
     ThresholdTier,
     derive_predictable_release,
     metrics_from_snapshot,
@@ -1069,6 +1070,10 @@ class QuietWindowEngine:
         l2_churn_index: L2ChurnIndex | None = None,
         station_timezones: Mapping[str, str] | None = None,
         use_real_microstructure: bool = False,
+        transition_observer: Callable[
+            [BookSnapshot, MarketRegimeStateMachine, RegimeTransition], None
+        ]
+        | None = None,
     ) -> None:
         self.config = config or default_quiet_window_config()
         self.config.validate()
@@ -1097,6 +1102,10 @@ class QuietWindowEngine:
         self.lazy_engines = lazy_engines
         self.l2_churn_index = l2_churn_index
         self.use_real_microstructure = use_real_microstructure
+        # A bounded external observer lets forensic/state-log runs retain only
+        # lifecycle evidence they need.  It never participates in decisions,
+        # order routing, fills, or the persistent strategy ledger.
+        self.transition_observer = transition_observer
         self._trade_intensity_tracker = (
             TradeIntensityTracker(station_timezones=station_timezones or {})
             if use_real_microstructure
@@ -1220,6 +1229,38 @@ class QuietWindowEngine:
                     },
                 )
         return engine
+
+    @staticmethod
+    def _observer_snapshot(
+        snapshot: BookSnapshot, engine: ShadowOrderEngine | None
+    ) -> BookSnapshot:
+        """Expose passive queue evidence to a diagnostic observer only.
+
+        The observer receives a detached snapshot copy.  This leaves the
+        strategy's book, queue model, decisions, and ledger untouched while a
+        forward state log can record an already-existing shadow order's
+        token-native queue at the same receipt timestamp.
+        """
+        if engine is None:
+            return snapshot
+        queues = [
+            {
+                "order_id": order.order_id,
+                "state": order.state.value,
+                "side": order.side.value,
+                "limit_price": order.limit_price,
+                "remaining_shares": order.remaining_shares,
+                "better_level_shares": order.better_level_shares,
+                "volume_ahead": order.volume_ahead,
+                "queue_ahead_shares": order.better_level_shares + order.volume_ahead,
+                "filled_shares": order.filled_shares,
+            }
+            for order in engine.active_orders
+        ]
+        return replace(
+            snapshot,
+            metadata={**dict(snapshot.metadata), "quiet_state_order_queue": queues},
+        )
 
     def _scope_engines(self, scope: tuple[str, str]) -> tuple[ShadowOrderEngine, ...]:
         return tuple(
@@ -1583,6 +1624,26 @@ class QuietWindowEngine:
             quotes = (quote,) if quote is not None else ()
         if not quotes:
             return "", (), (), True
+        rule_provenance = snapshot.metadata.get("rule_provenance")
+        if isinstance(rule_provenance, Mapping):
+            try:
+                archived_tick = Decimal(str(rule_provenance.get("tick_size")))
+                archived_minimum = Decimal(str(rule_provenance.get("min_order_size")))
+            except (ArithmeticError, TypeError, ValueError):
+                archived_tick = None
+                archived_minimum = None
+            # The legacy BookSnapshot defaults are retained for synthetic tests
+            # and non-QUIET consumers.  For archival QUIET research, however,
+            # an explicitly unknown contemporaneous rule cannot be treated as
+            # a valid zero-size rule or repaired with current metadata.
+            if (
+                archived_tick is None
+                or archived_tick <= ZERO
+                or archived_minimum is None
+                or archived_minimum <= ZERO
+            ):
+                self.rejection_reasons["invalid_rule_provenance"] += 1
+                return "", (), (), True
         order_ids: list[str] = []
         submitted_quotes: list[Decimal] = []
         for quote in quotes:
@@ -1884,6 +1945,10 @@ class QuietWindowEngine:
             metrics = replace(metrics, metadata=anchored_metadata)
             machine.last_metric = metrics
         self._previous_metrics[canonical_key] = _compact_metric(metrics)
+        if self.transition_observer is not None:
+            self.transition_observer(
+                self._observer_snapshot(snapshot, engine), machine, transition
+            )
         if transition.state is not RegimeState.QUIET:
             self.non_quiet_reason_counts[transition.reason] += 1
             for reason in transition.coverage_reasons:
@@ -2615,6 +2680,10 @@ def _replay_one(
     scoped_events: Sequence[InformationEvent] | None = None,
     l2_churn_index: L2ChurnIndex | None = None,
     station_timezones: Mapping[str, str] | None = None,
+    transition_observer: Callable[
+        [BookSnapshot, MarketRegimeStateMachine, RegimeTransition], None
+    ]
+    | None = None,
 ) -> dict[str, Any]:
     selected = replace(
         config,
@@ -2634,6 +2703,7 @@ def _replay_one(
         l2_churn_index=l2_churn_index,
         station_timezones=station_timezones,
         use_real_microstructure=True,
+        transition_observer=transition_observer,
     )
     if callable(snapshots):
         snapshot_factory = snapshots
@@ -2794,6 +2864,10 @@ def _replay_profile_result(
     scoped_events: Sequence[InformationEvent],
     l2_churn_index: L2ChurnIndex | None = None,
     station_timezones: Mapping[str, str] | None = None,
+    transition_observer: Callable[
+        [BookSnapshot, MarketRegimeStateMachine, RegimeTransition], None
+    ]
+    | None = None,
 ) -> dict[str, Any]:
     return _replay_one(
         store.iter_snapshots,
@@ -2807,6 +2881,7 @@ def _replay_profile_result(
         scoped_events=scoped_events,
         l2_churn_index=l2_churn_index,
         station_timezones=station_timezones,
+        transition_observer=transition_observer,
     )
 
 
@@ -2863,6 +2938,10 @@ def replay_quiet_window_store(
     config: QuietWindowConfig | None = None,
     station_timezones: Mapping[str, str] | None = None,
     l2_churn_index: L2ChurnIndex | None = None,
+    transition_observer: Callable[
+        [ThresholdTier, BookSnapshot, MarketRegimeStateMachine, RegimeTransition], None
+    ]
+    | None = None,
 ) -> dict[str, Any]:
     """Replay a disk-backed source without materialising full depth in RAM."""
     selected = config or default_quiet_window_config()
@@ -2874,8 +2953,19 @@ def replay_quiet_window_store(
         store.scopes,
         station_timezones,
     )
-    profiles = {
-        tier.value: _replay_profile_result(
+    profiles: dict[str, dict[str, Any]] = {}
+    for tier in ThresholdTier:
+        def observe(
+            snapshot: BookSnapshot,
+            machine: MarketRegimeStateMachine,
+            transition: RegimeTransition,
+            *,
+            selected_tier: ThresholdTier = tier,
+        ) -> None:
+            if transition_observer is not None:
+                transition_observer(selected_tier, snapshot, machine, transition)
+
+        profiles[tier.value] = _replay_profile_result(
             store,
             normalised_trades,
             normalised_events,
@@ -2885,9 +2975,8 @@ def replay_quiet_window_store(
             scoped_events=scoped_events,
             l2_churn_index=l2_churn_index,
             station_timezones=station_timezones,
+            transition_observer=observe if transition_observer is not None else None,
         )
-        for tier in ThresholdTier
-    }
     return {
         "strategy_family": QUIET_FAMILY,
         "strategy_version": selected.version,
@@ -2907,6 +2996,80 @@ def replay_quiet_window_store(
         "risk_isolation": profiles[selected.threshold_tier.value]["risk"],
         "conclusion_status": "diagnostic only; no positive-expectation or execution claim",
         "replay_source": "disk_backed_chronological_token_native_books",
+    }
+
+
+def replay_quiet_lifecycle_store(
+    store: QuietSnapshotStore,
+    *,
+    trades: Iterable[TradeEvent | Mapping[str, Any]] = (),
+    information_events: Iterable[InformationEvent] = (),
+    config: QuietWindowConfig | None = None,
+    station_timezones: Mapping[str, str] | None = None,
+    l2_churn_index: L2ChurnIndex | None = None,
+    tiers: Sequence[ThresholdTier] = (ThresholdTier.NEUTRAL, ThresholdTier.LENIENT),
+    transition_observer: Callable[
+        [ThresholdTier, BookSnapshot, MarketRegimeStateMachine, RegimeTransition], None
+    ]
+    | None = None,
+) -> dict[str, Any]:
+    """Replay only state lifecycles for a bounded forensic/state-log observer.
+
+    The observer receives receipt-time state evidence but cannot amend an order,
+    relax a threshold, extend a timeout, or contribute a fill.  It exists so a
+    forensic run does not need to retain every full historical transition.
+    """
+    selected = config or default_quiet_window_config()
+    selected.validate()
+    normalised_trades = _normalise_replay_trades(trades)
+    normalised_events = deduplicate_information_events(information_events)
+    scoped_events = _scope_events_from_scopes(
+        normalised_events,
+        store.scopes,
+        station_timezones,
+    )
+    profiles: dict[str, Any] = {}
+    for tier_value in tuple(ThresholdTier(tier) for tier in tiers):
+        def observe(
+            snapshot: BookSnapshot,
+            machine: MarketRegimeStateMachine,
+            transition: RegimeTransition,
+            *,
+            selected_tier: ThresholdTier = tier_value,
+        ) -> None:
+            if transition_observer is not None:
+                transition_observer(selected_tier, snapshot, machine, transition)
+
+        result = _replay_profile_result(
+            store,
+            normalised_trades,
+            normalised_events,
+            config=selected,
+            tier=tier_value,
+            quote_size_usd=selected.quote_size_usd,
+            scoped_events=scoped_events,
+            l2_churn_index=l2_churn_index,
+            station_timezones=station_timezones,
+            transition_observer=observe,
+        )
+        profiles[tier_value.value] = {
+            key: result[key]
+            for key in (
+                "raw_snapshot_count",
+                "state_observation_counts",
+                "coverage_blocking_counts",
+                "true_violation_counts",
+                "reaction_duration",
+                "thresholds",
+            )
+        }
+    return {
+        "execution_enabled": False,
+        "diagnostic_only": True,
+        "tier_results": profiles,
+        "input_snapshot_count": store.snapshot_count,
+        "input_trade_count": len(normalised_trades),
+        "input_information_event_count": len(normalised_events),
     }
 
 
@@ -3371,6 +3534,7 @@ __all__ = [
     "normalise_quiet_snapshots",
     "render_information_reaction_report",
     "render_quiet_window_report",
+    "replay_quiet_lifecycle_store",
     "replay_quiet_window",
     "replay_quiet_window_store",
     "replay_quiet_window_size_grid",

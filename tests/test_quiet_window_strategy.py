@@ -93,6 +93,29 @@ def test_quiet_maker_enters_only_after_reaction_and_new_event_cancels_quote() ->
     assert all(order.side.value == "BUY" for order in portfolio.orders)
 
 
+def test_transition_observer_receives_existing_token_queue_without_mutating_strategy() -> None:
+    observed: list[dict[str, object]] = []
+
+    def capture(snapshot, _machine, _transition) -> None:
+        observed.append(dict(snapshot.metadata))
+
+    engine = QuietWindowEngine(
+        config=QuietWindowConfig(fill_model=FillModel.QUEUE_AWARE),
+        thresholds=_thresholds(),
+        transition_observer=capture,
+    )
+    engine.process_snapshot(_snapshot(0), information_events=(_event(),))
+    engine.process_snapshot(_snapshot(1))
+    engine.process_snapshot(_snapshot(2))
+
+    queues = observed[-1]["quiet_state_order_queue"]
+    assert isinstance(queues, list)
+    assert len(queues) == 1
+    assert queues[0]["volume_ahead"] >= 0
+    portfolio = next(iter(engine.engines.values()))
+    assert len(portfolio.active_orders) == 1
+
+
 def test_health_gap_stops_everything_and_uses_only_real_bid_depth_for_reduce_only_exit() -> None:
     engine = QuietWindowEngine(
         config=QuietWindowConfig(fill_model=FillModel.QUEUE_AWARE),
