@@ -36,7 +36,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -StartWhenAvailable `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries
-$principal = New-ScheduledTaskPrincipal -UserId $principalId -LogonType InteractiveToken -RunLevel Limited
+$principal = New-ScheduledTaskPrincipal -UserId $principalId -LogonType Interactive -RunLevel Limited
 
 foreach ($daemonName in $daemonNames) {
     $taskName = "$TaskPrefix-$daemonName"
