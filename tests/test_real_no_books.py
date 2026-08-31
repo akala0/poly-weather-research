@@ -8,6 +8,7 @@ from poly_weather.polymarket_status import UpstreamQualityWindow, persist_qualit
 from poly_weather.real_no_books import (
     analyze_real_no_books,
     archived_event_metadata,
+    archived_market_rule_index,
     iter_paired_book_snapshots,
     paired_book_snapshots,
 )
@@ -155,3 +156,102 @@ def test_archived_event_metadata_uses_slug_and_registry_not_rotating_state() -> 
             "target_date": "2026-08-24",
         }
     }
+
+
+def test_paired_books_merge_only_previously_archived_gamma_rules(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    books = data_root / "raw" / "polymarket_book_checkpoints" / "2026-08-28"
+    gamma = data_root / "raw" / "polymarket_gamma_event" / "2026-08-28"
+    books.mkdir(parents=True)
+    gamma.mkdir(parents=True)
+    token_yes = "yes-token"
+    token_no = "no-token"
+    timestamp = "2026-08-28T12:00:00+00:00"
+    rows = [
+        _row(timestamp, "Yes", "0.39", "0.41") | {"asset_id": token_yes},
+        _row("2026-08-28T12:00:01+00:00", "No", "0.59", "0.61")
+        | {"asset_id": token_no},
+    ]
+    archive = books / "events.jsonl"
+    archive.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8"
+    )
+    gamma_record = {
+        "fetched_at": "2026-08-28T11:59:00+00:00",
+        "payload": {
+            "markets": [
+                {
+                    "clobTokenIds": json.dumps([token_yes, token_no]),
+                    "orderPriceMinTickSize": "0.01",
+                    "orderMinSize": "5",
+                }
+            ]
+        },
+    }
+    (gamma / "events.jsonl").write_text(
+        json.dumps(gamma_record) + "\n", encoding="utf-8"
+    )
+
+    index = archived_market_rule_index([archive])
+    assert index[token_yes][0]["min_order_size"] == "5"
+    pair = paired_book_snapshots([archive])[0]
+    assert pair["yes"]["rule_provenance"]["min_order_size"] == "5"
+    assert (
+        pair["yes"]["rule_provenance"]["min_order_size_source"]
+        == "gamma_event_archived_market_metadata"
+    )
+
+
+def test_archived_tick_change_is_effective_only_after_its_receipt(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    books = data_root / "raw" / "polymarket_book_checkpoints" / "2026-08-28"
+    gamma = data_root / "raw" / "polymarket_gamma_event" / "2026-08-28"
+    books.mkdir(parents=True)
+    gamma.mkdir(parents=True)
+    archive = books / "events.jsonl"
+    rows = [
+        _row("2026-08-28T12:00:00+00:00", "Yes", "0.39", "0.41")
+        | {"asset_id": "yes-token"},
+        _row("2026-08-28T12:00:01+00:00", "No", "0.59", "0.61")
+        | {"asset_id": "no-token"},
+        _row("2026-08-28T12:10:00+00:00", "Yes", "0.39", "0.41")
+        | {"asset_id": "yes-token"},
+        _row("2026-08-28T12:10:01+00:00", "No", "0.59", "0.61")
+        | {"asset_id": "no-token"},
+    ]
+    archive.write_text(
+        "\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8"
+    )
+
+    def gamma_record(fetched_at: str, tick: str) -> str:
+        return json.dumps(
+            {
+                "fetched_at": fetched_at,
+                "payload": {
+                    "markets": [
+                        {
+                            "clobTokenIds": json.dumps(["yes-token", "no-token"]),
+                            "orderPriceMinTickSize": tick,
+                            "orderMinSize": "5",
+                        }
+                    ]
+                },
+            }
+        )
+
+    (gamma / "events.jsonl").write_text(
+        "\n".join(
+            (
+                gamma_record("2026-08-28T11:59:00+00:00", "0.01"),
+                gamma_record("2026-08-28T12:05:00+00:00", "0.001"),
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    pairs = paired_book_snapshots([archive])
+    assert [pair["yes"]["rule_provenance"]["tick_size"] for pair in pairs] == [
+        "0.01",
+        "0.001",
+    ]

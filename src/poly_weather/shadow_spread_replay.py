@@ -141,6 +141,12 @@ def _row_snapshot(
     metadata: dict[str, Any] = {}
     if isinstance(row.get("metadata"), Mapping):
         metadata.update(row["metadata"])
+    if isinstance(no.get("rule_provenance"), Mapping):
+        # This comes from the same archived receipt as the book.  It is not
+        # current CLOB metadata and may deliberately say UNKNOWN.
+        metadata["rule_provenance"] = dict(no["rule_provenance"])
+    elif isinstance(row.get("rule_provenance"), Mapping):
+        metadata["rule_provenance"] = dict(row["rule_provenance"])
     event_value = (event_metadata or {}).get(str(row.get("event_slug") or ""), {})
     station = str(row.get("station_id") or event_value.get("station_id") or "") or None
     market_day = str(row.get("market_day") or event_value.get("target_date") or "") or None

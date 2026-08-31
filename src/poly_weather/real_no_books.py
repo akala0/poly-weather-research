@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Iterator, Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
@@ -110,6 +111,129 @@ def _identity(row: Mapping[str, Any]) -> tuple[str, str, str] | None:
     return event_slug, base, outcome.casefold()
 
 
+def _decimal_rule(value: Any) -> Decimal | None:
+    try:
+        parsed = Decimal(str(value))
+    except (ArithmeticError, TypeError, ValueError):
+        return None
+    return parsed if parsed > Decimal("0") else None
+
+
+def _rule_archive_paths(root: Path) -> tuple[Path, ...]:
+    """Prefer an active JSONL over its same-day retention gzip duplicate."""
+    selected: dict[Path, Path] = {}
+    for path in sorted(root.rglob("events.jsonl*")):
+        if path.name not in {"events.jsonl", "events.jsonl.gz"}:
+            continue
+        current = selected.get(path.parent)
+        if current is None or path.name == "events.jsonl":
+            selected[path.parent] = path
+    return tuple(sorted(selected.values()))
+
+
+def _token_ids(value: Any) -> tuple[str, ...]:
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return ()
+    else:
+        parsed = value
+    if not isinstance(parsed, list):
+        return ()
+    return tuple(str(item) for item in parsed if item is not None)
+
+
+def archived_market_rule_index(checkpoint_paths: Sequence[Path]) -> dict[str, tuple[dict[str, Any], ...]]:
+    """Load receipt-time Gamma rule records without querying current CLOB state.
+
+    Gamma event archive records are immutable local evidence of the public
+    market metadata observed at ``fetched_at``.  They are used only when their
+    receipt is no later than a paired book decision.  A missing archived value
+    remains missing; this helper intentionally does not consult today's API.
+    """
+    if not checkpoint_paths:
+        return {}
+    gamma_root = checkpoint_paths[0].parents[3] / "raw" / "polymarket_gamma_event"
+    if not gamma_root.exists():
+        return {}
+    output: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for path in _rule_archive_paths(gamma_root):
+        try:
+            with open_jsonl_text(path) as handle:
+                for line in handle:
+                    try:
+                        source = json.loads(line)
+                        observed_at = datetime.fromisoformat(
+                            str(source.get("fetched_at") or source["received_at"])
+                        ).astimezone(UTC)
+                    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                        continue
+                    payload = source.get("payload")
+                    markets = payload.get("markets", ()) if isinstance(payload, Mapping) else ()
+                    for market in markets:
+                        if not isinstance(market, Mapping):
+                            continue
+                        tick = _decimal_rule(market.get("orderPriceMinTickSize"))
+                        minimum = _decimal_rule(market.get("orderMinSize"))
+                        if tick is None and minimum is None:
+                            continue
+                        record = {
+                            "observed_at": observed_at,
+                            "tick_size": str(tick) if tick is not None else None,
+                            "min_order_size": str(minimum) if minimum is not None else None,
+                            "tick_size_source": "gamma_event_archived_market_metadata",
+                            "min_order_size_source": "gamma_event_archived_market_metadata",
+                        }
+                        for token_id in _token_ids(market.get("clobTokenIds")):
+                            output[token_id].append(record)
+        except OSError:
+            continue
+    return {
+        token_id: tuple(sorted(rows, key=lambda row: row["observed_at"]))
+        for token_id, rows in output.items()
+    }
+
+
+def _rule_at_or_before(
+    rows: Sequence[Mapping[str, Any]], timestamp: datetime
+) -> Mapping[str, Any] | None:
+    if not rows:
+        return None
+    timestamps = [row["observed_at"] for row in rows]
+    index = bisect_right(timestamps, timestamp) - 1
+    return rows[index] if index >= 0 else None
+
+
+def _merge_archived_rule_provenance(
+    row: Mapping[str, Any], rule_index: Mapping[str, Sequence[Mapping[str, Any]]]
+) -> dict[str, Any]:
+    """Attach only receipt-available Gamma fields missing from a book frame."""
+    output = dict(row)
+    provenance = dict(output.get("rule_provenance") or {})
+    timestamp = output.get("_timestamp")
+    token_id = str(output.get("asset_id") or "")
+    gamma = (
+        _rule_at_or_before(rule_index.get(token_id, ()), timestamp)
+        if isinstance(timestamp, datetime) and token_id
+        else None
+    )
+    for field in ("tick_size", "min_order_size"):
+        source_field = f"{field}_source"
+        # A current book-frame field is closer in time and wins. Gamma fills
+        # only the field that the historical WebSocket archive omitted.
+        if _decimal_rule(provenance.get(field)) is not None:
+            continue
+        if gamma is None or _decimal_rule(gamma.get(field)) is None:
+            continue
+        provenance[field] = gamma[field]
+        provenance[source_field] = gamma[source_field]
+        provenance["observed_at"] = gamma["observed_at"].isoformat()
+        output[field] = gamma[field]
+    output["rule_provenance"] = provenance
+    return output
+
+
 def _eligible_book_rows(
     path: Path,
     *,
@@ -136,11 +260,46 @@ def _eligible_book_rows(
                 and isinstance(source.get("asks"), list)
             ):
                 continue
+            # WebSocket ``book`` frames carry a tick in their raw envelope but
+            # do not reliably carry a minimum order size.  Keep a compact,
+            # receipt-time provenance record rather than silently replacing a
+            # missing rule with the old 0/0.01 defaults.  Historical analyses
+            # can therefore distinguish an observed rule from an unknown one;
+            # they must never backfill it from today's CLOB response.
+            raw = source.get("raw") if isinstance(source.get("raw"), Mapping) else {}
+            tick_value = source.get("tick_size") or raw.get("tick_size")
+            min_size_value = (
+                source.get("min_order_size")
+                or raw.get("min_order_size")
+                or raw.get("orderMinSize")
+            )
+            rule_provenance = {
+                "observed_at": timestamp.isoformat(),
+                "tick_size": str(tick_value) if tick_value is not None else None,
+                "tick_size_source": (
+                    "checkpoint_top_level"
+                    if source.get("tick_size") is not None
+                    else "websocket_raw_book"
+                    if raw.get("tick_size") is not None
+                    else "UNKNOWN"
+                ),
+                "min_order_size": (
+                    str(min_size_value) if min_size_value is not None else None
+                ),
+                "min_order_size_source": (
+                    "checkpoint_top_level"
+                    if source.get("min_order_size") is not None
+                    else "websocket_raw_book"
+                    if raw.get("min_order_size") is not None
+                    or raw.get("orderMinSize") is not None
+                    else "UNKNOWN"
+                ),
+            }
             # Do not retain the raw websocket payload, receipt diagnostics, or
             # unrelated fields for every historical snapshot.  The full bid/
             # ask ladders remain untouched because shadow fills require real
             # token-native depth.
-            yield {
+            compact = {
                 key: source[key]
                 for key in (
                     "received_at",
@@ -163,7 +322,15 @@ def _eligible_book_rows(
                     "quality_excluded",
                 )
                 if key in source
-            } | {"_timestamp": timestamp}
+            }
+            if tick_value is not None:
+                compact["tick_size"] = tick_value
+            if min_size_value is not None:
+                compact["min_order_size"] = min_size_value
+            yield compact | {
+                "_timestamp": timestamp,
+                "rule_provenance": rule_provenance,
+            }
 
 
 def _chronological_book_rows(
@@ -206,6 +373,7 @@ def iter_paired_book_snapshots(
     minimum_interval: timedelta = timedelta(minutes=5),
     maximum_side_age: timedelta = timedelta(minutes=5),
     exclude_upstream_degraded: bool = True,
+    rule_index: Mapping[str, Sequence[Mapping[str, Any]]] | None = None,
 ) -> Iterator[dict[str, Any]]:
     """Stream YES/NO books without using a future update from either side."""
     quality_windows = ()
@@ -213,6 +381,7 @@ def iter_paired_book_snapshots(
         quality_windows = load_quality_windows(
             checkpoint_paths[0].parents[3] / "runtime" / "polymarket_quality_windows.json"
         )
+    available_rules = rule_index if rule_index is not None else archived_market_rule_index(checkpoint_paths)
     latest: dict[tuple[str, str], dict[str, Any]] = {}
     last_emitted: dict[str, datetime] = {}
     for row in _chronological_book_rows(
@@ -220,6 +389,7 @@ def iter_paired_book_snapshots(
         exclude_upstream_degraded=exclude_upstream_degraded,
         quality_windows=quality_windows,
     ):
+        row = _merge_archived_rule_provenance(row, available_rules)
         identity = _identity(row)
         if identity is None:
             continue
