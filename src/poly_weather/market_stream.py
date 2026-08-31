@@ -29,6 +29,7 @@ from poly_weather.polymarket_status import (
 )
 from poly_weather.research_store import ResearchWarehouse
 from poly_weather.retention import disk_capacity_status
+from poly_weather.runtime_safety import atomic_json_write
 
 DEFAULT_MARKET_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 DEFAULT_MAX_WS_MESSAGE_SIZE = 16 * 1024 * 1024
@@ -868,6 +869,14 @@ class MarketWebSocketBot:
 
     async def _refresh_upstream_status(self, *, persist_database: bool) -> None:
         try:
+            # Reload the deployment-local quality file so an operator can
+            # close a recorded outage without restarting the irreplaceable
+            # websocket collector.  The global config remains historical
+            # overrides only; local outages live under data/runtime.
+            self.quality_windows = merge_quality_windows(
+                load_quality_windows(self.quality_windows_path),
+                load_quality_overrides(),
+            )
             snapshot = await self.status_client.fetch()
             self.quality_windows = merge_quality_windows(
                 self.quality_windows, snapshot.windows
@@ -1005,6 +1014,7 @@ class MarketWebSocketBot:
             "archive_full_window_local": "09:00-20:00",
             "archive_policy_event_count": len(self.event_policies),
             "updated_at": datetime.now(UTC).isoformat(),
+            "heartbeat": datetime.now(UTC).isoformat(),
             "websocket_url": self.websocket_url,
             "max_message_size_bytes": self.max_message_size_bytes,
             "reconnect_loop_window_seconds": RECONNECT_LOOP_WINDOW_SECONDS,
@@ -1027,19 +1037,11 @@ class MarketWebSocketBot:
             "upstream_quality_windows_path": str(self.quality_windows_path.resolve()),
             "upstream_status_poll_seconds": self.status_poll_seconds,
             "read_only": True,
+            "database": self.sink.warehouse.database_status(),
             "retention": {
                 "raw_market_days": 30,
                 "aggregate_results": "permanent",
             },
             **self.disk_status_cache,
         }
-        temporary = self.status_path.with_name(f".{self.status_path.name}.{self.run_id}.tmp")
-        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        for attempt in range(5):
-            try:
-                temporary.replace(self.status_path)
-                break
-            except PermissionError:
-                if attempt == 4:
-                    raise
-                time.sleep(0.01 * (attempt + 1))
+        atomic_json_write(self.status_path, payload)

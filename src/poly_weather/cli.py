@@ -54,6 +54,7 @@ from poly_weather.complement_pair import (
     write_complement_pair_result,
 )
 from poly_weather.config import load_settlement_registry
+from poly_weather.daemon_recovery import close_local_daemon_outage
 from poly_weather.depth_calibration import (
     build_depth_cost_calibration,
     render_depth_cost_calibration,
@@ -183,6 +184,7 @@ from poly_weather.real_no_books import (
     render_real_no_report,
 )
 from poly_weather.research_store import ResearchWarehouse
+from poly_weather.runtime_safety import read_status
 from poly_weather.settlement import (
     parse_settlement_evidence,
     verify_settlement_evidence,
@@ -216,6 +218,10 @@ from poly_weather.warming_policy import (
     build_heat_season_policy_analysis,
     policy_document,
     render_heat_season_policy_report,
+)
+from poly_weather.weather_database import (
+    ensure_weather_database,
+    inspect_weather_database,
 )
 from poly_weather.weather_market_join import (
     align_weather_to_snapshots,
@@ -3838,6 +3844,11 @@ def weather_stream(
     data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
 ) -> None:
     """Run the independent async NOAA weather collection daemon."""
+    try:
+        weather_warehouse_path, weather_database_report = ensure_weather_database(data_dir)
+    except (OSError, RuntimeError, ValueError) as exc:
+        typer.echo(f"Weather database preflight failed closed: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
     registry = load_settlement_registry(config)
     specs = []
     for settlement_key in settlement_keys:
@@ -3881,6 +3892,7 @@ def weather_stream(
     daemon = WeatherDaemon(
         stations=stations,
         data_dir=data_dir,
+        warehouse_path=weather_warehouse_path,
         observation_interval_seconds=observation_interval_seconds,
         metar_interval_seconds=metar_interval_seconds,
         international_observation_interval_seconds=(
@@ -3903,9 +3915,57 @@ def weather_stream(
             "model_weights_by_station": model_weights_by_station,
             "status_path": str(daemon.status_path.resolve()),
             "mode": "async_public_weather_read_only_no_execution",
+            "weather_database_path": str(weather_warehouse_path.resolve()),
+            "weather_database_preflight": weather_database_report,
         }
     )
     _emit(payload)
+
+
+@app.command("check-weather-db")
+def check_weather_db(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    rebuild_if_damaged: Annotated[
+        bool,
+        typer.Option(
+            "--rebuild-if-damaged",
+            help="Build a new versioned database from raw weather JSONL; never replace the source.",
+        ),
+    ] = False,
+) -> None:
+    """Run the read-only Weather DuckDB check or an explicit versioned recovery."""
+    if rebuild_if_damaged:
+        try:
+            selected_path, report = ensure_weather_database(data_dir)
+        except (OSError, RuntimeError, ValueError) as exc:
+            typer.echo(f"Weather database recovery failed closed: {exc}", err=True)
+            raise typer.Exit(code=2) from exc
+        _emit({"selected_path": str(selected_path.resolve()), **report})
+        return
+    report = inspect_weather_database(data_dir / "weather_stream.duckdb", data_dir=data_dir)
+    _emit(report)
+    if not report.get("ok"):
+        raise typer.Exit(code=2)
+
+
+@app.command("close-daemon-outage")
+def close_daemon_outage(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    recovered_at: Annotated[
+        str | None,
+        typer.Option(
+            "--recovered-at",
+            help="UTC ISO-8601 boundary of the first verified healthy chain; defaults to now.",
+        ),
+    ] = None,
+) -> None:
+    """Close the local quality window only after live recovery checks pass."""
+    try:
+        report = close_local_daemon_outage(data_dir, recovered_at=recovered_at)
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"Daemon outage remains open: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    _emit(report)
 
 
 @app.command("stream-status")
@@ -3914,6 +3974,13 @@ def stream_status(
 ) -> None:
     """Read daemon heartbeat files without contacting external services."""
     statuses = {}
+    stale_after_seconds = {
+        "market": 120.0,
+        "supervisor": 120.0,
+        "weather": 300.0,
+        "signal": 120.0,
+        "shadow": 120.0,
+    }
     for name, filename in (
         ("market", "polymarket_ws_status.json"),
         ("supervisor", "market_supervisor_status.json"),
@@ -3925,27 +3992,10 @@ def stream_status(
         ("shadow", "shadow_spread_status_v2_token_scoped.json"),
     ):
         path = data_dir / "runtime" / filename
-        if not path.exists():
-            statuses[name] = {"state": "not_started", "status_path": str(path.resolve())}
-            continue
-        try:
-            statuses[name] = _read_json_with_retry(path)
-            statuses[name]["status_path"] = str(path.resolve())
-            updated_text = statuses[name].get("updated_at")
-            if updated_text:
-                updated_at = datetime.fromisoformat(str(updated_text)).astimezone(UTC)
-                age_seconds = (datetime.now(UTC) - updated_at).total_seconds()
-                stale_after = 300 if name == "weather" else 120
-                if age_seconds > stale_after:
-                    statuses[name]["reported_state"] = statuses[name].get("state")
-                    statuses[name]["state"] = "stale"
-                    statuses[name]["stale_age_seconds"] = round(age_seconds, 1)
-        except (OSError, json.JSONDecodeError) as exc:
-            statuses[name] = {
-                "state": "unreadable",
-                "error": str(exc),
-                "status_path": str(path.resolve()),
-            }
+        statuses[name] = read_status(
+            path,
+            stale_after_seconds=stale_after_seconds[name],
+        )
     legacy_shadow_status = data_dir / "runtime" / "shadow_spread_status_v1_legacy_read_only.json"
     statuses["shadow"]["legacy_status_path"] = str(legacy_shadow_status.resolve())
     statuses["shadow"]["legacy_status"] = "superseded_v1_read_only"

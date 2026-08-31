@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import re
 import time
 from dataclasses import asdict, dataclass, field
@@ -14,6 +13,7 @@ from poly_weather.adapters.polymarket import EventSnapshot, GammaClient
 from poly_weather.domain import SettlementSpec
 from poly_weather.market_stream import EventArchivePolicy, MarketWebSocketBot
 from poly_weather.retention import RetentionConfig, apply_market_retention, disk_capacity_status
+from poly_weather.runtime_safety import atomic_json_write
 from poly_weather.settlement import parse_settlement_evidence, verify_settlement_evidence
 from poly_weather.storage import RawEventArchive
 
@@ -237,6 +237,7 @@ class MarketEventSupervisor:
             **asdict(self.metrics),
             "pid": __import__("os").getpid(),
             "updated_at": datetime.now(UTC).isoformat(),
+            "heartbeat": datetime.now(UTC).isoformat(),
             "active_events": [asdict(item) for item in self.active.values()],
             "verification_failures": self.failures,
             "state_path": str(self.status_path.resolve()),
@@ -247,9 +248,7 @@ class MarketEventSupervisor:
 
     @staticmethod
     def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
-        temporary = path.with_name(f".{path.name}.{__import__('os').getpid()}.tmp")
-        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        temporary.replace(path)
+        atomic_json_write(path, payload)
 
     async def run(self, *, runtime_seconds: float = 0) -> None:
         self.metrics.state = "running"
@@ -268,6 +267,7 @@ class MarketEventSupervisor:
                         apply_market_retention,
                         self.data_dir,
                         config=self.retention_config,
+                        maintain_signal_database_online=False,
                     )
                     with GammaClient() as gamma:
                         for spec in self.specs:

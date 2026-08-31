@@ -25,6 +25,7 @@ from poly_weather.fees import LiquidityRole, fee_per_share
 from poly_weather.modeling import blend_multi_model_forecasts, build_bucket_forecast
 from poly_weather.no_forward import NoForwardTracker
 from poly_weather.research_store import ResearchWarehouse
+from poly_weather.runtime_safety import atomic_json_write, process_memory_status
 from poly_weather.temperature import celsius_to_fahrenheit, round_whole_degree
 from poly_weather.warming_policy import (
     WarmingThresholdRegistry,
@@ -334,15 +335,30 @@ class SignalSink:
     def __init__(self, *, data_dir: Path, run_id: str) -> None:
         self.data_dir = data_dir
         self.run_id = run_id
-        self.warehouse = ResearchWarehouse(data_dir / "signal_stream.duckdb")
+        self.warehouse = ResearchWarehouse(
+            data_dir / "signal_stream.duckdb",
+            memory_limit="1GB",
+            temp_directory=data_dir / "tmp" / "duckdb-signal",
+            threads=1,
+            max_temp_directory_size="10GB",
+        )
         self.handles: dict[str, Any] = {}
         self.last_database_maintenance = time.monotonic()
 
     def close(self) -> None:
+        close_error: BaseException | None = None
         for handle in self.handles.values():
-            handle.close()
+            try:
+                handle.close()
+            except BaseException as exc:
+                close_error = close_error or exc
         self.handles.clear()
-        self.warehouse.close()
+        try:
+            self.warehouse.close()
+        except BaseException as exc:
+            close_error = close_error or exc
+        if close_error is not None:
+            raise RuntimeError("signal sink close failed") from close_error
 
     def write(self, rows: list[dict[str, Any]]) -> None:
         if not rows:
@@ -368,10 +384,25 @@ class SignalSink:
             handle.write("\n")
         for handle in self.handles.values():
             handle.flush()
-        self.warehouse.append_signal_snapshots(rows)
+        # Each snapshot expands into one parent row, reasons, and all bucket
+        # depth estimates.  Keep transactions per snapshot to bound the
+        # transient normalized-row allocation.
+        for row in rows:
+            self.warehouse.append_signal_snapshots([row])
         if time.monotonic() - self.last_database_maintenance >= 86_400:
-            self.warehouse.checkpoint_signal_database()
+            # Live writers may checkpoint after their own writes, but never
+            # force VACUUM.  VACUUM belongs to a separately supervised offline
+            # maintenance operation because it can require a large temporary
+            # allocation.
+            self.warehouse.checkpoint_signal_database(vacuum=False)
             self.last_database_maintenance = time.monotonic()
+
+    def status(self) -> dict[str, Any]:
+        return {
+            "configured_batch_size": 1,
+            "process_memory": process_memory_status(),
+            "database": self.warehouse.database_status(),
+        }
 
 
 class LiveSignalEngine:
@@ -443,14 +474,18 @@ class LiveSignalEngine:
         self._bootstrap_market_books()
 
     async def run(self, *, runtime_seconds: float = 0) -> SignalMetrics:
-        self.sink.warehouse.start_signal_stream_run(
-            run_id=self.run_id,
-            started_at=datetime.now(UTC),
-            event_slugs=[config.event_slug for config in self.configs],
-        )
-        deadline = time.monotonic() + runtime_seconds if runtime_seconds > 0 else None
-        self.metrics.state = "running"
+        stream_run_started = False
+        run_error: BaseException | None = None
+        shutdown_error: BaseException | None = None
         try:
+            self.sink.warehouse.start_signal_stream_run(
+                run_id=self.run_id,
+                started_at=datetime.now(UTC),
+                event_slugs=[config.event_slug for config in self.configs],
+            )
+            stream_run_started = True
+            deadline = time.monotonic() + runtime_seconds if runtime_seconds > 0 else None
+            self.metrics.state = "running"
             while not self.stop_event.is_set():
                 if deadline is not None and time.monotonic() >= deadline:
                     break
@@ -480,15 +515,49 @@ class LiveSignalEngine:
                     await asyncio.wait_for(self.stop_event.wait(), timeout=delay)
                 except TimeoutError:
                     pass
-        finally:
-            self.metrics.state = "stopped"
-            self._write_status()
-            self.sink.warehouse.finish_signal_stream_run(
-                run_id=self.run_id,
-                finished_at=datetime.now(UTC),
-                metrics=asdict(self.metrics),
+        except BaseException as exc:
+            run_error = exc
+            self.stop_event.set()
+            self.metrics.state = "failed"
+            self.metrics.last_error = (
+                self.metrics.last_error
+                or f"signal engine {type(exc).__name__}: {exc}"
             )
-            self.sink.close()
+        finally:
+            if run_error is None:
+                self.metrics.state = "stopped"
+            try:
+                self._write_status()
+            except BaseException as exc:
+                shutdown_error = exc
+            if stream_run_started:
+                try:
+                    self.sink.warehouse.finish_signal_stream_run(
+                        run_id=self.run_id,
+                        finished_at=datetime.now(UTC),
+                        metrics=asdict(self.metrics),
+                    )
+                except BaseException as exc:
+                    # A fatal database error can invalidate the connection.  Do
+                    # not hide an earlier write failure behind final bookkeeping.
+                    shutdown_error = shutdown_error or exc
+            try:
+                self.sink.close()
+            except BaseException as exc:
+                shutdown_error = shutdown_error or exc
+        if run_error is not None:
+            raise run_error
+        if shutdown_error is not None:
+            self.metrics.state = "failed"
+            self.metrics.last_error = (
+                f"signal engine shutdown {type(shutdown_error).__name__}: "
+                f"{shutdown_error}"
+            )
+            try:
+                self._write_status()
+            except Exception:
+                pass
+            raise RuntimeError("signal engine shutdown failed") from shutdown_error
         return self.metrics
 
     def _reload_config_if_needed(self) -> None:
@@ -1371,6 +1440,8 @@ class LiveSignalEngine:
             "book_count": len(self.books),
             "weather_product_count": len(self.weather),
             "updated_at": datetime.now(UTC).isoformat(),
+            "heartbeat": datetime.now(UTC).isoformat(),
+            "writer": self.sink.status(),
             "state_path": str(self.state_path.resolve()),
             "read_only": True,
             "model_in_loop": False,
@@ -1380,16 +1451,4 @@ class LiveSignalEngine:
 
     @staticmethod
     def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-        temporary.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        for attempt in range(5):
-            try:
-                temporary.replace(path)
-                return
-            except PermissionError:
-                if attempt == 4:
-                    raise
-                time.sleep(0.01 * (attempt + 1))
+        atomic_json_write(path, payload)

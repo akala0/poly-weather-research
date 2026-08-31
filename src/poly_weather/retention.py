@@ -83,8 +83,14 @@ def apply_market_retention(
     *,
     config: RetentionConfig | None = None,
     now: datetime | None = None,
+    maintain_signal_database_online: bool = True,
 ) -> dict[str, Any]:
-    """Compress/expire configured raw streams; aggregates and T7 evidence are untouched."""
+    """Compress/expire raw streams without touching protected aggregates.
+
+    A resident signal writer owns its DuckDB connection.  Supervisors should
+    pass ``maintain_signal_database_online=False`` so a periodic retention
+    pass cannot race that writer with CHECKPOINT/VACUUM.
+    """
     config = config or RetentionConfig()
     current_date = (now or datetime.now(UTC)).astimezone(UTC).date()
     compressed: list[str] = []
@@ -123,9 +129,18 @@ def apply_market_retention(
                 temporary.replace(target)
                 jsonl.unlink()
                 compressed.append(str(target))
-    signal_database = maintain_signal_database(
-        data_dir / "signal_stream.duckdb",
-        retention_days=config.signal_snapshot_retention_days,
+    signal_database = (
+        maintain_signal_database(
+            data_dir / "signal_stream.duckdb",
+            retention_days=config.signal_snapshot_retention_days,
+        )
+        if maintain_signal_database_online
+        else {
+            "state": "skipped_online_writer_owns_database",
+            "path": str((data_dir / "signal_stream.duckdb").resolve()),
+            "deleted": 0,
+            "vacuumed": False,
+        }
     )
     return {
         "config": asdict(config),

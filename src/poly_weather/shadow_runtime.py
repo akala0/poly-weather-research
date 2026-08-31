@@ -11,6 +11,7 @@ order-submission method.  ``--supervised`` is required by the CLI so an
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from collections.abc import Mapping, Sequence
@@ -33,6 +34,11 @@ from poly_weather.polymarket_status import (
     quality_window_at,
 )
 from poly_weather.real_no_books import archived_event_metadata, paired_book_snapshots
+from poly_weather.runtime_safety import (
+    StatusIntegrityError,
+    atomic_json_write,
+    read_json_with_fallback,
+)
 from poly_weather.shadow_orders import (
     SHADOW_LEDGER_SCHEMA_VERSION,
     BookSnapshot,
@@ -104,9 +110,12 @@ class ShadowCursor:
         if not destination.exists():
             return cls(destination)
         try:
-            payload = json.loads(destination.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return cls(destination)
+            payload, _integrity, _source = read_json_with_fallback(destination)
+        except StatusIntegrityError as exc:
+            # Resetting a cursor after a torn write would replay old books and
+            # can duplicate shadow orders.  Fail closed until the operator
+            # repairs/restores the cursor evidence.
+            raise RuntimeError(f"shadow cursor integrity failure: {exc}") from exc
         rows = payload.get("sources") if isinstance(payload, Mapping) else {}
         sources: dict[str, dict[str, int | bool]] = {}
         for key, value in (rows or {}).items():
@@ -187,12 +196,7 @@ class ShadowCursor:
             "pair_last_emitted": self.pair_last_emitted,
             "execution_enabled": False,
         }
-        temporary = self.path.with_name(f".{self.path.name}.tmp")
-        temporary.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2, default=str) + "\n",
-            encoding="utf-8",
-        )
-        temporary.replace(self.path)
+        atomic_json_write(self.path, payload)
 
 
 def _incremental_jsonl_rows(
@@ -938,7 +942,11 @@ def run_shadow_spread_once(
     ws_summary["queue_trade_events"] = trade_source_validation["ws_shadow_trade_event_count"]
     status = {
         "schema_version": 2,
+        "state": "stopped",
+        "pid": os.getpid(),
         "checked_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
+        "heartbeat": datetime.now(UTC).isoformat(),
         "execution_enabled": False,
         "execution_dependency_scan": dependency_scan,
         "supervised": True,
@@ -1000,10 +1008,7 @@ def run_shadow_spread_once(
         ],
     }
     destination = Path(status_path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_name(f".{destination.name}.tmp")
-    temporary.write_text(json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(destination)
+    atomic_json_write(destination, status)
     return status
 
 
@@ -1299,9 +1304,12 @@ def run_shadow_spread_continuous(
             last_error = f"cycle:{type(exc).__name__}: {exc}"
         runtime_status = {
             "schema_version": 2,
+            "state": "running",
+            "pid": os.getpid(),
             "started_at": started_at,
             "checked_at": datetime.now(UTC).isoformat(),
             "heartbeat": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "execution_enabled": False,
             "execution_dependency_scan": dependency_scan,
             "supervised": True,
@@ -1341,10 +1349,7 @@ def run_shadow_spread_continuous(
             ],
         }
         destination = Path(status_path)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = destination.with_name(f".{destination.name}.tmp")
-        temporary.write_text(json.dumps(runtime_status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        temporary.replace(destination)
+        atomic_json_write(destination, runtime_status)
         # Commit the cursor only after the ledger state and status heartbeat
         # have been durably written for this batch.
         cursor.pair_latest = {

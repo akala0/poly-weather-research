@@ -19,6 +19,8 @@ from typing import Any
 
 import httpx
 
+from poly_weather.runtime_safety import atomic_json_write
+
 STATUS_BASE_URL = "https://status.polymarket.com"
 STATUS_POLL_SECONDS = 5 * 60
 QUALITY_OVERRIDES_PATH = (
@@ -288,9 +290,7 @@ def persist_quality_windows(path: Path, windows: tuple[UpstreamQualityWindow, ..
         "default_analysis_policy": "exclude windows where default_excluded=true",
         "windows": [window.as_json() for window in windows],
     }
-    temporary = path.with_name(f".{path.name}.tmp")
-    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    atomic_json_write(path, payload, integrity_metadata=False)
 
 
 class PolymarketStatusClient:

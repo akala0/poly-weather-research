@@ -18,22 +18,105 @@ from poly_weather.domain import (
     RollingEvaluation,
 )
 from poly_weather.signal_schema import (
+    LegacySignalSchemaError,
     append_normalized_signal_snapshots,
     create_normalized_signal_schema,
 )
 
 
+def _is_oom_error(error: BaseException) -> bool:
+    """Recognise DuckDB OOMs across version-specific exception classes."""
+
+    text = str(error).casefold()
+    return "out of memory" in text or "allocation failure" in text or "oom" in text
+
+
+def _classify_database_error(
+    error: BaseException,
+    *,
+    rollback_error: BaseException | None = None,
+    subject: str,
+) -> tuple[str, str]:
+    """Classify a write failure without hiding a failed rollback."""
+
+    if rollback_error is not None and (
+        _is_oom_error(error) or _is_oom_error(rollback_error)
+    ):
+        return (
+            "FATAL_DB_OOM",
+            f"{subject} OOM and rollback also failed: "
+            f"write={error}; rollback={rollback_error}",
+        )
+    if _is_oom_error(error):
+        return "DB_OOM", f"{subject} OOM: {error}"
+    if rollback_error is not None:
+        return (
+            "FATAL_DB_ROLLBACK",
+            f"{subject} rollback failed: write={error}; rollback={rollback_error}",
+        )
+    return "DB_WRITE_FAILED", f"{subject} failed: {error}"
+
+
+class DatabaseWriteError(RuntimeError):
+    """A classified database write failure that must stop a resident writer."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 class ResearchWarehouse:
     """DuckDB operational research store with reproducible Parquet exports."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        memory_limit: str | None = None,
+        temp_directory: Path | None = None,
+        threads: int | None = None,
+        max_temp_directory_size: str | None = None,
+    ) -> None:
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.connection = duckdb.connect(str(path))
+        if temp_directory is not None:
+            temp_directory.mkdir(parents=True, exist_ok=True)
+        config: dict[str, str] = {}
+        if memory_limit is not None:
+            config["memory_limit"] = memory_limit
+        if temp_directory is not None:
+            config["temp_directory"] = str(temp_directory.resolve())
+        if threads is not None:
+            if threads < 1:
+                raise ValueError("DuckDB threads must be positive")
+            config["threads"] = str(threads)
+        if max_temp_directory_size is not None:
+            config["max_temp_directory_size"] = max_temp_directory_size
+        self.database_config = config
+        self.last_successful_write_at: str | None = None
+        self.last_successful_commit_at: str | None = None
+        self.last_successful_write_rows = 0
+        self.last_successful_commit_rows = 0
+        self.write_count = 0
+        self.last_database_error: dict[str, str] | None = None
+        self._closed = False
+        self.connection = duckdb.connect(str(path), config=config)
         self._migrate()
 
     def close(self) -> None:
-        self.connection.close()
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            self.connection.close()
+        except duckdb.Error as exc:
+            # DuckDB can invalidate a connection after an OOM.  Closing is
+            # still best effort so the original fatal write remains the
+            # process' non-zero exit cause.
+            self.last_database_error = {
+                "code": "DB_CLOSE_FAILED",
+                "message": f"database close failed: {exc}",
+            }
 
     def __enter__(self) -> ResearchWarehouse:
         return self
@@ -584,16 +667,14 @@ class ResearchWarehouse:
         rows = list(events)
         if not rows:
             return 0
-        self.connection.executemany(
-            """
-            INSERT INTO weather_stream_events (
-                run_id, sequence, received_at, received_at_ns,
-                source_timestamp_ms, provider, product, station_id,
-                temperature_c, latency_ms, raw_json, collection_mode
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (run_id, sequence) DO NOTHING
-            """,
-            [
+        # Keep each transaction small.  Weather responses contain complete
+        # model payloads, so a seemingly small event batch can still create a
+        # large transient Python/DuckDB allocation.
+        batch_size = 16
+        inserted = 0
+        for start in range(0, len(rows), batch_size):
+            batch = rows[start : start + batch_size]
+            parameters = [
                 (
                     event.run_id,
                     event.sequence,
@@ -608,10 +689,74 @@ class ResearchWarehouse:
                     json.dumps(event.raw, ensure_ascii=False, separators=(",", ":")),
                     event.collection_mode,
                 )
-                for event in rows
-            ],
-        )
-        return len(rows)
+                for event in batch
+            ]
+            try:
+                self.connection.execute("BEGIN TRANSACTION")
+                self.connection.executemany(
+                    """
+                    INSERT INTO weather_stream_events (
+                        run_id, sequence, received_at, received_at_ns,
+                        source_timestamp_ms, provider, product, station_id,
+                        temperature_c, latency_ms, raw_json, collection_mode
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (run_id, sequence) DO NOTHING
+                    """,
+                    parameters,
+                )
+                self.connection.execute("COMMIT")
+            except Exception as exc:
+                rollback_error: BaseException | None = None
+                try:
+                    self.connection.execute("ROLLBACK")
+                except BaseException as rollback_exc:  # preserve rollback OOM evidence
+                    rollback_error = rollback_exc
+                code, message = _classify_database_error(
+                    exc,
+                    rollback_error=rollback_error,
+                    subject="weather database write",
+                )
+                self.last_database_error = {"code": code, "message": message}
+                raise DatabaseWriteError(code, message) from exc
+            inserted += len(batch)
+            committed_at = datetime.now(UTC).isoformat()
+            self.last_successful_write_at = committed_at
+            self.last_successful_commit_at = committed_at
+            self.last_successful_write_rows = len(batch)
+            self.last_successful_commit_rows = len(batch)
+            self.write_count += 1
+        self.last_database_error = None
+        return inserted
+
+    def database_status(self) -> dict[str, Any]:
+        """Expose bounded writer telemetry without opening another connection."""
+
+        result: dict[str, Any] = {
+            "path": str(self.path.resolve()),
+            "wal_path": str(self.path.with_suffix(self.path.suffix + ".wal").resolve()),
+            "config": dict(self.database_config),
+            "last_successful_write_at": self.last_successful_write_at,
+            "last_successful_commit_at": self.last_successful_commit_at,
+            "last_successful_write_rows": self.last_successful_write_rows,
+            "last_successful_commit_rows": self.last_successful_commit_rows,
+            "write_count": self.write_count,
+            "last_database_error": self.last_database_error,
+        }
+        for key, path in (
+            ("database", self.path),
+            ("wal", self.path.with_suffix(self.path.suffix + ".wal")),
+        ):
+            try:
+                stat = path.stat()
+            except OSError:
+                result[key] = {"exists": False}
+            else:
+                result[key] = {
+                    "exists": True,
+                    "size_bytes": stat.st_size,
+                    "mtime_at": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
+                }
+        return result
 
     def finish_weather_stream_run(
         self,
@@ -654,12 +799,34 @@ class ResearchWarehouse:
         )
 
     def append_signal_snapshots(self, snapshots: Iterable[dict[str, Any]]) -> int:
-        return append_normalized_signal_snapshots(self.connection, snapshots)
+        try:
+            count = append_normalized_signal_snapshots(self.connection, snapshots)
+        except LegacySignalSchemaError:
+            # This is a schema migration gate, not an operational write
+            # failure. Preserve the specific exception so callers cannot
+            # accidentally treat a legacy database as a recoverable retry.
+            raise
+        except Exception as exc:
+            code, message = _classify_database_error(
+                exc,
+                subject="signal database write",
+            )
+            self.last_database_error = {"code": code, "message": message}
+            raise DatabaseWriteError(code, message) from exc
+        committed_at = datetime.now(UTC).isoformat()
+        self.last_successful_write_at = committed_at
+        self.last_successful_commit_at = committed_at
+        self.last_successful_write_rows = count
+        self.last_successful_commit_rows = count
+        self.write_count += 1
+        self.last_database_error = None
+        return count
 
-    def checkpoint_signal_database(self) -> None:
-        """Reclaim committed storage without changing snapshot retention."""
+    def checkpoint_signal_database(self, *, vacuum: bool = False) -> None:
+        """Checkpoint committed storage; VACUUM is opt-in and offline-only."""
         self.connection.execute("CHECKPOINT")
-        self.connection.execute("VACUUM")
+        if vacuum:
+            self.connection.execute("VACUUM")
 
     def finish_signal_stream_run(
         self,

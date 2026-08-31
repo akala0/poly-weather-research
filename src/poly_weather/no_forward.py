@@ -10,6 +10,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from poly_weather.fees import fee_per_share
+from poly_weather.runtime_safety import atomic_json_write
 from poly_weather.warming_policy import (
     LEGACY_POLICY_VERSION,
     WarmingThresholdRegistry,
@@ -229,12 +230,7 @@ class NoForwardTracker:
             handle.write("\n")
 
     def _atomic_state(self) -> None:
-        self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.state_path.with_suffix(".tmp")
-        temporary.write_text(
-            json.dumps(self.state, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        temporary.replace(self.state_path)
+        atomic_json_write(self.state_path, self.state)
 
 
 def forward_summary(

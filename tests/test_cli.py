@@ -68,16 +68,18 @@ def test_shadow_runtime_requires_supervised_flag_and_is_read_only(tmp_path) -> N
 
 
 def test_stream_status_surfaces_only_token_scoped_shadow_status(tmp_path) -> None:
+    from poly_weather.runtime_safety import atomic_json_write
+
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     updated_at = datetime.now(UTC).isoformat()
-    (runtime / "shadow_spread_status.json").write_text(
-        json.dumps({"schema_version": 1, "updated_at": updated_at, "state": "legacy"}),
-        encoding="utf-8",
+    atomic_json_write(
+        runtime / "shadow_spread_status.json",
+        {"schema_version": 1, "updated_at": updated_at, "state": "legacy"},
     )
-    (runtime / "shadow_spread_status_v2_token_scoped.json").write_text(
-        json.dumps({"schema_version": 2, "updated_at": updated_at, "state": "healthy"}),
-        encoding="utf-8",
+    atomic_json_write(
+        runtime / "shadow_spread_status_v2_token_scoped.json",
+        {"schema_version": 2, "updated_at": updated_at, "state": "healthy"},
     )
 
     result = CliRunner().invoke(app, ["stream-status", "--data-dir", str(tmp_path)])

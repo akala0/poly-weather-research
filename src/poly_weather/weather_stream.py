@@ -25,6 +25,7 @@ from poly_weather.adapters.wrh import WrhTimeseriesClient
 from poly_weather.information_clock import payload_hash
 from poly_weather.modeling import DEFAULT_MULTI_MODEL_WEIGHTS, blend_multi_model_forecasts
 from poly_weather.research_store import ResearchWarehouse
+from poly_weather.runtime_safety import atomic_json_write, process_memory_status
 from poly_weather.temperature import fahrenheit_to_celsius
 from poly_weather.weather_provenance import REALTIME, CollectionMode
 
@@ -32,6 +33,9 @@ HTTP_POOL_DIAGNOSTIC_INTERVAL_SECONDS = 30.0
 HTTP_POOL_ACCOUNTING_GAP_DEGRADED_THRESHOLD = 10
 HTTP_POOL_REBUILD_CONSECUTIVE_SAMPLES = 3
 HTTP_REQUEST_CONCURRENCY = 20
+WEATHER_DUCKDB_MEMORY_LIMIT = "256MB"
+WEATHER_DUCKDB_MAX_TEMP_DIRECTORY_SIZE = "4GB"
+WEATHER_DUCKDB_BATCH_SIZE = 16
 
 
 def _process_tcp_connections(pid: int) -> dict[str, Any]:
@@ -223,18 +227,41 @@ class WeatherStreamSink:
         run_id: str,
         archive_name: str = "weather_daemon",
         warehouse_name: str = "weather_stream.duckdb",
+        warehouse_path: Path | None = None,
+        memory_limit: str = WEATHER_DUCKDB_MEMORY_LIMIT,
+        temp_directory: Path | None = None,
     ) -> None:
         self.data_dir = data_dir
         self.run_id = run_id
         self.archive_name = archive_name
-        self.warehouse = ResearchWarehouse(data_dir / warehouse_name)
+        self.warehouse_path = warehouse_path or data_dir / warehouse_name
+        self.temp_directory = temp_directory or data_dir / "tmp" / "duckdb-weather"
+        self.memory_limit = memory_limit
+        self.warehouse = ResearchWarehouse(
+            self.warehouse_path,
+            memory_limit=memory_limit,
+            temp_directory=self.temp_directory,
+            threads=1,
+            max_temp_directory_size=WEATHER_DUCKDB_MAX_TEMP_DIRECTORY_SIZE,
+        )
         self.handles: dict[tuple[str, str], Any] = {}
+        self.last_raw_batch_rows = 0
+        self.last_raw_batch_bytes = 0
 
     def close(self) -> None:
+        close_error: BaseException | None = None
         for handle in self.handles.values():
-            handle.close()
+            try:
+                handle.close()
+            except BaseException as exc:
+                close_error = close_error or exc
         self.handles.clear()
-        self.warehouse.close()
+        try:
+            self.warehouse.close()
+        except BaseException as exc:
+            close_error = close_error or exc
+        if close_error is not None:
+            raise RuntimeError("weather sink close failed") from close_error
 
     def _handle(self, day: str, collection_mode: str) -> Any:
         key = (collection_mode, day)
@@ -249,6 +276,7 @@ class WeatherStreamSink:
     def write(self, events: list[WeatherEvent]) -> None:
         if not events:
             return
+        encoded_bytes = 0
         for event in events:
             received = datetime.fromtimestamp(event.received_at_ns / 1_000_000_000, tz=UTC)
             envelope = {
@@ -261,11 +289,24 @@ class WeatherStreamSink:
                 envelope["models"] = event.raw.get("models")
                 envelope["blended"] = event.raw.get("blended")
             handle = self._handle(received.date().isoformat(), event.collection_mode)
-            handle.write(json.dumps(envelope, ensure_ascii=False, separators=(",", ":")))
+            encoded = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
+            encoded_bytes += len(encoded.encode("utf-8")) + 1
+            handle.write(encoded)
             handle.write("\n")
         for handle in self.handles.values():
             handle.flush()
+        self.last_raw_batch_rows = len(events)
+        self.last_raw_batch_bytes = encoded_bytes
         self.warehouse.append_weather_stream_events(events)
+
+    def status(self) -> dict[str, Any]:
+        return {
+            "raw_batch_rows": self.last_raw_batch_rows,
+            "raw_batch_bytes": self.last_raw_batch_bytes,
+            "configured_batch_size": WEATHER_DUCKDB_BATCH_SIZE,
+            "process_memory": process_memory_status(),
+            "database": self.warehouse.database_status(),
+        }
 
 
 class WeatherDaemon:
@@ -289,6 +330,9 @@ class WeatherDaemon:
         flush_interval_seconds: float = 0.5,
         stations: Sequence[WeatherStation] | None = None,
         model_weights_by_station: Mapping[str, Mapping[str, float]] | None = None,
+        warehouse_path: Path | None = None,
+        database_memory_limit: str = WEATHER_DUCKDB_MEMORY_LIMIT,
+        database_temp_directory: Path | None = None,
     ) -> None:
         if observation_interval_seconds < 60:
             raise ValueError("observation interval cannot be less than 60 seconds")
@@ -346,7 +390,9 @@ class WeatherDaemon:
             self.model_weights_by_station[item.station_id] = {
                 model: float(value) / total_weight for model, value in weights.items()
             }
-        self.batch_size = batch_size
+        if batch_size < 1:
+            raise ValueError("weather writer batch size must be positive")
+        self.batch_size = min(batch_size, WEATHER_DUCKDB_BATCH_SIZE)
         self.flush_interval_seconds = flush_interval_seconds
         self.queue: asyncio.Queue[WeatherEvent] = asyncio.Queue(maxsize=queue_size)
         self.stop_event = asyncio.Event()
@@ -383,7 +429,13 @@ class WeatherDaemon:
             "process_tcp": {"supported": False, "reason": "not sampled"},
             "connection_accounting_gap": None,
         }
-        self.sink = WeatherStreamSink(data_dir=data_dir, run_id=self.run_id)
+        self.sink = WeatherStreamSink(
+            data_dir=data_dir,
+            run_id=self.run_id,
+            warehouse_path=warehouse_path,
+            memory_limit=database_memory_limit,
+            temp_directory=database_temp_directory,
+        )
 
     @staticmethod
     def _new_http_client() -> httpx.AsyncClient:
@@ -434,15 +486,23 @@ class WeatherDaemon:
         }
 
     async def run(self, *, runtime_seconds: float = 0) -> WeatherMetrics:
-        self.sink.warehouse.start_weather_stream_run(
-            run_id=self.run_id,
-            started_at=datetime.now(UTC),
-            station_id=",".join(station.station_id for station in self.stations),
-        )
-        self.http_client = self._new_http_client()
-        self.wrh_client = WrhTimeseriesClient(self.http_client)
+        workers: list[asyncio.Task[Any]] = []
+        writer: asyncio.Task[Any] | None = None
+        status_heartbeat: asyncio.Task[Any] | None = None
+        pool_heartbeat: asyncio.Task[Any] | None = None
+        timer: asyncio.Task[Any] | None = None
+        stream_run_started = False
+        run_error: BaseException | None = None
+        shutdown_error: BaseException | None = None
         try:
-            workers = []
+            self.sink.warehouse.start_weather_stream_run(
+                run_id=self.run_id,
+                started_at=datetime.now(UTC),
+                station_id=",".join(station.station_id for station in self.stations),
+            )
+            stream_run_started = True
+            self.http_client = self._new_http_client()
+            self.wrh_client = WrhTimeseriesClient(self.http_client)
             for station in self.stations:
                 intervals = self.intervals_for_station(station)
                 workers.append(
@@ -522,39 +582,84 @@ class WeatherDaemon:
             )
             self.metrics.state = "running"
             self._write_status()
-            try:
-                await self.stop_event.wait()
-            finally:
-                for worker in workers:
-                    worker.cancel()
-                await asyncio.gather(*workers, return_exceptions=True)
-                if timer:
-                    timer.cancel()
-                    await asyncio.gather(timer, return_exceptions=True)
+            await self.stop_event.wait()
+        except BaseException as exc:
+            run_error = exc
+            self.stop_event.set()
+            if not isinstance(exc, (KeyboardInterrupt, asyncio.CancelledError)):
+                self.metrics.state = "failed"
+                self.metrics.last_error = (
+                    self.metrics.last_error
+                    or f"weather stream {type(exc).__name__}: {exc}"
+                )
+        finally:
+            self.stop_event.set()
+            for worker in workers:
+                worker.cancel()
+            await asyncio.gather(*workers, return_exceptions=True)
+            if timer is not None:
+                timer.cancel()
+                await asyncio.gather(timer, return_exceptions=True)
+            if writer is not None:
                 writer_result = await asyncio.gather(writer, return_exceptions=True)
-                status_heartbeat.cancel()
-                await asyncio.gather(status_heartbeat, return_exceptions=True)
-                pool_heartbeat.cancel()
-                await asyncio.gather(pool_heartbeat, return_exceptions=True)
                 writer_errors = [
                     result for result in writer_result if isinstance(result, BaseException)
                 ]
-                self.metrics.state = "failed" if writer_errors else "stopped"
+                if writer_errors and run_error is None:
+                    run_error = RuntimeError("weather stream writer failed")
+                    self.metrics.state = "failed"
+                    self.metrics.last_error = str(
+                        self.metrics.last_error or writer_errors[0]
+                    )
+                    run_error.__cause__ = writer_errors[0]
+            for heartbeat in (status_heartbeat, pool_heartbeat):
+                if heartbeat is not None:
+                    heartbeat.cancel()
+                    await asyncio.gather(heartbeat, return_exceptions=True)
+            if run_error is None and self.metrics.state == "running":
+                self.metrics.state = "stopped"
+            elif run_error is not None and self.metrics.state == "running":
+                self.metrics.state = "failed"
+            try:
                 self._write_status()
-                self.sink.warehouse.finish_weather_stream_run(
-                    run_id=self.run_id,
-                    finished_at=datetime.now(UTC),
-                    metrics=asdict(self.metrics),
-                )
+            except BaseException as exc:
+                shutdown_error = exc
+            if stream_run_started:
+                try:
+                    self.sink.warehouse.finish_weather_stream_run(
+                        run_id=self.run_id,
+                        finished_at=datetime.now(UTC),
+                        metrics=asdict(self.metrics),
+                    )
+                except BaseException as exc:
+                    # A fatal DuckDB error can invalidate the connection, so
+                    # final bookkeeping is best effort and must not hide the
+                    # original classified writer failure.
+                    shutdown_error = shutdown_error or exc
+            try:
                 self.sink.close()
-                if writer_errors:
-                    raise RuntimeError("weather stream writer failed") from writer_errors[0]
-        finally:
+            except BaseException as exc:
+                shutdown_error = shutdown_error or exc
             client = self.http_client
             self.http_client = None
             self.wrh_client = None
             if client is not None:
-                await client.aclose()
+                try:
+                    await client.aclose()
+                except BaseException as exc:
+                    shutdown_error = shutdown_error or exc
+        if run_error is not None:
+            raise run_error
+        if shutdown_error is not None:
+            self.metrics.state = "failed"
+            self.metrics.last_error = (
+                f"weather shutdown {type(shutdown_error).__name__}: {shutdown_error}"
+            )
+            try:
+                self._write_status()
+            except BaseException:
+                pass
+            raise RuntimeError("weather stream shutdown failed") from shutdown_error
         return self.metrics
 
     async def _stop_after(self, seconds: float) -> None:
@@ -950,7 +1055,9 @@ class WeatherDaemon:
                 self._write_status()
         except Exception as exc:
             self.metrics.state = "failed"
-            self.metrics.last_error = f"weather writer {type(exc).__name__}: {exc}"
+            code = getattr(exc, "code", None)
+            prefix = f"weather writer {code}" if code else f"weather writer {type(exc).__name__}"
+            self.metrics.last_error = f"{prefix}: {exc}"
             self.stop_event.set()
             self._write_status()
             raise
@@ -1117,15 +1224,8 @@ class WeatherDaemon:
             ),
             "queue_depth": self.queue.qsize(),
             "updated_at": datetime.now(UTC).isoformat(),
+            "heartbeat": datetime.now(UTC).isoformat(),
+            "writer": self.sink.status(),
             "read_only": True,
         }
-        temporary = self.status_path.with_name(f".{self.status_path.name}.{self.run_id}.tmp")
-        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        for attempt in range(5):
-            try:
-                temporary.replace(self.status_path)
-                break
-            except PermissionError:
-                if attempt == 4:
-                    raise
-                time.sleep(0.01 * (attempt + 1))
+        atomic_json_write(self.status_path, payload)
