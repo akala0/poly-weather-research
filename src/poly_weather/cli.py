@@ -3976,7 +3976,7 @@ def stream_status(
     statuses = {}
     stale_after_seconds = {
         "market": 120.0,
-        "supervisor": 120.0,
+        "supervisor": 360.0,
         "weather": 300.0,
         "signal": 120.0,
         "shadow": 120.0,
