@@ -153,11 +153,10 @@ KLGA 2026-07-01 至 2026-07-31 已成功生成 31 条提前一天样本。以最
 
 ## 当前开发顺序
 
-1. 只读市场发现和结算规则注册表。
-2. NWS 观测与 Open-Meteo deterministic 预报采集。
-3. 温度分桶概率、校准和历史价格重放（已完成基础链路）。
-4. NOAA 同站信号、METAR/TAF 参考和纸面风险约束（已完成基础链路）。
-5. 联合历史重放、基差统计与实时行情监控。
-6. 真实执行保持为独立适配器，需另行审核与授权。
+1. 守护链和只读 shadow follower 保持运行，继续积累恢复后的前向 weather-market-lag 证据；outage 和 market takeover 质量窗口始终排除。
+2. Market-State Challenger v1 已完成冻结历史诊断：459 个 unique episodes 中 SURVIVING=6、FAILED=0、UNCONFIRMED=310、UNKNOWN=143；只有 32 个候选所有 horizon 完整。未达到 30 个独立 station-day、KLAX/KLGA 一致性或失败突破可识别性门槛，因此该分支停止，不进入 Decision-Continuity Challenger，不修改 live champion。
+3. QUIET v2 保持 `CHALLENGER_PAUSED`；等 KLAX/KLGA 各累计至少 30 个 station-day 且出现真实 touch 后再评估，不放宽 UNKNOWN/coverage 闸门制造成交。
+4. 继续完成 Single Runs 固定 vintage 的天气—盘口联合回放，并保持所有候选、订单、库存、成本和 PnL 的 token scope。
+5. 真实执行仍是独立且未授权的未来适配器；当前 `execution_enabled=false`，不接钱包、签名、User WebSocket 或订单 API。
 
 跨电脑接手、当前运行状态、已知缺口和数据重建步骤见 [`HANDOFF.md`](HANDOFF.md)。

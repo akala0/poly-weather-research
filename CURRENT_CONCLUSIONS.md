@@ -1,6 +1,6 @@
 # 当前研究结论（唯一入口）
 
-生成时间：2026-08-31 18:20 +08:00。
+生成时间：2026-09-01 14:30 +08:00。
 
 本文件是当前结论的唯一入口。下方明确区分稳定判断和会随归档增长的快照；历史报告若与本文件冲突，
 以本文件及其链接的当前报告为准。
@@ -110,6 +110,7 @@ OOM 防护已到位：DuckDB memory_limit=256MB、batch=16、single thread、4GB
 | 只读影子限价/价差回放 | v2 token-scoped：50 个独立 station/market-day、81,349 个快照、1,187 个真实 ask 价带候选；固定 price-band queue-aware 26 单/3 fills，weather-market-lag 207 单/7 fills；整体净 PnL N/A（未平仓 token 不用代理估值），KDAL 仅 1 个合法同-token round trip `+$15.0684931507`，n=1 统计不可靠。canonical 成交带与归档 token 交集 26,686 条事件，WS 26,875 条经 hash+token 验证、504 条未匹配 fail-closed；旧 `$13.56` 已确认全为跨 token 串账并归档对账。22 个已结算事件与深度仍重叠 **N=0**。 | 订单簿截止 2026-08-27 18:34:55 +08:00；生成 18:43:15 +08:00 |
 | v2 长期只读 follower | 首次连续观察 30.08 分钟；随后重启恢复 `restart_count=1`。cursor/heartbeat 前进，26 条 ledger orders 与 3 fills 未重复，`halted=false`、discrepancy=0；仅从已有归档尾部开始积累前向证据。 | 首次启动 2026-08-28 11:05:03 +08:00；重启 11:35:32 +08:00 |
 | YES+NO 互补配对影子 | 103,991 个配对快照、43,543 个 token-native 成交事件；默认 queue-aware 293 个提交、3 个单腿 fill、已配平 **N=0**；KLAX 28/1/0、KLGA 32/0/0。trade-through 293/2/0，touch 293/8/0；station-day 聚类 58 个，KLAX/KLGA 为 5/6（n<30 分层不可靠）。固定敏感性网格 24 个场景；queue-aware unwind `-$0.2844544674`。 | 订单簿截止 2026-08-28 14:01:40 +08:00；固定分析上限 14:01:46；报告生成 14:59:40 +08:00 |
+| Market-State Challenger v1 | 冻结历史 cutoff 前 1,035 raw candidates、459 unique episodes；328 有时间覆盖、316 可分类，SURVIVING/FAILED/UNCONFIRMED/UNKNOWN=`6/0/310/143`，所有 5/15/30/60/120m outcome 完整仅 32。只有 KATL 一例 surviving 命中 +5/+10/+13/+20¢；KLAX 一例端点横盘、KLGA 为 0、FAILED 为 0。未通过 ≥30 station-day、两站一致性和失败突破识别门槛，分支停止。 | 固定 cutoff 2026-09-01 00:00 UTC；历史诊断，不是 OOS、maker fill 或 PnL |
 | Bias significance gate 审计 | 321 个 lead_days≥1 样本、4 组；提议 `|bias|/SE>2` 只额外禁用 KLGA multi_model_blend。未改校准；walk-forward/OOS 证据不足以自动采用该 gate。 | 审计生成 2026-08-28 |
 
 当前报告：
@@ -164,6 +165,21 @@ v1 `QUIET=0` 仅表示在不完整的事件语义和微观结构覆盖下不可�
 - [QUIET 报告 canonical 路径](docs/quiet_report_canonical_paths.md)
 
 **QUIET 状态：CHALLENGER_PAUSED。** 85 单审计已证明当前 join-best-bid 报价在候选区间不可达（TOUCH=0），暂停进一步开发。保留代码和前向日志，等 KLAX/KLGA 累计 ≥30 station-day 且出现真实 touch 后才重新评估。
+
+## Market-State Challenger v1（2026-09-01）
+
+- 这是 PA_Agent 市场突破思想的 clean-room、只读历史诊断；没有复制 AGPL 源码、提示词或测试文本。配置在运行前冻结为 `market-state-challenger-v1`，截止 `2026-09-01T00:00:00Z`，不按结果调参。
+- 候选只认当时可见的 `weather_market_lag && weather_improving`；同 token 每个 HARD_RESET information episode 只保留首个候选。trailing 严格早于 candidate，confirmation 使用 candidate 后的真实 NO token 盘口，decision 锚定确认窗结束时或之后首个归档快照，outcome 严格晚于该 decision；HARD_RESET 污染后续 horizon，重复时间戳、跨/锁盘、质量窗、缺口及未知规则均 fail-closed。
+- 冻结历史结果：`1,035` 个 raw candidates → `459` 个 unique episodes → `328` 个有时间覆盖 → `316` 个盘口指标已知并可分类。状态为 `SURVIVING_BREAKOUT=6`、`FAILED_BREAKOUT=0`、`UNCONFIRMED=310`、`UNKNOWN=143`，状态守恒通过。由于所有 horizon 均完整的候选只有 `32` 个，且 SURVIVING 只有 `6` 个 station-day、FAILED 为 `0`，远低于预声明的 `30` 个独立 station-day 门槛。
+- 六个 surviving 中只有 KATL 一例在 15/30/60 分钟命中 +5/+10/+13/+20¢；其余五例均未命中 +5¢，其中 KSEA 60/120 分钟 bid 变化为 `-0.06/-0.08`。KLAX 只有一例且位于 `0.996` 高价端点，15/30/60 分钟变化均为 0；KLGA surviving 为 `0`。没有 FAILED 样本可验证“失败突破识别更差路径”。
+- 微观结构诊断已复用 canonical trades、严格此前 trade intensity、真实 L2 churn 与 cross-bucket mass。churn 在 `345/459` 个候选窗口全程已知；但 cross-bucket mass 在 `439/459` 个候选窗口全程 UNKNOWN，另 `20` 个为 OK/UNKNOWN 混合，所以它只保留为覆盖诊断，不能通过放宽同步边界制造分类。
+- **裁决：PA 风格市场突破没有通过升级门槛，停止该分支，不进入 Decision-Continuity Challenger，也不修改 live champion。** 这不证明市场状态永远无价值，而是当前预声明标签没有可复现的 30/60 分钟增量：SURVIVING 稀少、FAILED 不可达、KLAX/KLGA 不一致、完整 outcome 严重不足。
+- 报告只使用同 token 真实 archived bid/ask，Wilson 95% 按 station-day 聚类展示；它不是 maker fill、订单或 PnL。`execution_enabled=false`，未写现有 shadow ledger，未启动或停止任何 daemon。
+
+报告与机器结果：
+
+- [Market-State Challenger v1 报告](data/market_state_challenger_v1_report.md)
+- [Market-State Challenger v1 JSON](data/market_state_challenger_v1_analysis.json)
 
 ## Lead-lag 主线前向状态（恢复后待积累）
 
