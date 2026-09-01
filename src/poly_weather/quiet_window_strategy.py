@@ -182,9 +182,9 @@ def _as_snapshot(value: BookSnapshot | Mapping[str, Any]) -> BookSnapshot:
         return value
     # Keep archive-row compatibility with the existing paired-book loader,
     # including its station/day metadata enrichment.
-    from poly_weather.shadow_spread_replay import _row_snapshot
+    from poly_weather.shadow_spread_replay import paired_row_to_book_snapshot
 
-    return _row_snapshot(value)
+    return paired_row_to_book_snapshot(value)
 
 
 def normalise_quiet_snapshots(

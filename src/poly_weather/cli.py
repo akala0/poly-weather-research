@@ -94,6 +94,12 @@ from poly_weather.market_microstructure import (
     build_l2_churn_index,
 )
 from poly_weather.market_regime import ThresholdTier
+from poly_weather.market_state_challenger import (
+    MarketStateChallengerConfig,
+    analyze_market_state_challenger,
+    render_market_state_challenger_report,
+    write_market_state_challenger_result,
+)
 from poly_weather.market_stream import EventArchivePolicy, MarketWebSocketBot
 from poly_weather.market_supervisor import (
     MarketEventSupervisor,
@@ -194,6 +200,7 @@ from poly_weather.shadow_orders import ShadowStrategyConfig
 from poly_weather.shadow_runtime import run_shadow_spread_continuous, run_shadow_spread_once
 from poly_weather.shadow_spread_replay import (
     default_shadow_strategy_config,
+    paired_row_to_book_snapshot,
     render_shadow_spread_report,
     replay_shadow_spread,
     write_shadow_spread_result,
@@ -2671,6 +2678,203 @@ def analyze_price_paths_command(
             ],
             "quality_window_pairs_excluded": result["quality_window_pairs_excluded"],
             "data_cutoff": result["data_cutoff"],
+            "execution_enabled": False,
+        }
+    )
+
+
+@app.command("analyze-market-state-challenger")
+def analyze_market_state_challenger_command(
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+    challenger_config_path: Annotated[
+        Path, typer.Option("--challenger-config")
+    ] = Path("configs/market_state_challenger_v1.json"),
+    output_path: Annotated[Path, typer.Option("--output")] = Path(
+        "data/market_state_challenger_v1_report.md"
+    ),
+    analysis_path: Annotated[Path, typer.Option("--analysis-output")] = Path(
+        "data/market_state_challenger_v1_analysis.json"
+    ),
+) -> None:
+    """Diagnose post-lag market paths; never submits or simulates an order."""
+    try:
+        challenger_payload = json.loads(
+            challenger_config_path.read_text(encoding="utf-8")
+        )
+        challenger_config = MarketStateChallengerConfig.from_mapping(
+            challenger_payload
+        )
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(
+            f"unable to load challenger config: {challenger_config_path}"
+        ) from exc
+    checkpoint_paths = jsonl_archive_paths(
+        data_dir / "raw" / "polymarket_book_checkpoints"
+    )
+    pairs = paired_book_snapshots(checkpoint_paths)
+    pairs = [
+        pair
+        for pair in pairs
+        if isinstance(pair.get("observed_at"), datetime)
+        and pair["observed_at"] <= challenger_config.forward_cutoff
+    ]
+    if not pairs:
+        raise typer.BadParameter(
+            "no eligible paired order-book records found before the frozen cutoff"
+        )
+    registry = load_settlement_registry(config)
+    event_slugs = sorted(
+        {str(pair["event_slug"]) for pair in pairs if pair.get("event_slug")}
+    )
+    metadata = archived_event_metadata(event_slugs, registry.specs)
+    enriched_pairs: list[dict[str, Any]] = []
+    station_timezones: dict[str, str] = {}
+    for pair in pairs:
+        event_value = metadata.get(str(pair.get("event_slug") or ""), {})
+        enriched = dict(pair)
+        enriched["station_id"] = str(event_value.get("station_id") or "") or None
+        enriched["market_day"] = str(event_value.get("target_date") or "") or None
+        if event_value.get("station_id") and event_value.get("timezone"):
+            station_timezones[str(event_value["station_id"]).upper()] = str(
+                event_value["timezone"]
+            )
+        enriched_pairs.append(enriched)
+    pair_by_key = {
+        (
+            str(pair.get("market_slug") or ""),
+            pair["observed_at"],
+        ): pair
+        for pair in pairs
+        if isinstance(pair.get("observed_at"), datetime)
+    }
+    cross_bucket_index = build_cross_bucket_mass_index(
+        lambda: iter(pairs),
+        synchronization_tolerance=CROSS_BUCKET_SYNC_TOLERANCE,
+    )
+    weather_observations = load_realtime_weather_observations(
+        jsonl_archive_paths(data_dir / "raw" / "weather_daemon")
+    )
+    aligned_pairs, weather_join_reasons = align_weather_to_snapshots(
+        enriched_pairs,
+        weather_observations,
+    )
+    snapshots = []
+    for pair in aligned_pairs:
+        pair_metadata = dict(pair.get("metadata") or {})
+        observed_at = pair.get("observed_at")
+        market_slug = str(pair.get("market_slug") or "")
+        source_pair = pair_by_key.get((market_slug, observed_at))
+        if source_pair is not None and isinstance(observed_at, datetime):
+            mass = cross_bucket_index.lookup(market_slug, observed_at)
+            metric_status = dict(pair_metadata.get("metric_status") or {})
+            metric_status["cross_bucket_mass_error"] = mass.status
+            pair_metadata.update(
+                {
+                    "cross_bucket_mass_error": (
+                        str(mass.error) if mass.error is not None else None
+                    ),
+                    "metric_status": metric_status,
+                }
+            )
+        enriched = dict(pair)
+        enriched["metadata"] = pair_metadata
+        snapshots.append(paired_row_to_book_snapshot(enriched, event_metadata=metadata))
+    snapshots = tuple(snapshots)
+    asset_ids = {snapshot.token_id for snapshot in snapshots if snapshot.token_id}
+    snapshot_times_by_token: dict[str, list[datetime]] = {}
+    for snapshot in snapshots:
+        snapshot_times_by_token.setdefault(snapshot.token_id, []).append(
+            snapshot.timestamp
+        )
+    snapshot_start = min(snapshot.timestamp for snapshot in snapshots)
+    snapshot_end = max(snapshot.timestamp for snapshot in snapshots)
+    public_trade_rows = (
+        load_event_trade_tapes(
+            data_dir / "public_trades",
+            event_slugs=event_slugs,
+            start_at=snapshot_start,
+            end_at=snapshot_end,
+        )
+        if (data_dir / "public_trades").exists()
+        else {}
+    )
+    public_trade_values = [
+        trade for rows in public_trade_rows.values() for trade in rows
+    ]
+    ws_trade_result = load_market_ws_trades(
+        jsonl_archive_paths(data_dir / "raw" / "polymarket_clob_websocket"),
+        quality_windows=load_quality_windows(
+            data_dir / "runtime" / "polymarket_quality_windows.json"
+        ),
+        asset_ids=asset_ids,
+        start_at=snapshot_start,
+        end_at=snapshot_end,
+        transaction_hashes={
+            trade.transaction_hash
+            for trade in public_trade_values
+            if trade.transaction_hash
+        },
+    )
+    trade_events, trade_source_validation = build_shadow_trade_events(
+        ws_trade_result.trades, public_trade_values
+    )
+    l2_churn_index = build_l2_churn_index(
+        jsonl_archive_paths(data_dir / "raw" / "polymarket_clob_websocket"),
+        asset_ids=asset_ids,
+        trades=trade_events,
+        start_at=snapshot_start,
+        end_at=snapshot_end,
+        lookup_times_by_asset=snapshot_times_by_token,
+    )
+    information_events = tuple(
+        event
+        for event in load_external_information_events(data_dir)
+        if event.available_at is None
+        or event.available_at <= challenger_config.forward_cutoff
+    )
+    result = analyze_market_state_challenger(
+        snapshots,
+        config=challenger_config,
+        information_events=information_events,
+        trades=trade_events,
+        l2_churn_index=l2_churn_index,
+        station_timezones=station_timezones,
+    )
+    result["input"] = {
+        "paired_snapshot_count": len(snapshots),
+        "weather_observation_count": len(weather_observations),
+        "weather_join_reason_counts": weather_join_reasons,
+        "information_event_count": len(information_events),
+        "canonical_trade_event_count": len(trade_events),
+        "trade_source_validation": trade_source_validation,
+        "l2_churn": {
+            "raw_event_count": l2_churn_index.raw_event_count,
+            "price_change_count": l2_churn_index.price_change_count,
+            "reconnect_or_gap_count": l2_churn_index.reconnect_or_gap_count,
+            "snapshot_window_observation_count": (
+                l2_churn_index.snapshot_window_observation_count
+            ),
+        },
+        "cross_bucket_mass": cross_bucket_index.summary(),
+        "quality_window": (
+            "paired_book_snapshots default exclusion: official maintenance/failure "
+            "plus measured recovery"
+        ),
+        "strict_weather_cutoff": (
+            "source_timestamp <= snapshot_at and received_at <= snapshot_at"
+        ),
+        "historical_backfill_used": False,
+    }
+    render_market_state_challenger_report(result, output_path)
+    write_market_state_challenger_result(result, analysis_path)
+    _emit(
+        {
+            "report_path": str(output_path.resolve()),
+            "analysis_path": str(analysis_path.resolve()),
+            "candidate_funnel": result["candidate_funnel"],
+            "state_counts": result["state_counts"],
+            "state_conservation_ok": result["state_conservation_ok"],
             "execution_enabled": False,
         }
     )

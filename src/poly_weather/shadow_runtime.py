@@ -59,8 +59,8 @@ from poly_weather.shadow_orders import (
     quote_limit,
 )
 from poly_weather.shadow_spread_replay import (
-    _row_snapshot,
     default_shadow_strategy_config,
+    paired_row_to_book_snapshot,
     replay_shadow_spread,
 )
 from poly_weather.trade_tape_analysis import load_event_trade_tapes
@@ -1247,7 +1247,9 @@ def run_shadow_spread_continuous(
                 )
                 for pair in aligned:
                     try:
-                        processor.process_snapshot(_row_snapshot(pair, event_metadata=metadata))
+                        processor.process_snapshot(
+                            paired_row_to_book_snapshot(pair, event_metadata=metadata)
+                        )
                     except (TypeError, ValueError, KeyError) as exc:
                         last_error = f"snapshot:{type(exc).__name__}: {exc}"
             # WS rows can safely consume the queue only after a matching

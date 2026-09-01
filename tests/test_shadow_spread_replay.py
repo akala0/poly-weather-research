@@ -4,6 +4,7 @@ from decimal import Decimal
 from poly_weather.shadow_orders import ShadowStrategyConfig, TradeEvent
 from poly_weather.shadow_spread_replay import (
     default_shadow_strategy_config,
+    paired_row_to_book_snapshot,
     render_shadow_spread_report,
     replay_shadow_spread,
 )
@@ -60,6 +61,26 @@ def config() -> ShadowStrategyConfig:
         tranche_usd=(Decimal("20"),),
         replenish_mode=base.replenish_mode,
     )
+
+
+def test_public_snapshot_helper_preserves_archived_rule_provenance() -> None:
+    payload = row(0)
+    payload["no"] = {
+        **payload["no"],  # type: ignore[index]
+        "rule_provenance": {
+            "tick_size": "0.01",
+            "tick_size_source": "websocket_raw_book",
+            "min_order_size": "5",
+            "min_order_size_source": "gamma_event_archived_market_metadata",
+        },
+    }
+
+    snapshot = paired_row_to_book_snapshot(payload)
+
+    assert snapshot.token_id == "no-1"
+    assert snapshot.best_bid == Decimal("0.70")
+    assert snapshot.best_ask == Decimal("0.80")
+    assert snapshot.metadata["rule_provenance"] == payload["no"]["rule_provenance"]  # type: ignore[index]
 
 
 def test_replay_is_market_day_based_and_runs_three_fill_models() -> None:

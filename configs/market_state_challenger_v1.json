@@ -1,0 +1,32 @@
+{
+  "version": "market-state-challenger-v1",
+  "schema_version": 1,
+  "research_status": "historical_diagnostic_then_forward_freeze",
+  "forward_cutoff": "2026-09-01T00:00:00+00:00",
+  "trailing_window_minutes": 30,
+  "confirmation_window_minutes": 15,
+  "breakout_ticks": 2,
+  "survival_fraction": "0.67",
+  "minimum_trailing_observations": 3,
+  "minimum_confirmation_observations": 2,
+  "maximum_snapshot_gap_minutes": 10,
+  "outcome_horizons_minutes": [5, 15, 30, 60, 120],
+  "bid_target_rises": ["0.05", "0.10", "0.13", "0.20"],
+  "required_metric_names": [
+    "mid",
+    "spread",
+    "top_bid_depth",
+    "top_ask_depth",
+    "imbalance"
+  ],
+  "diagnostic_metric_names": [
+    "trade_intensity_multiple",
+    "churn_rate",
+    "cross_bucket_mass_error"
+  ],
+  "require_rule_provenance": true,
+  "independent_unit": "station_day",
+  "candidate_definition": "weather_market_lag && weather_improving",
+  "quote_source": "same_token_archived_l2_bid_ask_only",
+  "execution_enabled": false
+}

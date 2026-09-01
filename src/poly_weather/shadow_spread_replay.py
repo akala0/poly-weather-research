@@ -125,7 +125,7 @@ def _band_match(price: Decimal | None, bands: Sequence[tuple[Decimal, Decimal]])
     return price is not None and any(lower <= price < upper for lower, upper in bands)
 
 
-def _row_snapshot(
+def paired_row_to_book_snapshot(
     row: Mapping[str, Any],
     *,
     event_metadata: Mapping[str, Mapping[str, Any]] | None = None,
@@ -899,7 +899,9 @@ def replay_shadow_spread(
     strategy = config or default_shadow_strategy_config()
     strategy.validate()
     snapshots = tuple(
-        row if isinstance(row, BookSnapshot) else _row_snapshot(row, event_metadata=event_metadata)
+        row
+        if isinstance(row, BookSnapshot)
+        else paired_row_to_book_snapshot(row, event_metadata=event_metadata)
         for row in pairs
     )
     snapshots = tuple(sorted(snapshots, key=lambda row: row.timestamp))
