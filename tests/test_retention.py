@@ -61,7 +61,11 @@ def test_disk_capacity_reports_logical_and_physical_rates(tmp_path) -> None:
     logical, physical = directory_storage_bytes(partition)
     assert logical == 4096
     assert physical >= 0
-    result = disk_capacity_status(tmp_path, projected_trimmed_gb_per_day=2.2)
+    result = disk_capacity_status(
+        tmp_path,
+        projected_trimmed_gb_per_day=2.2,
+        now=datetime(2026, 8, 25, tzinfo=UTC),
+    )
     assert result["recent_market_archive_logical_bytes_per_day"] == 4096
     assert result["recent_market_archive_physical_bytes_per_day"] >= 0
     assert result["projected_trimmed_market_archive_logical_gb_per_day"] == 2.2

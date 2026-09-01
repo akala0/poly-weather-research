@@ -235,13 +235,14 @@ def disk_capacity_status(
     *,
     warning_gb: float = 20.0,
     projected_trimmed_gb_per_day: float = 2.2,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
     usage = shutil.disk_usage(data_dir.resolve())
     free_gb = usage.free / 1024**3
     root = data_dir / "raw" / "polymarket_clob_websocket"
     daily_logical_sizes: list[int] = []
     daily_physical_sizes: list[int] = []
-    today = datetime.now(UTC).date()
+    today = (now or datetime.now(UTC)).astimezone(UTC).date()
     cutoff = today - timedelta(days=7)
     if root.exists():
         for partition in root.iterdir():
