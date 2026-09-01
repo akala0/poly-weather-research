@@ -87,6 +87,8 @@ uv run poly-weather audit-bias-significance
 
 `market-supervisor` 通过 Gamma public-search 发现当天与次日事件，复用 `inspect-settlement` 的严格证据核验。新 token 先热订阅并等待全部初始 book，Gamma 已关闭的旧事件才会退订；失败城市记录差异并 fail-closed，不阻塞其他城市。状态在 `market_supervisor_status.json`，配置变更通知在 `signal_config_update.json`；`signal-engine --supervised` 会校验证据 SHA 后原子热加载每个新 generation。
 
+Windows 常驻链由 `scripts/windows/install-poly-weather-tasks.ps1` 注册的四个 `PolyWeather-*` Task Scheduler 任务持有。`poly-weather-daemon-runner.ps1` 提供单实例锁、依赖闸门、指数退避和日志轮换；`poly-weather-status.ps1` 通过安全 `stream-status` 验证 checksum、heartbeat、PID 存活、实际命令归属与 `execution_enabled=false`。2026-08-31 已实测 weather、signal、shadow 受控 kill 后自动拉起；market 只做接管重启并在 440/440 完整簿恢复后验收。任何 market 重启窗口都必须 `default_excluded=true`，不能以 trades 或历史价格补造 L2。
+
 `weather-stream` 是独立的异步天气守护进程。实时链路按实测更新节奏轮询：WRH/NWS 120 秒、METAR 900 秒、TAF 3600 秒、中国站 1800 秒、Open-Meteo 10800 秒。每个站点从 `multi_model_blend` 历史样本学习逆 MAE 权重；历史不足时明确回退等权。事件 `multi_model_deterministic_forecast` 同时保存三套模型序列、权重、blended 序列和原始响应。Open-Meteo 返回网格距请求机场超过 3 km 时立即拒绝该响应。事件批量写入 `data/weather_stream.duckdb` 和 `data/raw/weather_daemon/`。
 
 2026-08-24 真实烟测证明单个市场 WebSocket 可同时覆盖美国八城及重庆、成都的当天和次日共 20 个事件、440 个 token：440/440 收到完整 book，0 重连、0 解析错误。Polymarket 文档未给出固定订阅上限，因此当前不引入连接池；运行时指标若持续越界，再按资产拆分。守护进程不调用任何大模型，因此持续监控本身不消耗模型 token。

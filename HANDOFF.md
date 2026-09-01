@@ -67,10 +67,11 @@
   `data/bias_significance_audit.md`。
 - 链上 SQL 路径已完成只读评估，当前不接入；宏观类别/地址/持仓研究出现明确需求时再启用。
 - `signal_snapshot` 已启用 NTFS 透明压缩并纳入 2 日 gzip/30 日删除；T7 完整订单簿证据由不参与过期的 `no_forward_validation` 独立保留。
+- 2026-08-31 已完成本地守护链恢复与 Windows Task Scheduler 端到端接管。四个任务当前均为 `Running`；weather、signal、shadow 已分别通过受控 kill 后 runner 自动拉起，shadow 的 195 orders/3 fills/0 round trips/realized PnL 0 未重复，cursor `restart_count=2`、`halted=false`、discrepancy=0。market 只做必要的接管重启，恢复 440/440 完整簿后验收，没有再做 kill 测试；`2026-08-31T10:05:38–10:15:30Z` 已记录为 `local-task-scheduler-market-takeover-2026-08-31` 默认排除质量窗口，不能回填 L2。健康检查使用 `scripts/windows/poly-weather-status.ps1`，必须通过安全 `stream-status` 验证 checksum、heartbeat、PID、命令归属和 `execution_enabled=false`；不要直接相信状态 JSON 中的旧 PID。
 - 当前结论唯一入口为仓库根目录 `CURRENT_CONCLUSIONS.md`；IEM 小时版 `multi_city_certainty_report.md` 已明确废弃。
 - 市场、天气、信号心跳监测与过期阻断。
 - 候选净边际超过 15% 时强制告警并阻止 paper alert。
-- 237 项单元测试全部通过，Ruff 静态检查全绿；最近一次验收时间为 2026-08-28。
+- 303 项单元测试全部通过，Ruff 静态检查全绿；最近一次完整验收时间为 2026-08-31。
 
 ## 当前校准结论
 
@@ -87,7 +88,7 @@ P0 验证确认 Previous Runs `lead_days=0` 含目标日内模型更新，不能
 3. 多日、多城市泛化：十城行情采集已启动，但尚未积累足够的新阈值已结算样本。
 4. Wunderground 最终结算差异审计：实时信号使用同机场 NOAA 数据，但最终仍应记录官方页面值并比较差异。
 5. 任意非触发 signal 的原始 17 位浮点在 30 日后不再逐行保留；若未来需要永久逐位复现，应新增冷归档或确定性抽样。
-6. 告警渠道、服务管理、开机自启与进程自动拉起。
+6. 外部通知渠道尚未接入；Windows Task Scheduler 服务管理、开机/登录启动、非零退出自动拉起与本地 health check 已完成并实测。
 7. 真实资金执行明确不在当前范围内。
 
 ## 已知缺口：天气 HTTP 连接池仍靠 containment

@@ -222,13 +222,16 @@ T7 前四个真实触发的实测（顶层 ask vs $200 实际成交均价）：
 
 ## 3. 架构
 
-### 3.1 三个常驻守护进程
+### 3.1 四个常驻守护进程
 
 | 进程 | 职责 | 状态文件 |
 |---|---|---|
 | `market-stream` / `market-supervisor` | Polymarket 公共 Market WebSocket，完整 `book` + 逐档 `price_change` 维护可重放本地订单簿；supervisor 负责每日事件自动发现、核验、热订阅轮换 | `data/runtime/polymarket_ws_status.json` |
 | `weather-stream` | 十站 WRH/NWS/METAR/TAF/Open-Meteo 采集 | `data/runtime/weather_daemon_status.json` |
 | `signal-engine` | 增量跟随两个流的 JSONL，生成不可执行信号快照 | `data/runtime/signal_engine_status.json`、`signal_state.json` |
+| `shadow-spread-engine --supervised` | 只读 v2 token-scoped follower；消费新增归档，保存原子 cursor 和永久影子账本，绝不下单 | `data/runtime/shadow_spread_status_v2_token_scoped.json` |
+
+Windows 当前用四个 `PolyWeather-*` Task Scheduler 任务持有上述链路。2026-08-31 已实测 weather、signal、shadow 子进程被受控 kill 后由 runner 自动拉起；market 只做一次接管重启，440/440 完整簿恢复后验收，接管空档作为 `local-task-scheduler-market-takeover-2026-08-31` 默认排除且不回填。健康检查必须使用 `scripts/windows/poly-weather-status.ps1` 或 `stream-status`，核验 checksum、heartbeat、PID liveness 与实际命令归属；不能只读状态文件中的 PID 或把 checksum 字段“存在”当作完整性通过。
 
 查看状态：`uv run poly-weather stream-status`
 
@@ -445,7 +448,7 @@ v1 的 `QUIET=0` 保留为诊断性 **N/A：在不完整事件语义/指标覆�
 
 （本机 `uv` 不在 PATH，直接用 venv 里的 python）
 
-- 当前基线：**275 passed**，Ruff 全绿
+- 当前基线：**303 passed**，Ruff 全绿
 - 提交前确认无密钥进入版本控制。注意 `adapters/wrh.py` 会从 weather.gov 抓公开 Synoptic token——必须是运行时动态获取，不能硬编码或写进配置
 - `data/` 保持在 `.gitignore` 里
 - 不要 push 到远端，除非用户明确要求

@@ -1,6 +1,6 @@
 # 当前研究结论（唯一入口）
 
-生成时间：2026-08-31 17:30 +08:00。
+生成时间：2026-08-31 18:20 +08:00。
 
 本文件是当前结论的唯一入口。下方明确区分稳定判断和会随归档增长的快照；历史报告若与本文件冲突，
 以本文件及其链接的当前报告为准。
@@ -9,13 +9,15 @@
 
 2026-08-29 00:08–2026-08-31 08:50 UTC 发生本地 daemon outage，约 50 小时无前向数据。原因：天气 DuckDB writer OOM（当时无内存限制）、市场 ws status 文件全 NUL、shadow cursor 文件损坏。质量窗口已关闭（`local-daemon-outage-2026-08-29`），该时段所有分析默认排除。
 
-修复后四个守护进程已重启，状态正常：
-- market-supervisor: PID 42956, running, 440/440 book complete
-- weather-daemon: PID 36568, running, WRH/NWS/METAR 持续更新
-- signal-engine: PID 27704, running, 20 events, generation 已更新
-- shadow-follower: PID 17508, running, cursor 从新数据开始，195 订单/3 fills 未重复
+修复后四个守护进程已由 Windows Task Scheduler 接管，当前状态正常：
+- market-supervisor: PID 48720，任务 `Running`，440/440 book complete；仅做一次必要的接管重启，未做额外 kill 测试
+- weather-daemon: PID 45400，任务 `Running`，受控 kill 后由 runner 自动重启，WRH/NWS/METAR 持续更新
+- signal-engine: PID 47376，任务 `Running`，受控 kill 后由 runner 自动重启，evaluation 与 heartbeat 持续前进
+- shadow-follower: PID 48184，任务 `Running`，受控 kill 后由 runner 自动重启；195 orders/3 fills/0 round trips/realized PnL 0 均未重复，cursor `restart_count=2`、`halted=false`、discrepancy=0
 
-所有 status 文件现在有 SHA256 checksum、`.last_good` 备份、PID 存活检查。Windows Task Scheduler 已注册四个 daemon 任务（开机/登录自动启动，非零退出自动重启）。
+所有 status 文件现在有 SHA256 checksum、`.last_good` 备份、PID 存活检查。四个 Task Scheduler 任务已端到端验证为 runner 所有；weather/signal/shadow 的非零退出自动拉起已实测。market 接管产生 `2026-08-31 10:05:38–10:15:30 UTC` 的本地 L2 质量窗口 `local-task-scheduler-market-takeover-2026-08-31`，已关闭并保持 `default_excluded=true`，绝不回填伪 L2。
+
+原 health 脚本因 PowerShell `$PID` 大小写不敏感而误显示检查进程自身 PID，且只检查 checksum 字段存在，曾制造假健康输出；现已改为调用安全 `stream-status`，验证 checksum、heartbeat、PID liveness、实际命令行和 `execution_enabled=false`。完整验收为 303 tests passed、Ruff 全绿。
 
 OOM 防护已到位：DuckDB memory_limit=256MB、batch=16、single thread、4GB temp directory 限制。
 

@@ -228,7 +228,12 @@ try {
                 -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -WindowStyle Hidden -PassThru
             Write-RunnerLog "child started; pid=$($child.Id)"
             $child.WaitForExit()
-            $exitCode = $child.ExitCode
+            $child.Refresh()
+            $rawExitCode = $child.ExitCode
+            $exitCode = if ($null -eq $rawExitCode) { 9008 } else { [int]$rawExitCode }
+            if ($null -eq $rawExitCode) {
+                Write-RunnerLog "child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008"
+            }
             $child.Dispose()
         }
         catch {
