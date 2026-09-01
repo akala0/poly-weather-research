@@ -170,7 +170,7 @@ v1 `QUIET=0` 仅表示在不完整的事件语义和微观结构覆盖下不可�
 
 - 这是 PA_Agent 市场突破思想的 clean-room、只读历史诊断；没有复制 AGPL 源码、提示词或测试文本。配置在运行前冻结为 `market-state-challenger-v1`，截止 `2026-09-01T00:00:00Z`，不按结果调参。
 - 候选只认当时可见的 `weather_market_lag && weather_improving`；同 token 每个 HARD_RESET information episode 只保留首个候选。trailing 严格早于 candidate，confirmation 使用 candidate 后的真实 NO token 盘口，decision 锚定确认窗结束时或之后首个归档快照，outcome 严格晚于该 decision；HARD_RESET 污染后续 horizon，重复时间戳、跨/锁盘、质量窗、缺口及未知规则均 fail-closed。
-- 冻结历史结果：`1,035` 个 raw candidates → `459` 个 unique episodes → `328` 个有时间覆盖 → `316` 个盘口指标已知并可分类。状态为 `SURVIVING_BREAKOUT=6`、`FAILED_BREAKOUT=0`、`UNCONFIRMED=310`、`UNKNOWN=143`，状态守恒通过。由于所有 horizon 均完整的候选只有 `32` 个，且 SURVIVING 只有 `6` 个 station-day、FAILED 为 `0`，远低于预声明的 `30` 个独立 station-day 门槛。
+- 冻结历史结果：`1,035` 个 raw candidates → `459` 个 unique episodes → `328` 个有时间覆盖 → `316` 个盘口指标已知并可分类。状态为 `SURVIVING_BREAKOUT=6`、`FAILED_BREAKOUT=0`、`UNCONFIRMED=310`、`UNKNOWN=143`，状态守恒通过。由于所有 horizon 均完整的候选只有 `32` 个，且 SURVIVING 只有 `6` 个候选、分布在 `5` 个 station-day，FAILED 为 `0`，远低于预声明的 `30` 个独立 station-day 门槛。
 - 六个 surviving 中只有 KATL 一例在 15/30/60 分钟命中 +5/+10/+13/+20¢；其余五例均未命中 +5¢，其中 KSEA 60/120 分钟 bid 变化为 `-0.06/-0.08`。KLAX 只有一例且位于 `0.996` 高价端点，15/30/60 分钟变化均为 0；KLGA surviving 为 `0`。没有 FAILED 样本可验证“失败突破识别更差路径”。
 - 微观结构诊断已复用 canonical trades、严格此前 trade intensity、真实 L2 churn 与 cross-bucket mass。churn 在 `345/459` 个候选窗口全程已知；但 cross-bucket mass 在 `439/459` 个候选窗口全程 UNKNOWN，另 `20` 个为 OK/UNKNOWN 混合，所以它只保留为覆盖诊断，不能通过放宽同步边界制造分类。
 - **裁决：PA 风格市场突破没有通过升级门槛，停止该分支，不进入 Decision-Continuity Challenger，也不修改 live champion。** 这不证明市场状态永远无价值，而是当前预声明标签没有可复现的 30/60 分钟增量：SURVIVING 稀少、FAILED 不可达、KLAX/KLGA 不一致、完整 outcome 严重不足。
