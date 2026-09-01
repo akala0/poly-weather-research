@@ -5,11 +5,12 @@ from poly_weather.information_clock import ImpactClass, InformationEvent
 from poly_weather.market_state_challenger import (
     BreakoutState,
     MarketStateChallengerConfig,
+    _enrich_microstructure,
     analyze_market_state_challenger,
     evaluate_candidates,
     render_market_state_challenger_report,
 )
-from poly_weather.shadow_orders import BookSnapshot
+from poly_weather.shadow_orders import BookSnapshot, TradeEvent
 
 BASE = datetime(2026, 8, 30, 12, 0, tzinfo=UTC)
 
@@ -384,3 +385,85 @@ def test_crossed_or_locked_book_fails_closed() -> None:
 
     assert row.state is BreakoutState.UNKNOWN
     assert "non_positive_spread" in row.unknown_reasons
+
+
+def test_config_from_mapping_parses_string_false_for_rule_provenance() -> None:
+    """require_rule_provenance='false' must disable the requirement, not enable it."""
+    values = {
+        "version": "test-v1",
+        "trailing_window_minutes": 10,
+        "confirmation_window_minutes": 3,
+        "breakout_ticks": 2,
+        "survival_fraction": "0.67",
+        "minimum_trailing_observations": 2,
+        "minimum_confirmation_observations": 2,
+        "maximum_snapshot_gap_minutes": 5,
+        "outcome_horizons_minutes": (5,),
+        "bid_target_rises": ("0.05",),
+        "required_metric_names": ("mid", "spread", "top_bid_depth", "top_ask_depth", "imbalance"),
+        "forward_cutoff": "2026-08-30T23:59:59+00:00",
+        "require_rule_provenance": "false",
+    }
+    config = MarketStateChallengerConfig.from_mapping(values)
+    assert config.require_rule_provenance is False
+
+
+def test_enrich_microstructure_sorts_trades_by_effective_availability_time() -> None:
+    """Trades with delayed available_at must be sorted by receipt time, not source time."""
+    token = "token-1"
+    # Trade A: source at t=0, available at t=5 (delayed receipt)
+    # Trade B: source at t=3, available at t=3 (immediate)
+    # Source order: [A, B]; effective order: [B(t=3), A(t=5)]
+    trade_a = TradeEvent(
+        timestamp=BASE,
+        asset_id=token,
+        side="BUY",
+        price=Decimal("0.40"),
+        size=Decimal("10"),
+        available_at=BASE + timedelta(minutes=5),
+    )
+    trade_b = TradeEvent(
+        timestamp=BASE + timedelta(minutes=3),
+        asset_id=token,
+        side="BUY",
+        price=Decimal("0.41"),
+        size=Decimal("10"),
+        available_at=BASE + timedelta(minutes=3),
+    )
+    # Snapshot at t=4: should see only trade B (available at t=3),
+    # not trade A (available at t=5, after snapshot).
+    snapshot = _snapshot(4, token=token)
+    enriched = _enrich_microstructure(
+        [snapshot],
+        trades=[trade_a, trade_b],
+        l2_churn_index=None,
+        station_timezones={"KLAX": "America/Los_Angeles"},
+    )
+    assert len(enriched) == 1
+
+
+def test_raw_event_without_impact_class_gets_classified_through_clock() -> None:
+    """Raw events with impact_class=None must be classified by InformationClock
+    before reaching the challenger, so HARD_RESET carries correct impact_class."""
+    from poly_weather.information_clock import InformationClock
+    from poly_weather.quiet_window_strategy import _scope_events_from_scopes
+
+    raw_event = InformationEvent(
+        event_id="raw-1",
+        source="WRH",
+        kind="wrh_observation",
+        source_at=BASE - timedelta(minutes=1),
+        available_at=BASE - timedelta(minutes=1),
+        station_id="KLAX",
+        market_day="2026-08-30",
+        changed_physical_margin=True,
+        # impact_class is None — raw from archive, not yet classified
+    )
+    scopes = {("KLAX", "2026-08-30")}
+    scoped = _scope_events_from_scopes([raw_event], scopes)
+    assert len(scoped) >= 1
+
+    clock = InformationClock()
+    classified = clock.ingest_many(scoped)
+    assert len(classified) >= 1
+    assert classified[0].impact_class is ImpactClass.HARD_RESET

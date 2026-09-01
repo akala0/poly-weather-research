@@ -61,7 +61,9 @@ def _decimal(value: Any) -> Decimal:
     return parsed
 
 
-def _flag(value: Any) -> bool:
+def _flag(value: Any, *, default: bool = False) -> bool:
+    if value is None:
+        return default
     if isinstance(value, str):
         return value.strip().casefold() in {"1", "true", "yes", "on"}
     return bool(value)
@@ -179,7 +181,7 @@ class MarketStateChallengerConfig:
             diagnostic_metric_names=tuple(
                 str(item) for item in value.get("diagnostic_metric_names", ())
             ),
-            require_rule_provenance=bool(value.get("require_rule_provenance", True)),
+            require_rule_provenance=_flag(value.get("require_rule_provenance"), default=True),
             forward_cutoff=str(value["forward_cutoff"]),
         )
 
@@ -825,6 +827,12 @@ def _enrich_microstructure(
     trades_by_token: dict[str, list[TradeEvent]] = defaultdict(list)
     for trade in trades:
         trades_by_token[trade.asset_id].append(trade)
+    # Sort each token's trades by effective availability time so that
+    # bisect on trade_times selects the correct trade objects.
+    for token_id in trades_by_token:
+        trades_by_token[token_id].sort(
+            key=lambda t: max(t.timestamp, t.available_at or t.timestamp)
+        )
     trade_times = {
         token_id: [max(trade.timestamp, trade.available_at or trade.timestamp) for trade in rows]
         for token_id, rows in trades_by_token.items()

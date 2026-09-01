@@ -75,7 +75,7 @@ from poly_weather.high_frequency_audit import (
     build_high_frequency_reanalysis,
     render_high_frequency_reanalysis,
 )
-from poly_weather.information_clock import load_external_information_events
+from poly_weather.information_clock import InformationClock, load_external_information_events
 from poly_weather.intraday_reversal import load_iem_asos_csv
 from poly_weather.liquidity import (
     archived_liquidity_rows,
@@ -168,6 +168,7 @@ from poly_weather.quiet_state_log import (
 )
 from poly_weather.quiet_window_strategy import (
     QuietWindowConfig,
+    _scope_events_from_scopes,
     analyze_information_clock,
     default_quiet_window_config,
     derive_size_grid_from_no_quiet_profile,
@@ -2827,12 +2828,27 @@ def analyze_market_state_challenger_command(
         end_at=snapshot_end,
         lookup_times_by_asset=snapshot_times_by_token,
     )
-    information_events = tuple(
+    raw_information_events = tuple(
         event
         for event in load_external_information_events(data_dir)
         if event.available_at is None
         or event.available_at <= challenger_config.forward_cutoff
     )
+    # Scope raw events against observed station-days (global-event expansion
+    # and ambiguous-day timezone resolution), then classify through
+    # InformationClock so HARD_RESET changes carry correct impact_class.
+    event_scopes = {
+        (
+            snapshot.station_id or "unknown",
+            snapshot.market_day or snapshot.timestamp.date().isoformat(),
+        )
+        for snapshot in snapshots
+    }
+    scoped_events = _scope_events_from_scopes(
+        raw_information_events, event_scopes, station_timezones=station_timezones
+    )
+    clock = InformationClock()
+    information_events = clock.ingest_many(scoped_events)
     result = analyze_market_state_challenger(
         snapshots,
         config=challenger_config,
