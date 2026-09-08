@@ -11,6 +11,8 @@ from typing import Any
 
 import httpx
 
+from poly_weather.trade_evidence import parse_trade_timestamp
+
 
 @dataclass(frozen=True, slots=True)
 class PublicTrade:
@@ -29,6 +31,8 @@ class PublicTrade:
     # persisted tape supplies it, replay uses it as an availability fence so
     # a later API fetch cannot fill an earlier shadow order retroactively.
     available_at: datetime | None = None
+    source_timestamp_text: str | None = None
+    receipt_timestamp_text: str | None = None
 
     def as_json(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -41,6 +45,9 @@ class PublicTrade:
 
 
 def parse_public_trade(row: dict[str, Any]) -> PublicTrade:
+    timestamp = parse_trade_timestamp(row["timestamp"])
+    if timestamp is None:
+        raise ValueError("invalid or imprecise public trade timestamp")
     return PublicTrade(
         proxy_wallet=str(row.get("proxyWallet") or ""),
         asset_id=str(row["asset"]),
@@ -51,8 +58,9 @@ def parse_public_trade(row: dict[str, Any]) -> PublicTrade:
         side=str(row["side"]).upper(),
         size=Decimal(str(row["size"])),
         price=Decimal(str(row["price"])),
-        timestamp=datetime.fromtimestamp(int(row["timestamp"]), tz=UTC),
+        timestamp=timestamp,
         transaction_hash=str(row["transactionHash"]),
+        source_timestamp_text=str(row["timestamp"]),
     )
 
 

@@ -123,6 +123,12 @@ from poly_weather.no_side_analysis import (
     render_no_proxy_audit,
 )
 from poly_weather.paper import PaperPolicy, make_paper_decision
+from poly_weather.paper_account import PaperLedger
+from poly_weather.paper_spread_runtime import (
+    PaperSpreadProcessor,
+    PaperStrategyConfig,
+    run_paper_spread_continuous,
+)
 from poly_weather.polymarket_status import (
     PolymarketStatusClient,
     load_quality_overrides,
@@ -3611,6 +3617,76 @@ def analyze_quiet_window_command(
             "execution_enabled": False,
         }
     )
+
+
+@app.command("paper-spread-status")
+def paper_spread_status_command(
+    ledger_path: Annotated[Path, typer.Option("--ledger")] = Path(
+        "data/raw/shadow_orders/paper_spread_v1_orders.jsonl"
+    ),
+    strategy_config_path: Annotated[Path, typer.Option("--strategy-config")] = Path(
+        "configs/paper_spread_strategy_v1.json"
+    ),
+) -> None:
+    """Show isolated paper-v1 readiness without starting a follower."""
+    strategy = PaperStrategyConfig.load(strategy_config_path)
+    processor = PaperSpreadProcessor(ledger=PaperLedger(ledger_path), strategy=strategy)
+    _emit({**processor.status(), "ledger_path": str(ledger_path.resolve())})
+
+
+@app.command("paper-spread-engine")
+def paper_spread_engine_command(
+    strategy_config_path: Annotated[Path, typer.Option("--strategy-config")],
+    ledger_path: Annotated[Path, typer.Option("--ledger")] = Path(
+        "data/raw/shadow_orders/paper_spread_v1_orders.jsonl"
+    ),
+    status_path: Annotated[Path, typer.Option("--status")] = Path(
+        "data/runtime/paper_spread_v1_status.json"
+    ),
+    cursor_path: Annotated[Path, typer.Option("--cursor")] = Path(
+        "data/runtime/paper_spread_v1_cursor.json"
+    ),
+    data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    poll_seconds: Annotated[float, typer.Option("--poll-seconds")] = 5.0,
+    runtime_seconds: Annotated[float, typer.Option("--runtime")] = 0.0,
+    once: Annotated[bool, typer.Option("--once", help="Write only a readiness status; do not follow archives.")] = False,
+    replay_existing: Annotated[
+        bool,
+        typer.Option("--replay-existing", help="Disable first-start tail bootstrap after explicit review."),
+    ] = False,
+    supervised: Annotated[
+        bool, typer.Option("--supervised", help="Required explicit read-only supervision flag.")
+    ] = False,
+) -> None:
+    """Run the isolated, read-only paper-v1 follower after manual approval."""
+    if not supervised:
+        raise typer.BadParameter("--supervised is required; this command never executes orders")
+    if once:
+        strategy = PaperStrategyConfig.load(strategy_config_path)
+        processor = PaperSpreadProcessor(ledger=PaperLedger(ledger_path), strategy=strategy)
+        payload = {**processor.status(), "ledger_path": str(ledger_path.resolve()), "status_path": str(status_path.resolve())}
+        from poly_weather.runtime_safety import atomic_json_write
+
+        atomic_json_write(status_path, payload)
+    else:
+        payload = run_paper_spread_continuous(
+            data_dir=data_dir,
+            ledger_path=ledger_path,
+            status_path=status_path,
+            cursor_path=cursor_path,
+            strategy_config_path=strategy_config_path,
+            supervised=True,
+            poll_seconds=poll_seconds,
+            runtime_seconds=runtime_seconds,
+            bootstrap_at_tail=not replay_existing,
+        )
+    _emit({**payload, "ledger_path": str(ledger_path.resolve()), "status_path": str(status_path.resolve())})
+    if not once and payload.get("state") == "halted":
+        # A durable Paper HALT is not a clean daemon stop.  The caller must
+        # inspect/reconcile the isolated ledger before another follower can
+        # read input, so surface a non-zero process result after emitting the
+        # auditable fatal status.
+        raise typer.Exit(code=1)
 
 
 @app.command("shadow-spread-engine")

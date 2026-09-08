@@ -10,7 +10,9 @@ consumption only; they are not historical bid/ask quotes.
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterable, Mapping, Sequence
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -19,6 +21,7 @@ from typing import Any, Protocol
 
 from poly_weather.adapters.polymarket_data import PublicTrade
 from poly_weather.archive_io import open_jsonl_text
+from poly_weather.runtime_safety import atomic_json_write
 
 
 class TradeClient(Protocol):
@@ -181,29 +184,76 @@ def public_trade_key(row: PublicTrade | Mapping[str, Any]) -> tuple[Any, ...]:
     )
 
 
-def _read_payload(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {}
+class TradeStorageError(ValueError):
+    """An existing evidence object cannot safely be treated as empty."""
+
+    def __init__(self, path: Path, state: str):
+        self.path = path
+        self.state = state
+        super().__init__(f"{state}: {path}")
+
+
+def _read_payload(path: Path) -> dict[str, Any] | None:
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise TradeStorageError(path, "unreadable") from exc
+    if not raw.strip():
+        raise TradeStorageError(path, "empty_file")
+    try:
+        payload = json.loads(raw)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise TradeStorageError(path, "corrupt_json") from exc
+    if not isinstance(payload, dict):
+        raise TradeStorageError(path, "invalid_schema")
+    return payload
 
 
 def _atomic_json_write(path: Path, payload: Mapping[str, Any]) -> None:
+    atomic_json_write(path, payload, integrity_metadata=False, keep_last_good=False)
+
+
+@contextmanager
+def _writer_lock(path: Path):
+    """Cooperating collector ownership; OS releases the lock after a crash."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
-    temporary.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, default=str) + "\n",
-        encoding="utf-8",
-    )
-    temporary.replace(path)
+    with path.open("a+b") as handle:
+        handle.seek(0)
+        if os.name == "nt":
+            import msvcrt
+
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            yield
+        finally:
+            handle.seek(0)
+            if os.name == "nt":
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def load_trade_cursor(path: Path | str) -> dict[str, Any]:
-    payload = _read_payload(Path(path))
-    return payload if isinstance(payload.get("events", {}), dict) else {"schema_version": 1, "events": {}}
+    path = Path(path)
+    payload = _read_payload(path)
+    if payload is None:
+        return {"schema_version": 1, "events": {}}
+    events = payload.get("events")
+    if not isinstance(events, dict) or any(not isinstance(row, dict) for row in events.values()):
+        raise TradeStorageError(path, "invalid_cursor_schema")
+    for row in events.values():
+        if row.get("watermark_end"):
+            try:
+                _utc(str(row["watermark_end"]))
+            except ValueError as exc:
+                raise TradeStorageError(path, "invalid_cursor_watermark") from exc
+    return payload
 
 
 def _merge_trades(
@@ -239,18 +289,59 @@ def collect_depth_event_trades(
     destination_root = Path(output_dir)
     destination_root.mkdir(parents=True, exist_ok=True)
     cursor_file = Path(cursor_path) if cursor_path else destination_root / ".depth_trade_cursor.json"
+    locks = {
+        destination_root.resolve() / ".trade_collection.lock",
+        cursor_file.resolve().with_name(cursor_file.name + ".lock"),
+    }
+    with ExitStack() as stack:
+        for lock in sorted(locks, key=lambda path: str(path).casefold()):
+            stack.enter_context(_writer_lock(lock))
+        return _collect_depth_event_trades_locked(
+            coverages, client=client, destination_root=destination_root,
+            cursor_file=cursor_file, overlap=overlap, now=now,
+        )
+
+
+def _collect_depth_event_trades_locked(
+    coverages: Sequence[DepthEventCoverage], *, client: TradeClient,
+    destination_root: Path, cursor_file: Path, overlap: timedelta,
+    now: datetime | None,
+) -> dict[str, Any]:
     cursor = load_trade_cursor(cursor_file)
     events_cursor = cursor.setdefault("events", {})
     fetched_at = (now or datetime.now(UTC)).astimezone(UTC).isoformat()
     summaries: list[dict[str, Any]] = []
     for coverage in coverages:
         event_slug = coverage.event_slug
+        if (
+            not event_slug or event_slug in {".", "..", "depth_trade_coverage"}
+            or any(char in event_slug for char in '/\\:')
+        ):
+            raise TradeStorageError(destination_root, "invalid_event_path")
         path = destination_root / f"{event_slug}.json"
-        old_payload = _read_payload(path)
-        old_rows = old_payload.get("trades") if isinstance(old_payload.get("trades"), list) else []
+        if path.resolve().parent != destination_root.resolve():
+            raise TradeStorageError(path, "event_path_escape")
+        try:
+            old_payload = _read_payload(path)
+            if old_payload is not None and (
+                not isinstance(old_payload.get("trades"), list)
+                or any(not isinstance(row, dict) for row in old_payload["trades"])
+                or old_payload.get("event_slug", event_slug) != event_slug
+            ):
+                raise TradeStorageError(path, "invalid_tape_schema")
+        except TradeStorageError as exc:
+            summaries.append({
+                "event_slug": event_slug, "path": str(path.resolve()),
+                "collection_status": "storage_quarantined", "storage_state": exc.state,
+                "watermark_frozen": True, "trade_count": 0,
+                "trade_count_known": False, "trade_asset_intersection_count": 0,
+            })
+            continue
+        old_payload = old_payload or {}
+        old_rows = old_payload.get("trades", [])
         state = events_cursor.setdefault(event_slug, {})
         previous_end = None
-        if state.get("watermark_end"):
+        if old_payload and state.get("watermark_end"):
             try:
                 previous_end = _utc(str(state["watermark_end"]))
             except ValueError:
@@ -359,7 +450,14 @@ def collect_depth_event_trades(
         "depth_event_count": len(summaries),
         "collected_zero_event_count": sum(row["collection_status"] == "collected_zero" for row in summaries),
         "not_collected_event_count": sum(
-            row["collection_status"] in {"not_collected", "collection_error"} for row in summaries
+            row["collection_status"] in {"not_collected", "collection_error", "storage_quarantined"}
+            for row in summaries
+        ),
+        "storage_quarantined_event_count": sum(
+            row["collection_status"] == "storage_quarantined" for row in summaries
+        ),
+        "trade_count_complete": not any(
+            row["collection_status"] == "storage_quarantined" for row in summaries
         ),
         "trade_count": sum(row["trade_count"] for row in summaries),
         "trade_asset_intersection_count": sum(

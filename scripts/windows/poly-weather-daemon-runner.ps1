@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("market-supervisor", "weather-stream", "signal-engine", "shadow-spread-engine")]
+    [ValidateSet("market-supervisor", "weather-stream", "signal-engine", "shadow-spread-engine", "paper-spread-engine")]
     [string]$DaemonName,
 
     [string]$ProjectRoot = "D:\poly",
@@ -198,6 +198,15 @@ function Get-ArgumentList {
                 "--ledger", (Join-Path $dataDir "raw\shadow_orders\shadow_orders_v2_token_scoped.jsonl"),
                 "--status", (Join-Path $dataDir "runtime\shadow_spread_status_v2_token_scoped.json"),
                 "--cursor", (Join-Path $dataDir "runtime\shadow_spread_cursor_v2_token_scoped.json")
+            )
+        }
+        "paper-spread-engine" {
+            return @(
+                "paper-spread-engine", "--supervised", "--runtime", "0", "--data-dir", $dataDir,
+                "--strategy-config", (Join-Path $ProjectRoot "configs\paper_spread_strategy_v1.json"),
+                "--ledger", (Join-Path $dataDir "raw\shadow_orders\paper_spread_v1_orders.jsonl"),
+                "--status", (Join-Path $dataDir "runtime\paper_spread_v1_status.json"),
+                "--cursor", (Join-Path $dataDir "runtime\paper_spread_v1_cursor.json")
             )
         }
     }

@@ -1,3 +1,4 @@
+import gzip
 from datetime import UTC, datetime
 
 import pytest
@@ -11,7 +12,7 @@ from poly_weather.retention import (
 )
 
 
-def test_retention_compresses_and_expires_all_configured_raw_partitions(tmp_path) -> None:
+def test_retention_defers_unsealed_compression_and_expiry_for_all_sources(tmp_path) -> None:
     aggregate = tmp_path / "research.duckdb"
     protected = tmp_path / "raw" / "no_forward_validation" / "2026-07-01"
     protected.mkdir(parents=True)
@@ -26,7 +27,7 @@ def test_retention_compresses_and_expires_all_configured_raw_partitions(tmp_path
         )
         for partition in partitions[source]:
             partition.mkdir(parents=True)
-            (partition / "events.jsonl").write_text('{"x":1}\n', encoding="utf-8")
+            (partition / "events.jsonl").write_bytes(b'{"x":1}\n')
     aggregate.write_bytes(b"aggregate")
 
     result = apply_market_retention(
@@ -36,14 +37,17 @@ def test_retention_compresses_and_expires_all_configured_raw_partitions(tmp_path
     )
 
     for old, compress, recent in partitions.values():
-        assert old.exists() is False
-        assert (compress / "events.jsonl").exists() is False
-        assert (compress / "events.jsonl.gz").exists() is True
+        assert (old / "events.jsonl").read_bytes() == b'{"x":1}\n'
+        assert (compress / "events.jsonl").read_bytes() == b'{"x":1}\n'
+        assert (compress / "events.jsonl.gz").exists() is False
         assert (recent / "events.jsonl").exists() is True
     assert (protected / "events.jsonl").read_text(encoding="utf-8") == '{"critical":true}\n'
     assert aggregate.read_bytes() == b"aggregate"
     assert result["aggregate_data_retained"] is True
     assert result["raw_retention_sources"] == list(retention.RAW_RETENTION_SOURCES)
+    assert len(result["deferred_raw_partitions"]) == 6
+    assert result["compressed"] == result["deleted"] == []
+    assert result["raw_retention_state"] == "deferred_unproven_writer_exclusion"
 
 
 def test_signal_snapshot_retention_root_rejects_path_escape(tmp_path) -> None:
@@ -52,6 +56,49 @@ def test_signal_snapshot_retention_root_rejects_path_escape(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="escapes configured raw root"):
         retention._assert_within(tmp_path / "raw" / "outside", root)
+
+
+def test_retention_preserves_matching_gzip_without_writer_exclusion(tmp_path) -> None:
+    partition = tmp_path / "raw" / "polymarket_clob_websocket" / "2026-08-20"
+    partition.mkdir(parents=True)
+    jsonl = partition / "events.jsonl"
+    archive = partition / "events.jsonl.gz"
+    payload = b'{"complete_book":true}\n'
+    jsonl.write_bytes(payload)
+    with gzip.open(archive, "wb") as handle:
+        handle.write(payload)
+
+    result = apply_market_retention(
+        tmp_path,
+        config=RetentionConfig(raw_retention_days=30, compress_after_days=2),
+        now=datetime(2026, 8, 24, tzinfo=UTC),
+    )
+
+    assert jsonl.read_bytes() == payload
+    assert archive.exists() is True
+    assert result["reconciled_existing_archives"] == []
+    assert result["unresolved_duplicate_archives"] == [str(jsonl)]
+
+
+def test_retention_preserves_a_mismatched_existing_gzip_archive(tmp_path) -> None:
+    partition = tmp_path / "raw" / "polymarket_clob_websocket" / "2026-08-20"
+    partition.mkdir(parents=True)
+    jsonl = partition / "events.jsonl"
+    archive = partition / "events.jsonl.gz"
+    jsonl.write_bytes(b'{"complete_book":true}\n')
+    with gzip.open(archive, "wb") as handle:
+        handle.write(b'{"complete_book":false}\n')
+
+    result = apply_market_retention(
+        tmp_path,
+        config=RetentionConfig(raw_retention_days=30, compress_after_days=2),
+        now=datetime(2026, 8, 24, tzinfo=UTC),
+    )
+
+    assert jsonl.exists() is True
+    assert archive.exists() is True
+    assert result["reconciled_existing_archives"] == []
+    assert result["unresolved_duplicate_archives"] == [str(jsonl)]
 
 
 def test_disk_capacity_reports_logical_and_physical_rates(tmp_path) -> None:

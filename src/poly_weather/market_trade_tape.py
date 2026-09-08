@@ -12,7 +12,7 @@ import json
 import re
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -25,6 +25,7 @@ from poly_weather.polymarket_status import (
     market_record_is_analysis_eligible,
 )
 from poly_weather.shadow_orders import ShadowSide, TradeEvent
+from poly_weather.trade_evidence import parse_trade_timestamp
 
 WS_SIDE_SEMANTICS = (
     "Market WS last_trade_price.side is the documented BUY/SELL trade side; "
@@ -42,21 +43,7 @@ def _utc(value: datetime | str) -> datetime:
 
 
 def _timestamp(value: Any) -> datetime | None:
-    if value is None:
-        return None
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        try:
-            return _utc(str(value))
-        except (TypeError, ValueError):
-            return None
-    if number > 10**11:
-        number /= 1000
-    try:
-        return datetime.fromtimestamp(number, tz=UTC)
-    except (OverflowError, OSError, ValueError):
-        return None
+    return parse_trade_timestamp(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +61,8 @@ class MarketWsTrade:
     run_id: str | None
     upstream_status: str
     source: str = "market_ws"
+    source_timestamp_text: str | None = None
+    receipt_timestamp_text: str | None = None
 
     @property
     def event_id(self) -> str:
@@ -117,6 +106,8 @@ class MarketWsTrade:
             event_id=self.event_id,
             source=self.source,
             sequence=self.sequence,
+            source_timestamp_text=self.source_timestamp_text,
+            receipt_timestamp_text=self.receipt_timestamp_text,
         )
 
 
@@ -171,12 +162,12 @@ def parse_market_ws_trade(
         size = Decimal(str(raw.get("size") if raw.get("size") is not None else row.get("size")))
     except (ArithmeticError, TypeError, ValueError) as exc:
         raise ValueError("missing or invalid trade price/size") from exc
-    if not ZERO < price <= ONE or size <= ZERO:
+    if not price.is_finite() or not size.is_finite() or not ZERO < price <= ONE or size <= ZERO:
         raise ValueError("trade price and size must be positive")
     source_timestamp = _timestamp(raw.get("timestamp") or row.get("source_timestamp_ms"))
     received_value = row.get("received_at") or row.get("received_at_ns")
     received_at = (
-        _timestamp(received_value / 1_000_000_000)
+        _timestamp(Decimal(str(received_value)) / Decimal(1_000_000_000))
         if isinstance(received_value, (int, float)) and received_value > 10**14
         else _timestamp(received_value)
     )
@@ -203,6 +194,8 @@ def parse_market_ws_trade(
         sequence=int(row["sequence"]) if row.get("sequence") is not None else None,
         run_id=str(row.get("run_id")) if row.get("run_id") else None,
         upstream_status=str(row.get("upstream_status") or "normal"),
+        source_timestamp_text=str(raw.get("timestamp") or row.get("source_timestamp_ms")),
+        receipt_timestamp_text=str(received_value),
     )
 
 
@@ -328,6 +321,9 @@ def load_market_ws_trades(
                         parsed.price,
                         parsed.size,
                         parsed.side,
+                        parsed.run_id,
+                        parsed.sequence,
+                        parsed.received_at,
                     )
                     if parsed.transaction_hash
                     else (
@@ -371,23 +367,20 @@ def merge_trade_sources(
     order is unknowable.
     """
     output: list[dict[str, Any]] = []
-    ws_identities = {
-        (row.transaction_hash, row.asset_id)
-        for row in ws_trades
-        if row.transaction_hash
-    }
-    ws_composites = {
-        (row.asset_id, row.source_timestamp, row.price, row.size, row.side)
-        for row in ws_trades
-        if row.transaction_hash is None
-    }
-    for row in sorted(ws_trades, key=lambda item: (item.source_timestamp, item.sequence or 0)):
-        output.append({"source": "market_ws", "trade": row, "side_validated": False})
+    validation = validate_ws_side_semantics(ws_trades, public_trades)
+    ws_hashes = {row.transaction_hash for row in ws_trades if row.transaction_hash}
+    for row, result in zip(ws_trades, validation["matches"], strict=True):
+        if result["allowed"]:
+            output.append({"source": "market_ws", "trade": row, "side_validated": True,
+                           "validated_at": result["validated_at"]})
     for row in sorted(public_trades, key=lambda item: (item.timestamp, item.transaction_hash)):
-        if row.transaction_hash and (row.transaction_hash, row.asset_id) in ws_identities:
+        if row.transaction_hash in ws_hashes:
             continue
-        composite = (row.asset_id, row.timestamp, row.price, row.size, ShadowSide(row.side.upper()))
-        if composite in ws_composites:
+        if row.available_at is None or row.available_at < row.timestamp:
+            continue
+        if (not row.price.is_finite() or not row.size.is_finite()
+                or not ZERO < row.price <= ONE or row.size <= ZERO
+                or row.side.upper() not in {"BUY", "SELL"}):
             continue
         output.append({"source": "data_api", "trade": row, "side_validated": True})
     output.sort(
@@ -401,9 +394,57 @@ def merge_trade_sources(
     return tuple(output)
 
 
+def match_ws_trade(
+    trade: MarketWsTrade, public_trades: Sequence[PublicTrade], *,
+    quality_windows: Sequence[UpstreamQualityWindow] = (),
+) -> dict[str, Any]:
+    """One receipt-safe complete match, never a hash-to-last-row dictionary.
+
+    Transaction-wide conflicts are deliberately quarantined: the current wire
+    models have no verified per-fill ID with which to disambiguate siblings.
+    """
+    candidates = [row for row in public_trades
+                  if trade.transaction_hash and row.transaction_hash == trade.transaction_hash]
+    base: dict[str, Any] = {"event_id": trade.event_id, "allowed": False,
+                            "validated_at": None, "candidate_count": len(candidates)}
+    if not candidates:
+        return {**base, "reason": "UNKNOWN_NO_PUBLIC_MATCH"}
+    if len(candidates) != 1:
+        return {**base, "reason": "UNKNOWN_AMBIGUOUS_PUBLIC_SIBLINGS"}
+    row = candidates[0]
+    if any(not value.is_finite() for value in (trade.price, trade.size, row.price, row.size)):
+        return {**base, "reason": "UNKNOWN_INVALID_DECIMAL"}
+    if not (ZERO < row.price <= ONE and row.size > ZERO):
+        return {**base, "reason": "UNKNOWN_INVALID_DECIMAL"}
+    checks = (
+        (trade.asset_id == row.asset_id, "TOKEN"),
+        (trade.side.value == row.side.upper(), "SIDE"),
+        (trade.price == row.price, "PRICE"),
+        (trade.size == row.size, "QUANTITY"),
+        (trade.source_timestamp == row.timestamp, "TIMESTAMP_OR_PRECISION"),
+        (not row.condition_id or not trade.market_id or row.condition_id == trade.market_id, "MARKET"),
+    )
+    for valid, field in checks:
+        if not valid:
+            return {**base, "reason": f"UNKNOWN_{field}_CONFLICT"}
+    if (row.available_at is None or row.available_at.tzinfo is None
+            or trade.received_at.tzinfo is None
+            or row.timestamp.tzinfo is None
+            or row.available_at < row.timestamp
+            or trade.received_at < trade.source_timestamp):
+        return {**base, "reason": "UNKNOWN_RECEIPT_QUALITY"}
+    if any(not market_record_is_analysis_eligible(
+        {"upstream_status": trade.upstream_status}, point, tuple(quality_windows)
+    ) for point in (trade.source_timestamp, trade.received_at, row.timestamp, row.available_at)):
+        return {**base, "reason": "UNKNOWN_QUALITY_WINDOW"}
+    return {**base, "allowed": True, "reason": "MATCHED_COMPLETE",
+            "validated_at": max(trade.received_at, row.available_at).astimezone(UTC).isoformat()}
+
+
 def validate_ws_side_semantics(
     ws_trades: Sequence[MarketWsTrade],
     public_trades: Sequence[PublicTrade],
+    *, quality_windows: Sequence[UpstreamQualityWindow] = (),
 ) -> dict[str, Any]:
     """Cross-check wire ``side`` against canonical taker-only Data API rows.
 
@@ -412,23 +453,17 @@ def validate_ws_side_semantics(
     matches can establish the aggressor interpretation; missing matches are
     reported as unknown rather than treated as proof.
     """
-    by_identity = {
-        (trade.transaction_hash, trade.asset_id): trade
-        for trade in public_trades
-        if trade.transaction_hash
-    }
-    matched = 0
-    matching = 0
-    mismatched: list[str] = []
-    for trade in ws_trades:
-        identity = (trade.transaction_hash, trade.asset_id)
-        if not trade.transaction_hash or identity not in by_identity:
-            continue
-        matched += 1
-        if trade.side.value == by_identity[identity].side.upper():
-            matching += 1
-        else:
-            mismatched.append(trade.event_id)
+    results = [match_ws_trade(trade, public_trades, quality_windows=quality_windows) for trade in ws_trades]
+    # Repeated wire observations with different sequence/receipt are not proof
+    # of independent fills. Preserve and reject ambiguity instead of overwriting.
+    counts = Counter(row.transaction_hash for row in ws_trades if row.transaction_hash)
+    for trade, result in zip(ws_trades, results, strict=True):
+        if counts[trade.transaction_hash] > 1:
+            result.update(allowed=False, reason="UNKNOWN_AMBIGUOUS_WS_SIBLINGS", validated_at=None)
+    matched = sum(result["candidate_count"] > 0 for result in results)
+    matching = sum(result["allowed"] for result in results)
+    mismatched = [result["event_id"] for result in results
+                  if result["candidate_count"] and not result["allowed"]]
     status = (
         "validated"
         if matched > 0 and not mismatched
@@ -445,44 +480,50 @@ def validate_ws_side_semantics(
         "matching_side_count": matching,
         "mismatched_side_count": len(mismatched),
         "mismatched_transaction_hashes": mismatched,
-        "queue_use_allowed": status == "validated",
+        # Summary only. Consumers must use the per-observation result.
+        "queue_use_allowed": bool(matching),
+        "matches": results,
+        "conflict_count": len(mismatched),
+        "pending_count": len(results) - matching,
+        "raw_observation_count": len(ws_trades) + len(public_trades),
+        "ambiguous_sibling_observations": sum("SIBLINGS" in result["reason"] for result in results),
+        "validated_ws_observations": matching,
     }
 
 
 def build_shadow_trade_events(
     ws_trades: Sequence[MarketWsTrade],
     public_trades: Sequence[PublicTrade],
+    *, quality_windows: Sequence[UpstreamQualityWindow] = (),
 ) -> tuple[tuple[TradeEvent, ...], dict[str, Any]]:
     """Build queue inputs with WS preference and a fail-closed side gate."""
-    validation = validate_ws_side_semantics(ws_trades, public_trades)
-    ws_allowed = bool(validation["queue_use_allowed"])
+    validation = validate_ws_side_semantics(ws_trades, public_trades, quality_windows=quality_windows)
     canonical_identities = {
         (trade.transaction_hash, trade.asset_id)
         for trade in public_trades
         if trade.transaction_hash
     }
     events: list[TradeEvent] = []
-    for row in ws_trades:
+    for row, result in zip(ws_trades, validation["matches"], strict=True):
         # A documented side is not enough to infer queue aggressor semantics
         # for an unmatched archive row.  Require a canonical taker row with
         # the same transaction hash and token; unmatched WS rows are reported
         # but fail closed and the API row remains available as a supplement.
         event = row.to_trade_event(
-            validated_aggressor_side=ws_allowed
-            and row.transaction_hash is not None
-            and (row.transaction_hash, row.asset_id) in canonical_identities
+            validated_aggressor_side=result["allowed"]
         )
         if event is not None:
-            events.append(event)
-    accepted_ws_identities = {
-        (row.transaction_hash, row.asset_id)
-        for row in ws_trades
-        if row.transaction_hash
-        and (row.transaction_hash, row.asset_id) in canonical_identities
-        and ws_allowed
-    }
+            events.append(replace(event, available_at=_utc(result["validated_at"])))
+    # A disputed transaction cannot bypass validation through API supplementation.
+    observed_ws_hashes = {row.transaction_hash for row in ws_trades if row.transaction_hash}
     for row in public_trades:
-        if row.transaction_hash and (row.transaction_hash, row.asset_id) in accepted_ws_identities:
+        if row.transaction_hash in observed_ws_hashes:
+            continue
+        if row.available_at is None or row.available_at < row.timestamp:
+            continue
+        if any(not market_record_is_analysis_eligible(
+            {"upstream_status": "normal"}, point, tuple(quality_windows)
+        ) for point in (row.timestamp, row.available_at)):
             continue
         try:
             events.append(
@@ -495,6 +536,8 @@ def build_shadow_trade_events(
                     event_id=row.transaction_hash or None,
                     source="data_api",
                     available_at=row.available_at,
+                    source_timestamp_text=row.source_timestamp_text,
+                    receipt_timestamp_text=row.receipt_timestamp_text,
                 )
             )
         except (TypeError, ValueError):

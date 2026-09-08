@@ -229,6 +229,35 @@ def quality_window_at(
     return max(matches, key=lambda item: item.start_at, default=None)
 
 
+def excluded_market_data_window_overlaps(
+    windows: tuple[UpstreamQualityWindow, ...] | list[UpstreamQualityWindow],
+    *,
+    start_at: datetime,
+    end_at: datetime,
+) -> UpstreamQualityWindow | None:
+    """Return an excluded incident overlapping an inclusive decision interval.
+
+    A risk-exit quote is unsafe if an excluded market-data incident begins after
+    the quote but before the decision, even though a point lookup at the quote
+    itself would appear clean.  ``end_at`` may equal ``start_at``; open-ended
+    incidents continue through every later decision time.
+    """
+
+    start = start_at.astimezone(UTC)
+    end = end_at.astimezone(UTC)
+    if end < start:
+        raise ValueError("quality overlap interval is reversed")
+    matches = [
+        window
+        for window in windows
+        if window.default_excluded
+        and window.affects_market_data
+        and window.start_at <= end
+        and (window.end_at is None or window.end_at >= start)
+    ]
+    return max(matches, key=lambda item: item.start_at, default=None)
+
+
 def market_record_is_analysis_eligible(
     record: dict[str, Any],
     timestamp: datetime,

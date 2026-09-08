@@ -82,6 +82,7 @@ def test_cross_source_validation_and_ws_preference() -> None:
         price=Decimal("0.70"),
         timestamp=datetime.fromtimestamp(1787820000, tz=UTC),
         transaction_hash="tx-1",
+        available_at=ws.received_at,
     )
     validation = validate_ws_side_semantics([ws], [api])
     assert validation["status"] == "validated"
@@ -140,6 +141,7 @@ def test_unmatched_ws_rows_fail_closed_but_api_supplement_remains() -> None:
         price=Decimal("0.70"),
         timestamp=datetime.fromtimestamp(1787820000, tz=UTC),
         transaction_hash="tx-2",
+        available_at=matched_ws.received_at,
     )
     matched_api = PublicTrade(
         proxy_wallet="wallet",
@@ -153,6 +155,7 @@ def test_unmatched_ws_rows_fail_closed_but_api_supplement_remains() -> None:
         price=Decimal("0.70"),
         timestamp=datetime.fromtimestamp(1787820000, tz=UTC),
         transaction_hash="tx-1",
+        available_at=matched_ws.received_at,
     )
     events, validation = build_shadow_trade_events(
         [matched_ws, unmatched_ws], [matched_api, api]

@@ -7,7 +7,7 @@ name = "poly-weather"
 version = "0.1.0"
 description = "Fail-closed research pipeline for Polymarket weather markets"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.15"
 dependencies = [
   "duckdb>=1.4,<2",
   "httpx>=0.28,<1",
@@ -24,6 +24,9 @@ dev = [
   "pytest-cov>=6.2,<7",
   "ruff>=0.12,<1",
 ]
+nautilus-eval = [
+  "nautilus-trader==2.0.0rc4",
+]
 
 [project.scripts]
 poly-weather = "poly_weather.cli:app"
@@ -35,6 +38,9 @@ where = ["src"]
 addopts = "-ra"
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+  "nautilus_eval: isolated optional NautilusTrader conformance checks",
+]
 
 [tool.ruff]
 line-length = 100

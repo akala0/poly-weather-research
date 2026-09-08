@@ -63,6 +63,7 @@ from poly_weather.shadow_spread_replay import (
     paired_row_to_book_snapshot,
     replay_shadow_spread,
 )
+from poly_weather.trade_evidence import parse_trade_timestamp
 from poly_weather.trade_tape_analysis import load_event_trade_tapes
 from poly_weather.weather_market_join import (
     align_weather_to_snapshots,
@@ -103,6 +104,11 @@ class ShadowCursor:
     restart_count: int = 0
     pair_latest: dict[str, dict[str, Any]] = field(default_factory=dict)
     pair_last_emitted: dict[str, str] = field(default_factory=dict)
+    # Reserved for isolated followers which need to commit a small amount of
+    # non-position source state with the same atomic cursor frontier.  The
+    # v2 shadow follower leaves this empty, so its persisted schema is not
+    # widened on ordinary saves.
+    paper_state: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def load(cls, path: Path | str) -> ShadowCursor:
@@ -147,6 +153,11 @@ class ShadowCursor:
             for key, value in (payload.get("pair_last_emitted") or {}).items()
             if value
         }
+        paper_state = (
+            dict(payload.get("paper_state") or {})
+            if isinstance(payload.get("paper_state"), Mapping)
+            else {}
+        )
         return cls(
             destination,
             sources,
@@ -154,6 +165,7 @@ class ShadowCursor:
             restart_count,
             pair_latest,
             pair_last_emitted,
+            paper_state,
         )
 
     def position(self, path: Path) -> dict[str, int | bool]:
@@ -196,6 +208,8 @@ class ShadowCursor:
             "pair_last_emitted": self.pair_last_emitted,
             "execution_enabled": False,
         }
+        if self.paper_state:
+            payload["paper_state"] = self.paper_state
         atomic_json_write(self.path, payload)
 
 
@@ -1256,33 +1270,26 @@ def run_shadow_spread_continuous(
             # canonical taker row establishes side semantics.  A local stream
             # without that match is retained in coverage but fail-closed here.
             cycle_trade_events: list[TradeEvent] = []
+            parsed_trade_batch = []
             for row in ws_rows:
                 try:
                     parsed = parse_market_ws_trade(row)
                 except (TypeError, ValueError):
                     continue
-                matching = [
-                    trade
-                    for trade in all_public_trades
-                    if trade.transaction_hash
-                    and trade.transaction_hash == parsed.transaction_hash
-                ]
-                if not matching:
-                    unmatched_ws_trade_count += 1
-                    continue
-                matched_trade_assets.add(parsed.asset_id)
-                events, validation = build_shadow_trade_events([parsed], matching)
-                if validation["queue_use_allowed"]:
-                    cycle_trade_events.extend(events)
-                    if parsed.transaction_hash:
-                        accepted_ws_trade_identities.add(
-                            (parsed.transaction_hash, parsed.asset_id)
-                        )
+                parsed_trade_batch.append(parsed)
+                # A rejected WS transaction must not re-enter through the API
+                # supplement below. This does not migrate any v2 ledger keys.
+                if parsed.transaction_hash:
+                    accepted_ws_trade_identities.add((parsed.transaction_hash, parsed.asset_id))
+            events, validation = build_shadow_trade_events(parsed_trade_batch, all_public_trades)
+            cycle_trade_events.extend(event for event in events if event.source == "market_ws")
+            unmatched_ws_trade_count += validation["pending_count"]
+            matched_trade_assets.update(event.asset_id for event in cycle_trade_events)
             # Data API is a supplementary receipt-gated source.  A matching WS
             # hash has already been preferred above; the ledger's trade event
             # key keeps incremental file rewrites idempotent.
             for event in api_trade_events:
-                if event.event_id and (event.event_id, event.asset_id) in accepted_ws_trade_identities:
+                if event.event_id and any(event.event_id == key[0] for key in accepted_ws_trade_identities):
                     continue
                 cycle_trade_events.append(event)
             processor.process_trades(cycle_trade_events)
@@ -1403,31 +1410,16 @@ def _public_trade_events_from_file(
         return ()
     if not isinstance(payload, Mapping) or not payload.get("event_slug"):
         return ()
-    fetched_at: datetime | None = None
-    if payload.get("fetched_at"):
-        try:
-            fetched_at = datetime.fromisoformat(str(payload["fetched_at"]).replace("Z", "+00:00"))
-            if fetched_at.tzinfo is None:
-                fetched_at = fetched_at.replace(tzinfo=UTC)
-            fetched_at = fetched_at.astimezone(UTC)
-        except (TypeError, ValueError):
-            fetched_at = None
+    fetched_at = parse_trade_timestamp(payload.get("fetched_at"))
     events: list[TradeEvent] = []
     for row in payload.get("trades") or ():
         if not isinstance(row, Mapping):
             continue
         try:
             timestamp_value = row.get("timestamp")
-            if isinstance(timestamp_value, (int, float)):
-                epoch = float(timestamp_value)
-                if epoch > 10**11:
-                    epoch /= 1000
-                timestamp = datetime.fromtimestamp(epoch, tz=UTC)
-            else:
-                timestamp = datetime.fromisoformat(str(timestamp_value).replace("Z", "+00:00"))
-                if timestamp.tzinfo is None:
-                    timestamp = timestamp.replace(tzinfo=UTC)
-                timestamp = timestamp.astimezone(UTC)
+            timestamp = parse_trade_timestamp(timestamp_value)
+            if timestamp is None:
+                continue
             if not market_record_is_analysis_eligible(
                 {"upstream_status": "normal"}, timestamp, tuple(quality_windows)
             ):
@@ -1439,16 +1431,30 @@ def _public_trade_events_from_file(
                 # A refreshed API row without a stable identity cannot be
                 # replayed idempotently; keep it out of the queue model.
                 continue
+            available_value = row.get("available_at") or fetched_at
+            available_at = parse_trade_timestamp(available_value)
+            # A receipt which predates the exchange event is not a coherent
+            # forward-evidence record.  Do not repair it with a file mtime or
+            # a synthetic current timestamp.
+            if available_at is not None and available_at < timestamp:
+                continue
             events.append(
                 TradeEvent(
                     timestamp=timestamp,
-                    available_at=fetched_at,
+                    available_at=available_at,
                     asset_id=str(row.get("asset_id") or row.get("asset") or ""),
                     side=str(row.get("side") or ""),
                     price=Decimal(str(row.get("price"))),
                     size=Decimal(str(row.get("size"))),
                     event_id=transaction_hash,
                     source="data_api",
+                    source_timestamp_text=str(row.get("source_timestamp_text") or timestamp_value),
+                    receipt_timestamp_text=str(row.get("available_at") or payload.get("fetched_at") or "") or None,
+                    sequence=(
+                        int(row["sequence"])
+                        if row.get("sequence") is not None
+                        else None
+                    ),
                 )
             )
         except (ArithmeticError, TypeError, ValueError, KeyError):

@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "version": "paper-spread-v1-account-200",
+  "execution_enabled": false,
+  "initial_cash_usd": "200",
+  "trigger_strategy": "weather_market_lag_in_band",
+  "quote_mode": "best_bid",
+  "fill_model": "queue_aware",
+  "entry_bands": {
+    "KLAX": [["0.70", "0.85"]],
+    "KLGA": [["0.50", "0.70"]]
+  },
+  "tranche_plan": [
+    {"usd": "20", "gate": "initial"},
+    {"usd": "30", "gate": "new_weather_confirmation"},
+    {"usd": "50", "gate": "conditional_dip"},
+    {"usd": "100", "gate": "second_new_weather_confirmation"}
+  ],
+  "exit_plan": [
+    {"rise": "0.05", "fraction_of_initial_shares": "0.25"},
+    {"rise": "0.10", "fraction_of_initial_shares": "0.25"},
+    {"rise": "0.13", "fraction_of_initial_shares": "0.25"},
+    {"rise": "0.20", "fraction_of_initial_shares": "0.25"}
+  ],
+  "order_timeout_seconds": 900,
+  "max_hold_seconds": 7200,
+  "risk_exit_snapshot_age_seconds": 300,
+  "station_day_budget_mode": "cumulative_buy_cost"
+}

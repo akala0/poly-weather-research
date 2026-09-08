@@ -17,6 +17,7 @@ from poly_weather.adapters.polymarket_data import PublicTrade
 from poly_weather.intraday_reversal import TemperatureObservation
 from poly_weather.no_forward import wilson_interval
 from poly_weather.signal_engine import physical_bucket_state
+from poly_weather.trade_evidence import parse_trade_timestamp
 
 
 def _percentile(values: Sequence[float], probability: float) -> float | None:
@@ -69,15 +70,8 @@ def load_event_trade_tapes(
         event_slug = str(payload["event_slug"])
         if selected_slugs is not None and event_slug not in selected_slugs:
             continue
-        fetched_at: datetime | None = None
-        if payload.get("fetched_at"):
-            try:
-                fetched_at = datetime.fromisoformat(
-                    str(payload["fetched_at"]).replace("Z", "+00:00")
-                ).astimezone(UTC)
-            except (TypeError, ValueError):
-                fetched_at = None
-        output[event_slug] = [
+        fetched_at = parse_trade_timestamp(payload.get("fetched_at"))
+        output.setdefault(event_slug, []).extend([
             PublicTrade(
                 proxy_wallet=str(row.get("proxy_wallet") or ""),
                 asset_id=str(row["asset_id"]),
@@ -88,17 +82,19 @@ def load_event_trade_tapes(
                 side=str(row["side"]),
                 size=Decimal(str(row["size"])),
                 price=Decimal(str(row["price"])),
-                timestamp=datetime.fromisoformat(str(row["timestamp"])).astimezone(UTC),
+                timestamp=parse_trade_timestamp(row["timestamp"]),
                 transaction_hash=str(row["transaction_hash"]),
+                source_timestamp_text=str(row.get("source_timestamp_text") or row["timestamp"]),
+                receipt_timestamp_text=str(row.get("available_at") or payload.get("fetched_at") or "") or None,
                 available_at=(
-                    datetime.fromisoformat(str(row["available_at"])).astimezone(UTC)
+                    parse_trade_timestamp(row["available_at"])
                     if row.get("available_at")
                     else fetched_at
                 ),
             )
             for row in payload.get("trades") or ()
             if _trade_row_in_window(row, start_at=start_time, end_at=end_time)
-        ]
+        ])
     return output
 
 
@@ -115,13 +111,11 @@ def _trade_row_in_window(
     start_at: datetime | None,
     end_at: datetime | None,
 ) -> bool:
-    if start_at is None and end_at is None:
-        return True
     try:
-        timestamp = _utc_datetime(str(row["timestamp"]))
+        timestamp = parse_trade_timestamp(row["timestamp"])
     except (KeyError, TypeError, ValueError):
         return False
-    return (start_at is None or timestamp >= start_at) and (end_at is None or timestamp <= end_at)
+    return timestamp is not None and (start_at is None or timestamp >= start_at) and (end_at is None or timestamp <= end_at)
 
 
 def physical_elimination_times(

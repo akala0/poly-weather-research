@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import os
 import shutil
+import zlib
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -78,6 +80,40 @@ def directory_storage_bytes(path: Path) -> tuple[int, int]:
     return logical, physical
 
 
+def _stream_digest(handle: Any) -> tuple[int, bytes]:
+    """Return the byte count and SHA-256 digest without materializing a raw archive."""
+    digest = hashlib.sha256()
+    byte_count = 0
+    while chunk := handle.read(1024 * 1024):
+        byte_count += len(chunk)
+        digest.update(chunk)
+    return byte_count, digest.digest()
+
+
+def _existing_gzip_matches_jsonl(jsonl: Path, archive: Path) -> bool:
+    """Fail closed unless an existing gzip is an exact, stable copy of ``jsonl``.
+
+    A prior interrupted retention pass can leave both names behind.  Do not
+    assume that the gzip is usable merely because it exists: compare the
+    uncompressed content, and reject a source that changed during validation.
+    """
+    try:
+        before = jsonl.stat()
+        with jsonl.open("rb") as source_handle:
+            source_size, source_digest = _stream_digest(source_handle)
+        with gzip.open(archive, "rb") as archive_handle:
+            archive_size, archive_digest = _stream_digest(archive_handle)
+        after = jsonl.stat()
+    except (EOFError, OSError, zlib.error):
+        return False
+    return (
+        before.st_size == source_size == after.st_size
+        and before.st_mtime_ns == after.st_mtime_ns
+        and source_size == archive_size
+        and source_digest == archive_digest
+    )
+
+
 def apply_market_retention(
     data_dir: Path,
     *,
@@ -85,16 +121,24 @@ def apply_market_retention(
     now: datetime | None = None,
     maintain_signal_database_online: bool = True,
 ) -> dict[str, Any]:
-    """Compress/expire raw streams without touching protected aggregates.
+    """Defer raw mutations until the writers provide exclusive sealing proof.
 
     A resident signal writer owns its DuckDB connection.  Supervisors should
     pass ``maintain_signal_database_online=False`` so a periodic retention
     pass cannot race that writer with CHECKPOINT/VACUUM.
+
+    Age and matching gzip contents cannot prove that no append occurs after
+    verification. No current raw producer implements a shared seal protocol.
+    Keep both representations unchanged; never advertise this as successful
+    retention. This containment deliberately does not create new duplicates.
     """
     config = config or RetentionConfig()
     current_date = (now or datetime.now(UTC)).astimezone(UTC).date()
     compressed: list[str] = []
     deleted: list[str] = []
+    reconciled_existing_archives: list[str] = []
+    unresolved_duplicate_archives: list[str] = []
+    deferred_raw_partitions: list[dict[str, str]] = []
     for source in RAW_RETENTION_SOURCES:
         root = data_dir / "raw" / source
         if not root.exists():
@@ -105,30 +149,21 @@ def apply_market_retention(
                 continue
             _assert_within(partition, root)
             age_days = (current_date - partition_date).days
-            if age_days > config.raw_retention_days:
-                for child in partition.iterdir():
-                    _assert_within(child, root)
-                    if child.is_file():
-                        child.unlink()
-                partition.rmdir()
-                deleted.append(str(partition))
-                continue
             if age_days < config.compress_after_days:
                 continue
+            deferred_raw_partitions.append({
+                "path": str(partition),
+                "operation": "expire" if age_days > config.raw_retention_days else "compress",
+                "reason": "unproven_seal_and_writer_exclusion",
+            })
             for jsonl in partition.glob("*.jsonl"):
                 _assert_within(jsonl, root)
                 target = jsonl.with_suffix(jsonl.suffix + ".gz")
                 _assert_within(target, root)
                 if target.exists():
-                    continue
-                temporary = target.with_suffix(target.suffix + ".tmp")
-                with jsonl.open("rb") as source_handle, gzip.open(
-                    temporary, "wb", compresslevel=6
-                ) as target_handle:
-                    shutil.copyfileobj(source_handle, target_handle, length=1024 * 1024)
-                temporary.replace(target)
-                jsonl.unlink()
-                compressed.append(str(target))
+                    # Even an equal pair is unresolved for deletion without
+                    # exclusion; avoid a misleading snapshot-equality claim.
+                    unresolved_duplicate_archives.append(str(jsonl))
     signal_database = (
         maintain_signal_database(
             data_dir / "signal_stream.duckdb",
@@ -146,6 +181,10 @@ def apply_market_retention(
         "config": asdict(config),
         "compressed": compressed,
         "deleted": deleted,
+        "reconciled_existing_archives": reconciled_existing_archives,
+        "unresolved_duplicate_archives": unresolved_duplicate_archives,
+        "raw_retention_state": "deferred_unproven_writer_exclusion",
+        "deferred_raw_partitions": deferred_raw_partitions,
         "aggregate_data_retained": True,
         "raw_retention_sources": list(RAW_RETENTION_SOURCES),
         "t7_evidence_tree_retained": str(

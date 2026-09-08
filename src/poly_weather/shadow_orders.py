@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, Self
 
 from poly_weather.fees import LiquidityRole, trading_fee_usdc
+from poly_weather.trade_evidence import parse_trade_timestamp
 
 ZERO = Decimal("0")
 ONE = Decimal("1")
@@ -397,6 +398,13 @@ class TradeEvent:
     # Receipt/availability time is distinct from the exchange event timestamp.
     # Replays must never consume a trade before its local archive receipt.
     available_at: datetime | None = None
+    # Paper supplies a versioned, validated identity. Legacy v2 keeps its key.
+    consumption_key: str | None = None
+    # Separate an existing row ID (event_id/from_mapping.id) from its transaction.
+    # Wire sources without a per-fill ID leave event_id equal to the hash.
+    transaction_hash: str | None = None
+    source_timestamp_text: str | None = None
+    receipt_timestamp_text: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "timestamp", _utc(self.timestamp))
@@ -405,20 +413,22 @@ class TradeEvent:
         object.__setattr__(self, "side", ShadowSide(str(self.side).upper()))
         object.__setattr__(self, "price", _decimal(self.price))
         object.__setattr__(self, "size", _decimal(self.size))
-        if not ZERO < self.price <= ONE:
+        if not self.price.is_finite() or not ZERO < self.price <= ONE:
             raise ValueError("trade price must be in (0, 1]")
-        if self.size <= ZERO:
+        if not self.size.is_finite() or self.size <= ZERO:
             raise ValueError("trade size must be positive")
 
     @classmethod
     def from_mapping(cls, row: Mapping[str, Any]) -> Self:
         raw_timestamp = row.get("timestamp") or row.get("timestamp_ms")
-        if isinstance(raw_timestamp, (int, float)):
-            raw_timestamp = datetime.fromtimestamp(
-                float(raw_timestamp) / (1000 if float(raw_timestamp) > 10**11 else 1), tz=UTC
-            )
+        timestamp = parse_trade_timestamp(raw_timestamp)
+        if timestamp is None:
+            raise ValueError("invalid or imprecise trade timestamp")
+        available_at = parse_trade_timestamp(row.get("available_at"))
+        if row.get("available_at") is not None and available_at is None:
+            raise ValueError("invalid or imprecise trade receipt")
         return cls(
-            timestamp=_utc(raw_timestamp),
+            timestamp=timestamp,
             asset_id=str(row.get("asset") or row.get("asset_id") or ""),
             side=str(row.get("side") or ""),
             price=_decimal(row.get("price")),
@@ -426,10 +436,31 @@ class TradeEvent:
             event_id=str(row["id"]) if row.get("id") is not None else None,
             source=str(row.get("source") or "data_api"),
             sequence=int(row["sequence"]) if row.get("sequence") is not None else None,
-            available_at=(
-                _utc(str(row["available_at"])) if row.get("available_at") is not None else None
-            ),
+            available_at=available_at,
+            transaction_hash=(str(row["transaction_hash"]) if row.get("transaction_hash") else None),
+            source_timestamp_text=str(row.get("timestamp") or row.get("timestamp_ms")),
+            receipt_timestamp_text=str(row["available_at"]) if row.get("available_at") else None,
         )
+
+
+def canonical_trade_event_key(trade: TradeEvent) -> str | None:
+    """Return the one durable queue-consumption identity for a public trade.
+
+    A transaction may legitimately contain more than one fill, so neither a
+    transaction hash nor a process-local fill UUID is sufficient.  The price,
+    size, and explicit ``None``/zero-preserving sequence component make the
+    identity stable across a restart and distinguish valid sibling rows.
+    """
+
+    if trade.consumption_key is not None:
+        return trade.consumption_key
+    if not trade.event_id:
+        return None
+    sequence = "none" if trade.sequence is None else str(trade.sequence)
+    return (
+        f"trade:{trade.event_id}:{trade.asset_id}:{trade.timestamp.isoformat()}:"
+        f"{trade.price}:{trade.size}:{sequence}"
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1347,6 +1378,7 @@ class ShadowOrderEngine:
         source: str,
         trade_id: str | None = None,
         asset_id: str | None = None,
+        persistence_event_key: str | None = None,
     ) -> ShadowFill | None:
         self._assert_order_scope(order)
         if asset_id is not None and asset_id != order.token_id:
@@ -1429,7 +1461,10 @@ class ShadowOrderEngine:
                 if self._open_round_trip:
                     self.round_trip_count += 1
                     self._open_round_trip = False
-        self._store(order, event_key=f"fill:{order.order_id}:{fill_id}")
+        self._store(
+            order,
+            event_key=persistence_event_key or f"fill:{order.order_id}:{fill_id}",
+        )
         return fill
 
     def submit_maker_exit(
@@ -1584,16 +1619,10 @@ class ShadowOrderEngine:
                     "portfolio_key": self.portfolio_key.as_dict(),
                 },
             )
-        # A transaction can contain multiple fills for one token.  The public
-        # API identity is the transaction hash, so include the tape fields in
-        # the idempotency key rather than dropping later fills from the same
-        # transaction.
-        trade_key = (
-            f"trade:{trade.event_id}:{trade.asset_id}:{trade.timestamp.isoformat()}"
-            f":{trade.price}:{trade.size}:{trade.sequence or ''}"
-            if trade.event_id
-            else None
-        )
+        # A transaction can contain multiple fills for one token.  Persist a
+        # normalized full-tape identity with the first post-trade order state,
+        # never a random local fill identifier followed by a later marker.
+        trade_key = canonical_trade_event_key(trade)
         if trade_key is not None and (
             trade_key in self._seen_event_keys
             or self.ledger is not None
@@ -1624,6 +1653,21 @@ class ShadowOrderEngine:
             consumed_ahead = max(ZERO, consumed - max(ZERO, queue - order.volume_ahead))
             order.volume_ahead = max(ZERO, order.volume_ahead - consumed_ahead)
             available = max(ZERO, trade.size - queue)
+            if trade.consumption_key is not None:
+                # Same durable post-trade order record owns the consumed key,
+                # exact economics, receipt dependency and quantity accounting.
+                order.metadata.setdefault("paper_trade_consumptions_v2", {})[trade_key] = {
+                    "event_id": trade.event_id, "asset_id": trade.asset_id,
+                    "transaction_hash": trade.transaction_hash,
+                    "side": str(trade.side), "timestamp": trade.timestamp.isoformat(),
+                    "price": str(trade.price), "size": str(trade.size),
+                    "source": trade.source, "sequence": trade.sequence,
+                    "available_at": trade.available_at.isoformat() if trade.available_at else None,
+                    "source_timestamp_text": trade.source_timestamp_text,
+                    "receipt_timestamp_text": trade.receipt_timestamp_text,
+                    "queue_shares": str(consumed),
+                    "fill_shares": str(min(available, order.remaining_shares)),
+                }
             if available <= ZERO:
                 self._store(order, event_key=trade_key)
                 continue
@@ -1636,13 +1680,12 @@ class ShadowOrderEngine:
                 source=trade.source,
                 trade_id=trade.event_id,
                 asset_id=trade.asset_id,
+                persistence_event_key=trade_key,
             )
             if fill is not None:
                 fills.append(fill)
         if trade_key is not None:
             self._seen_fill_events.add(trade_key)
-            for order in self.active_orders:
-                self._store(order, event_key=trade_key)
             self._seen_event_keys.add(trade_key)
         return tuple(fills)
 
