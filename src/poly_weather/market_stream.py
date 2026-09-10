@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 from websockets.asyncio.client import connect
 
+from poly_weather.business_readiness import ArchiveCommitProgress, producer_progress_sample
 from poly_weather.polymarket_status import (
     STATUS_POLL_SECONDS,
     PolymarketStatusClient,
@@ -162,6 +163,7 @@ class MarketStreamSink:
         self.warehouse = ResearchWarehouse(data_dir / "market_stream.duckdb")
         self.handles: dict[str, Any] = {}
         self.checkpoint_handles: dict[str, Any] = {}
+        self.progress = ArchiveCommitProgress()
 
     def close(self) -> None:
         for handle in self.handles.values():
@@ -197,6 +199,7 @@ class MarketStreamSink:
     def write_raw(self, records: list[StreamRecord]) -> None:
         if not records:
             return
+        touched = []
         for record in records:
             received = datetime.fromtimestamp(record.received_at_ns / 1_000_000_000, tz=UTC)
             envelope = {
@@ -222,17 +225,16 @@ class MarketStreamSink:
                 "raw": record.raw,
             }
             handle = self._handle(received.date().isoformat())
+            touched.append(handle)
             encoded = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
             handle.write(encoded)
             handle.write("\n")
             if record.bids is not None and record.asks is not None:
                 checkpoint_handle = self._checkpoint_handle(received.date().isoformat())
+                touched.append(checkpoint_handle)
                 checkpoint_handle.write(encoded)
                 checkpoint_handle.write("\n")
-        for handle in self.handles.values():
-            handle.flush()
-        for handle in self.checkpoint_handles.values():
-            handle.flush()
+        self.progress.commit(touched)
 
     def write_database(self, records: list[StreamRecord]) -> None:
         if not records:
@@ -1008,6 +1010,10 @@ class MarketWebSocketBot:
             "event_count": len(self.event_counts) or 1,
             "events_by_event": self.event_counts,
             "queue_depth": self.queue.qsize(),
+            "business_sample": producer_progress_sample(
+                run_id=self.run_id, generation=self.run_id, positions=self.sink.progress.positions,
+                as_of=datetime.now(UTC), pending_work=not self.queue.empty(),
+                completed_checks=self.metrics.pongs, connection_verified=self.metrics.state == "connected"),
             "database_queue_depth": self.database_queue.qsize(),
             "subscription_queue_depth": self.subscription_queue.qsize(),
             "book_snapshot_count": sum(state.complete for state in self.books.values()),
@@ -1044,4 +1050,6 @@ class MarketWebSocketBot:
             },
             **self.disk_status_cache,
         }
+        payload["business_sample_previous"] = getattr(self, "_previous_business_sample", None)
         atomic_json_write(self.status_path, payload)
+        self._previous_business_sample = payload["business_sample"]

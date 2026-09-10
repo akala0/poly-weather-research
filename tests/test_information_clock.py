@@ -15,6 +15,7 @@ def test_duplicate_payload_is_dropped_but_same_time_revision_is_retained() -> No
     rows = [
         {
             "run_id": "run-a",
+            "collection_mode": "realtime",
             "sequence": 1,
             "received_at": (BASE + timedelta(minutes=1)).isoformat(),
             "source_timestamp_ms": int(BASE.timestamp() * 1000),
@@ -25,6 +26,7 @@ def test_duplicate_payload_is_dropped_but_same_time_revision_is_retained() -> No
         },
         {
             "run_id": "run-b",
+            "collection_mode": "realtime",
             "sequence": 2,
             "received_at": (BASE + timedelta(minutes=2)).isoformat(),
             "source_timestamp_ms": int(BASE.timestamp() * 1000),
@@ -35,6 +37,7 @@ def test_duplicate_payload_is_dropped_but_same_time_revision_is_retained() -> No
         },
         {
             "run_id": "run-c",
+            "collection_mode": "realtime",
             "sequence": 3,
             "received_at": (BASE + timedelta(minutes=3)).isoformat(),
             "source_timestamp_ms": int(BASE.timestamp() * 1000),

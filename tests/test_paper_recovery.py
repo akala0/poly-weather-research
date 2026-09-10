@@ -2,6 +2,8 @@ import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+from paper_model_support import model_trade
+
 from poly_weather.paper_account import PaperAccount, PaperLedger, record_account_action
 from poly_weather.paper_spread_runtime import (
     PaperSpreadProcessor,
@@ -93,14 +95,14 @@ def submit_first(paper: PaperSpreadProcessor):
 
 def fill_first(paper: PaperSpreadProcessor):
     order = submit_first(paper)
-    fills = paper.process_trade(
-        TradeEvent(
+    fills = model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=1),
             "token",
             ShadowSide.SELL,
             "0.75",
             "1000",
-            "first-fill",
+            "first-fill", sequence=1,
         )
     )
     assert fills
@@ -419,14 +421,14 @@ def test_weather_evidence_uses_only_production_metadata_and_strict_tuple(tmp_pat
         snapshot(at=BASE + timedelta(minutes=2), metadata={"weather_observation_id": "second"})
     )
     assert second is not None
-    paper.process_trade(
-        TradeEvent(
+    model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=3),
             "token",
             ShadowSide.SELL,
             "0.75",
             "1000",
-            "second-fill",
+            "second-fill", sequence=1,
         )
     )
     third = paper.process_snapshot(
@@ -443,14 +445,14 @@ def test_weather_evidence_uses_only_production_metadata_and_strict_tuple(tmp_pat
         )
     )
     assert third is not None
-    paper.process_trade(
-        TradeEvent(
+    model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=5),
             "token",
             ShadowSide.SELL,
             "0.73",
             "1000",
-            "third-fill",
+            "third-fill", sequence=1,
         )
     )
     prior = snapshot(
@@ -492,14 +494,14 @@ def test_partial_exit_timeout_retries_only_stage_residual(tmp_path) -> None:
         snapshot(at=BASE + timedelta(minutes=2), bid="0.80", ask="0.85")
     )
     assert first is not None
-    paper.process_trade(
-        TradeEvent(
+    model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=3),
             "token",
             ShadowSide.BUY,
             "0.85",
             "103",
-            "partial-exit",
+            "partial-exit", sequence=1,
         )
     )
     partial = state.exit_stage_filled_shares[0]
@@ -522,14 +524,14 @@ def test_restart_derives_completed_exit_stage_after_fill_before_strategy_decisio
         snapshot(at=BASE + timedelta(minutes=2), bid="0.80", ask="0.85")
     )
     assert first is not None
-    paper.process_trade(
-        TradeEvent(
+    model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=3),
             "token",
             ShadowSide.BUY,
             "0.85",
             "1000",
-            "exit-fill-before-decision",
+            "exit-fill-before-decision", sequence=1,
         )
     )
     # Model SIGKILL after the durable order/fill and account effect but before
@@ -571,9 +573,10 @@ def test_same_second_unsequenced_trade_group_is_unknown_not_a_fill(tmp_path) -> 
 
     assert fills == ()
     assert order.fills == []
-    assert paper.trade_evidence_counts["UNKNOWN_TRADE_SEQUENCE"] == 2
+    # Count durable unknown groups, independent of poll batch size.
+    assert paper.trade_evidence_counts["UNKNOWN_TRADE_SEQUENCE"] == 1
     restored = restarted(tmp_path)
-    assert restored.trade_evidence_counts["UNKNOWN_TRADE_SEQUENCE"] == 2
+    assert restored.trade_evidence_counts["UNKNOWN_TRADE_SEQUENCE"] == 1
 
 
 def test_sequenced_same_second_trades_are_ordered_and_cross_source_duplicate_is_deduped(tmp_path) -> None:
@@ -582,7 +585,7 @@ def test_sequenced_same_second_trades_are_ordered_and_cross_source_duplicate_is_
     at = BASE + timedelta(minutes=1)
     # Feed the later trade first. Sequence 1 consumes the 100-share queue,
     # so only sequence 2 can fill the maker order.
-    fills = paper.process_trades(
+    fills = paper._process_ordered_model_trades(
         (
             TradeEvent(at, "token", ShadowSide.SELL, "0.75", "3", "seq-2", sequence=2),
             TradeEvent(at, "token", ShadowSide.SELL, "0.75", "100", "seq-1", sequence=1),
@@ -602,7 +605,7 @@ def test_sequenced_same_second_trades_are_ordered_and_cross_source_duplicate_is_
         source="websocket",
         sequence=2,
     )
-    assert paper.process_trades((duplicate_from_ws,)) == ()
+    assert paper._process_ordered_model_trades((duplicate_from_ws,)) == ()
     assert paper.trade_evidence_counts["duplicate_trade"] == 1
 
 
@@ -618,11 +621,11 @@ def test_restart_labels_persisted_trade_as_duplicate_without_reconsuming_queue(t
         "durable-trade",
         sequence=1,
     )
-    assert paper.process_trades((trade,))
+    assert paper._process_ordered_model_trades((trade,))
     assert order.filled_shares == Decimal("1")
 
     restored = restarted(tmp_path)
-    assert restored.process_trades((trade,)) == ()
+    assert restored._process_ordered_model_trades((trade,)) == ()
     restored_order = next(iter(restored.ledger.orders.values()))
     assert restored_order.filled_shares == Decimal("1")
     assert restored.trade_evidence_counts["duplicate_trade"] == 1
@@ -692,14 +695,14 @@ def test_continuous_restart_uses_isolated_cursor_to_strand_removed_event(tmp_pat
     )
     order = paper.process_snapshot(snapshot())
     assert order is not None
-    paper.process_trade(
-        TradeEvent(
+    model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=1),
             "token",
             ShadowSide.SELL,
             "0.75",
             "1000",
-            "entry",
+            "entry", sequence=1,
         )
     )
     cursor_path = root / "runtime" / "paper-cursor.json"
@@ -827,28 +830,28 @@ def test_restart_preserves_account_orders_strategy_evidence_and_capital_time(tmp
             )
         )
         assert order is not None
-        paper.process_trade(
-            TradeEvent(
+        model_trade(
+            paper, TradeEvent(
                 trade_at,
                 "token",
                 ShadowSide.SELL,
                 trade_price,
                 "1000",
-                f"fill-{event_id}",
+                f"fill-{event_id}", sequence=1,
             )
         )
     exit_order = paper._submit_exit_if_eligible(
         snapshot(at=BASE + timedelta(minutes=8), bid="0.81", ask="0.85")
     )
     assert exit_order is not None
-    paper.process_trade(
-        TradeEvent(
+    model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=9),
             "token",
             ShadowSide.BUY,
             "0.85",
             "110",
-            "partial-exit",
+            "partial-exit", sequence=1,
         )
     )
     paper.sweep_lifecycle(as_of=BASE + timedelta(minutes=10))
@@ -947,14 +950,14 @@ def test_four_exit_stages_conserve_shares_and_final_stage_clears_remainder(tmp_p
     for index, (at, bid, ask, event_id) in enumerate(stage_snapshots):
         order = paper._submit_exit_if_eligible(snapshot(at=at, bid=bid, ask=ask))
         assert order is not None
-        fills = paper.process_trade(
-            TradeEvent(
+        fills = model_trade(
+            paper, TradeEvent(
                 at + timedelta(minutes=1),
                 "token",
                 ShadowSide.BUY,
                 ask,
                 "1000",
-                event_id,
+                event_id, sequence=1,
             )
         )
         sold += sum((fill.shares for fill in fills), start=Decimal("0"))
@@ -976,14 +979,14 @@ def test_later_buy_expands_only_incomplete_exit_stage_basis(tmp_path) -> None:
         snapshot(at=BASE + timedelta(minutes=2), bid="0.80", ask="0.85")
     )
     assert first_exit is not None
-    paper.process_trade(
-        TradeEvent(
+    model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=3),
             "token",
             ShadowSide.BUY,
             "0.85",
             "1000",
-            "stage-zero",
+            "stage-zero", sequence=1,
         )
     )
     assert 0 in state.completed_exit_stages
@@ -994,14 +997,14 @@ def test_later_buy_expands_only_incomplete_exit_stage_basis(tmp_path) -> None:
         )
     )
     assert second_buy is not None
-    paper.process_trade(
-        TradeEvent(
+    model_trade(
+        paper, TradeEvent(
             BASE + timedelta(minutes=5),
             "token",
             ShadowSide.SELL,
             "0.75",
             "1000",
-            "later-buy-fill",
+            "later-buy-fill", sequence=1,
         )
     )
     stage_one = paper._submit_exit_if_eligible(

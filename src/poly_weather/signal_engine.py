@@ -6,6 +6,7 @@ import os
 import time
 from collections import defaultdict
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -25,7 +26,7 @@ from poly_weather.fees import LiquidityRole, fee_per_share
 from poly_weather.modeling import blend_multi_model_forecasts, build_bucket_forecast
 from poly_weather.no_forward import NoForwardTracker
 from poly_weather.research_store import ResearchWarehouse
-from poly_weather.runtime_safety import atomic_json_write, process_memory_status
+from poly_weather.runtime_safety import atomic_json_write, process_memory_status, read_chain_status
 from poly_weather.temperature import celsius_to_fahrenheit, round_whole_degree
 from poly_weather.warming_policy import (
     WarmingThresholdRegistry,
@@ -139,52 +140,30 @@ class SignalMetrics:
 
 
 class JsonlTail:
-    """Incrementally reads a daily append-only JSONL stream."""
+    """Content-bound daily reader, sharing the plain/gzip prefix contract."""
 
     def __init__(self, path_factory: Any) -> None:
         self.path_factory = path_factory
         self.path: Path | None = None
         self.offset = 0
-        self.remainder = b""
+        self.positions: dict[str, dict[str, Any]] = {}
 
     def poll(self) -> list[dict[str, Any]]:
+        from poly_weather.archive_position import logical_archive, read_positioned_rows
+
         path = self.path_factory()
-        if path != self.path:
-            self.path = path
-            self.offset = 0
-            self.remainder = b""
-        if not path.exists():
+        if not path.exists() and path.with_suffix(path.suffix + ".gz").exists():
+            path = path.with_suffix(path.suffix + ".gz")
+        key = logical_archive(path)
+        if not path.exists() and key not in self.positions:
             return []
-        size = path.stat().st_size
-        if size < self.offset:
-            self.offset = 0
-            self.remainder = b""
-        with path.open("rb") as handle:
-            handle.seek(self.offset)
-            chunk = handle.read()
-            self.offset = handle.tell()
-        if not chunk:
-            return []
-        parts = (self.remainder + chunk).split(b"\n")
-        self.remainder = parts.pop()
-        rows: list[dict[str, Any]] = []
-        for part in parts:
-            if not part:
-                continue
-            try:
-                value = json.loads(part)
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                continue
-            if isinstance(value, dict):
-                rows.append(value)
+        rows, updated = read_positioned_rows(path, self.positions.get(key, {}))
+        self.positions[key] = updated
+        self.path, self.offset = path, updated["offset"]
         return rows
 
     def seek_to_end(self) -> None:
-        """Start with only newly appended rows; callers must preload state separately."""
-        path = self.path_factory()
-        self.path = path
-        self.offset = path.stat().st_size if path.exists() else 0
-        self.remainder = b""
+        self.poll()  # Explicit first-start bootstrap, at complete verified lines only.
 
 
 def deterministic_daily_high_f(
@@ -439,6 +418,13 @@ class LiveSignalEngine:
         self.books: dict[str, dict[str, Any]] = {}
         self.awaiting_authoritative_books: set[str] = set()
         self.weather: dict[tuple[str, str], dict[str, Any]] = {}
+        self._previous_chain_health: dict[str, Any] | None = None
+        self._committed_input_positions: dict[str, int] = {}
+        self._completed_evaluations = 0
+        # Current-day receipt versions are needed to evaluate an earlier cutoff
+        # without letting later QC or forecast revisions rewrite that decision.
+        self.weather_versions: dict[tuple[str, str], list[tuple[datetime | None, datetime, dict[str, Any]]]] = defaultdict(list)
+        self.observation_versions: dict[tuple[str, date], dict[tuple[int, datetime], Decimal]] = defaultdict(dict)
         self.observed_highs: dict[tuple[str, date], Decimal] = {}
         self.observation_history: dict[
             tuple[str, date], dict[int, Decimal]
@@ -713,19 +699,38 @@ class LiveSignalEngine:
 
     def _ingest_weather(self, row: dict[str, Any]) -> None:
         require_realtime_for_no_lookahead((row,))
+        from poly_weather.weather_provenance import (
+            forecast_vintage,
+            weather_observation_times,
+            weather_receipt_time,
+        )
+
+        if row.get("product") == "multi_model_deterministic_forecast":
+            source_time, _vintage_reason = forecast_vintage(row)
+            receipt_time = weather_receipt_time(row)
+        else:
+            source_time, receipt_time = weather_observation_times(row)
+        if row.get("product") in {"wrh_timeseries_observation", "latest_observation", "metar"}:
+            from poly_weather.weather_market_join import parse_weather_observation
+
+            parse_weather_observation(row)  # Reject invalid provenance/clocks before state mutation.
         station_id = str(row.get("station_id") or "").upper()
         product = str(row.get("product") or "")
         if station_id not in {config.station_id for config in self.configs}:
             return
-        key = (station_id, product)
-        existing = self.weather.get(key)
-        if existing is None or int(row.get("received_at_ns") or 0) >= int(
-            existing.get("received_at_ns") or 0
-        ):
-            self.weather[key] = row
+        def remember():
+            key = (station_id, product)
+            versions = self.weather_versions[key]
+            if not any(source == source_time and receipt == receipt_time and saved == row
+                       for source, receipt, saved in versions):
+                versions.append((source_time, receipt_time, deepcopy(row)))
+            existing = self.weather.get(key)
+            if existing is None or receipt_time >= weather_receipt_time(existing):
+                self.weather[key] = deepcopy(row)
         # Physical elimination and warming signals must use the exact WRH
         # settlement series. NWS/latest and routine METAR remain cross-checks.
         if product != "wrh_timeseries_observation":
+            remember()
             return
         observations: list[tuple[int, Decimal]] = []
         raw = row.get("raw")
@@ -742,18 +747,22 @@ class LiveSignalEngine:
                     ):
                         if temperature_f is None:
                             continue
-                        observed_at = datetime.fromisoformat(
-                            str(timestamp).replace("Z", "+00:00")
-                        ).astimezone(UTC)
+                        from poly_weather.trade_evidence import parse_trade_timestamp
+
+                        observed_at = parse_trade_timestamp(timestamp)
+                        temperature = Decimal(str(temperature_f))
+                        if observed_at is None or not temperature.is_finite():
+                            raise ValueError("INVALID_WRH_NESTED_OBSERVATION")
                         observations.append(
-                            (int(observed_at.timestamp() * 1000), Decimal(str(temperature_f)))
+                            (int(observed_at.timestamp() * 1000), temperature)
                         )
         if not observations:
             temperature = _fahrenheit(row.get("temperature_c"))
             source_timestamp_ms = row.get("source_timestamp_ms")
             if temperature is not None and source_timestamp_ms is not None:
                 observations.append((int(source_timestamp_ms), temperature))
-        received_at_ms = int(row.get("received_at_ns") or 0) // 1_000_000
+        remember()  # Validate the entire source payload before publishing any state.
+        received_at_ms = int(receipt_time.timestamp() * 1000)
         for timestamp_ms, temperature in observations:
             # Explicit no-lookahead: never ingest a source observation stamped
             # after the event was received by this process.
@@ -771,6 +780,7 @@ class LiveSignalEngine:
                     temperature, self.observed_highs.get(high_key, temperature)
                 )
                 self.observation_history[high_key][timestamp_ms] = temperature
+                self.observation_versions[high_key][(timestamp_ms, receipt_time)] = temperature
 
     def _evaluate(self) -> None:
         generated_at = datetime.now(UTC)
@@ -785,8 +795,15 @@ class LiveSignalEngine:
             "read_only": True,
             "model_in_loop": False,
             "events": outputs,
+            "source_positions": {"market": deepcopy(self.market_tail.positions),
+                                 "weather": deepcopy(self.weather_tail.positions)},
         }
         self._atomic_json(self.state_path, state_payload)
+        self._committed_input_positions = {
+            f"{kind}:{path}": position["offset"]
+            for kind, tail in (("market", self.market_tail), ("weather", self.weather_tail))
+            for path, position in tail.positions.items()}
+        self._completed_evaluations += 1
         stable = [
             {
                 k: v
@@ -817,12 +834,18 @@ class LiveSignalEngine:
         self.last_fingerprint = fingerprint
 
     def _event_signal(self, config: LiveSignalConfig, generated_at: datetime) -> dict[str, Any]:
-        nws = self.weather.get((config.station_id, "latest_observation"))
-        metar = self.weather.get((config.station_id, "metar"))
-        wrh = self.weather.get((config.station_id, "wrh_timeseries_observation"))
-        deterministic = self.weather.get(
-            (config.station_id, "multi_model_deterministic_forecast")
-        )
+        def visible(product):
+            versions = [version for version in self.weather_versions.get((config.station_id, product), ())
+                        if version[1] <= generated_at]
+            if not versions:
+                return None
+            latest = max(versions, key=lambda version: version[1])
+            return latest[2] if latest[0] is not None and latest[0] <= generated_at else None
+
+        nws = visible("latest_observation")
+        metar = visible("metar")
+        wrh = visible("wrh_timeseries_observation")
+        deterministic = visible("multi_model_deterministic_forecast")
         nws_temperature = _fahrenheit(nws.get("temperature_c")) if nws else None
         metar_temperature = _fahrenheit(metar.get("temperature_c")) if metar else None
         wrh_temperature = _fahrenheit(wrh.get("temperature_c")) if wrh else None
@@ -851,12 +874,15 @@ class LiveSignalEngine:
             else None
         )
         raw_high = deterministic_daily_high_f(raw_deterministic, config.target_date)
-        observed_high = self.observed_highs.get((config.station_id, config.target_date))
+        visible_observations = {}
+        for (timestamp_ms, receipt), temperature in sorted(self.observation_versions.get(
+                (config.station_id, config.target_date), {}).items()):
+            if receipt <= generated_at and datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC) <= generated_at:
+                visible_observations[timestamp_ms] = temperature
+        observed_high = max(visible_observations.values(), default=None)
         observation_rows = [
             (datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC), temperature)
-            for timestamp_ms, temperature in self.observation_history.get(
-                (config.station_id, config.target_date), {}
-            ).items()
+            for timestamp_ms, temperature in visible_observations.items()
         ]
         warming_rate = warming_rate_f_per_hour(observation_rows)
         local_generated = generated_at.astimezone(ZoneInfo(config.timezone))
@@ -908,13 +934,18 @@ class LiveSignalEngine:
                 )
             ):
                 stale_reasons.append("multi-model stream weights differ from calibration")
-        market_status = self._runtime_status("polymarket_ws_status.json")
-        weather_status = self._runtime_status("weather_daemon_status.json")
-        if market_status.get("state") != "connected":
+        chain_health = read_chain_status(self.data_dir, now=generated_at, previous=self._previous_chain_health)
+        self._previous_chain_health = chain_health
+        market_status = chain_health["market"]
+        weather_status = chain_health["weather"]
+        if not all(chain_health[name].get("business_ready") is True
+                   for name in ("market", "supervisor", "weather")):
+            stale_reasons.append("upstream business progress unverified")
+        if market_status.get("health_ready") is not True or market_status.get("state") != "connected":
             stale_reasons.append("market websocket is not connected")
         elif self._status_age_minutes(market_status, generated_at) > 1:
             stale_reasons.append("market websocket heartbeat is stale")
-        if weather_status.get("state") != "running":
+        if weather_status.get("health_ready") is not True or weather_status.get("state") != "running":
             stale_reasons.append("weather daemon is not running")
         elif self._status_age_minutes(weather_status, generated_at) > 3:
             stale_reasons.append("weather daemon heartbeat is stale")
@@ -1368,12 +1399,10 @@ class LiveSignalEngine:
         }
 
     def _runtime_status(self, filename: str) -> dict[str, Any]:
-        path = self.data_dir / "runtime" / filename
-        try:
-            value = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return {}
-        return value if isinstance(value, dict) else {}
+        from poly_weather.runtime_safety import STATUS_SPECS
+
+        chain = read_chain_status(self.data_dir)
+        return next((chain[name] for name, spec in STATUS_SPECS.items() if spec[0] == filename), {})
 
     @staticmethod
     def _status_age_minutes(status: dict[str, Any], now: datetime) -> float:
@@ -1383,7 +1412,8 @@ class LiveSignalEngine:
             return float("inf")
         if updated_at.tzinfo is None:
             return float("inf")
-        return max(0.0, (now - updated_at.astimezone(UTC)).total_seconds() / 60)
+        age = (now - updated_at.astimezone(UTC)).total_seconds() / 60
+        return age if status.get("heartbeat_state") == "fresh" else float("inf")
 
     @staticmethod
     def _decimal(value: Any) -> Decimal | None:
@@ -1433,8 +1463,20 @@ class LiveSignalEngine:
         }
 
     def _write_status(self) -> None:
+        from poly_weather.business_readiness import producer_progress_sample
+
         payload = {
             **asdict(self.metrics),
+            "business_sample": producer_progress_sample(
+                run_id=self.run_id, generation=str(self._last_config_generation or self.run_id),
+                positions=self._committed_input_positions, as_of=datetime.now(UTC),
+                pending_work=bool(self.metrics.last_error) or self._committed_input_positions != {
+                    f"{kind}:{path}": int(position["offset"])
+                    for kind, tail in (("market", self.market_tail), ("weather", self.weather_tail))
+                    for path, position in tail.positions.items()},
+                completed_checks=self._completed_evaluations,
+                connection_verified=all((self._previous_chain_health or {}).get(name, {}).get("business_ready") is True
+                                        for name in ("market", "supervisor", "weather"))),
             "pid": os.getpid(),
             "event_slugs": [config.event_slug for config in self.configs],
             "book_count": len(self.books),
@@ -1447,7 +1489,9 @@ class LiveSignalEngine:
             "model_in_loop": False,
             "execution_enabled": False,
         }
+        payload["business_sample_previous"] = getattr(self, "_previous_business_sample", None)
         self._atomic_json(self.status_path, payload)
+        self._previous_business_sample = payload["business_sample"]
 
     @staticmethod
     def _atomic_json(path: Path, payload: dict[str, Any]) -> None:

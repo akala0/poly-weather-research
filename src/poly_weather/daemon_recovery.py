@@ -11,7 +11,7 @@ from poly_weather.polymarket_status import (
     load_quality_windows,
     persist_quality_windows,
 )
-from poly_weather.runtime_safety import atomic_json_write, read_status
+from poly_weather.runtime_safety import atomic_json_write, read_chain_status
 
 LOCAL_DAEMON_OUTAGE_ID = "local-daemon-outage-2026-08-29"
 
@@ -28,12 +28,11 @@ def _parse_recovery_time(value: str | None) -> datetime:
 
 
 def _status_gate(data_dir: Path) -> dict[str, Any]:
-    runtime = data_dir / "runtime"
-    market = read_status(runtime / "polymarket_ws_status.json", stale_after_seconds=120)
-    supervisor = read_status(runtime / "market_supervisor_status.json", stale_after_seconds=180)
-    weather = read_status(runtime / "weather_daemon_status.json", stale_after_seconds=300)
-    signal = read_status(runtime / "signal_engine_status.json", stale_after_seconds=120)
+    chain = read_chain_status(data_dir)
+    market, supervisor, weather, signal = (chain[key] for key in ("market", "supervisor", "weather", "signal"))
     checks = {
+        "normalized_chain_health": all(row.get("health_ready") is True
+                                       for row in (market, supervisor, weather, signal)),
         "market_pid_alive": market.get("status_pid_alive") is True,
         "market_has_complete_book": int(market.get("book_snapshot_count") or 0) > 0,
         "supervisor_pid_alive": supervisor.get("status_pid_alive") is True,

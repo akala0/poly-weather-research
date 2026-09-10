@@ -19,6 +19,10 @@ from typing import Any
 
 from poly_weather.archive_io import open_jsonl_text
 from poly_weather.shadow_orders import BookSnapshot
+from poly_weather.weather_provenance import (
+    require_realtime_for_no_lookahead,
+    weather_observation_times,
+)
 
 
 def _utc(value: datetime | str) -> datetime:
@@ -47,8 +51,8 @@ def _temperature_f(value: Any, raw: Any = None, temperature_c: Any = None) -> De
     if value is not None:
         try:
             return Decimal(str(value))
-        except (ArithmeticError, TypeError, ValueError):
-            pass
+        except (ArithmeticError, TypeError, ValueError) as exc:
+            raise ValueError("INVALID_EXPLICIT_WEATHER_TEMPERATURE") from exc
     candidates: list[Any] = []
     if temperature_c is not None:
         candidates.append(("c", temperature_c))
@@ -129,19 +133,17 @@ def parse_weather_observation(row: Mapping[str, Any]) -> WeatherObservation:
     product = str(row.get("product") or "")
     if product not in {"wrh_timeseries_observation", "latest_observation", "metar"}:
         raise ValueError("row is not a realtime observation")
-    if str(row.get("collection_mode") or "realtime") != "realtime":
-        raise ValueError("historical collection is not valid for no-lookahead join")
+    require_realtime_for_no_lookahead((row,))
     station = str(row.get("station_id") or "").upper()
-    source = _time(row.get("source_timestamp_ms"), milliseconds=True)
-    received = _time(row.get("received_at") or row.get("received_at_ns"))
-    if received is None and row.get("received_at_ns") is not None:
-        received = _time(float(row["received_at_ns"]) / 1_000_000_000)
+    source, received = weather_observation_times(row)
     if not station or source is None or received is None:
         raise ValueError("observation lacks station/source/receipt timestamp")
     raw = row.get("raw")
     temperature = _temperature_f(
         row.get("temperature_f"), raw, row.get("temperature_c")
     )
+    if temperature is not None and not temperature.is_finite():
+        raise ValueError("NONFINITE_WEATHER_TEMPERATURE")
     return WeatherObservation(
         station_id=station,
         product=product,

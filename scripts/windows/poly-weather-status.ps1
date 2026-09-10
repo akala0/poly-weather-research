@@ -57,18 +57,10 @@ foreach ($daemon in $daemons) {
     }
     $integrity = [string]$status.status_integrity
     $pidAlive = $status.status_pid_alive -eq $true
-    $commandMatches = $false
-    if ($pidAlive -and $daemonPid -gt 0) {
-        try {
-            $process = Get-CimInstance Win32_Process -Filter "ProcessId = $daemonPid"
-            $commandMatches = (
-                $null -ne $process -and
-                [string]$process.CommandLine -like "*$($daemon.Command)*"
-            )
-        }
-        catch {
-            $commandMatches = $false
-        }
+    $commandMatches = $status.pid_state -eq "alive"
+    if ($status.health_ready -ne $true) {
+        $issues += "$($daemon.Name): normalized health rejected: $($status.reasons -join ',')"
+        $overallStatus = "failed"
     }
 
     if ($integrity -ne "verified") {

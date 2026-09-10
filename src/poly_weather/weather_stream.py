@@ -22,6 +22,7 @@ from poly_weather.adapters.open_meteo import (
     parse_multi_model_forecasts,
 )
 from poly_weather.adapters.wrh import WrhTimeseriesClient
+from poly_weather.business_readiness import ArchiveCommitProgress, producer_progress_sample
 from poly_weather.information_clock import payload_hash
 from poly_weather.modeling import DEFAULT_MULTI_MODEL_WEIGHTS, blend_multi_model_forecasts
 from poly_weather.research_store import ResearchWarehouse
@@ -194,6 +195,7 @@ class WeatherMetrics:
     started_at: str
     state: str = "starting"
     requests: int = 0
+    successful_requests: int = 0
     events: int = 0
     rows_written: int = 0
     errors: int = 0
@@ -232,6 +234,7 @@ class WeatherStreamSink:
         temp_directory: Path | None = None,
     ) -> None:
         self.data_dir = data_dir
+        self.progress = ArchiveCommitProgress()
         self.run_id = run_id
         self.archive_name = archive_name
         self.warehouse_path = warehouse_path or data_dir / warehouse_name
@@ -276,6 +279,7 @@ class WeatherStreamSink:
     def write(self, events: list[WeatherEvent]) -> None:
         if not events:
             return
+        touched = []
         encoded_bytes = 0
         for event in events:
             received = datetime.fromtimestamp(event.received_at_ns / 1_000_000_000, tz=UTC)
@@ -289,12 +293,12 @@ class WeatherStreamSink:
                 envelope["models"] = event.raw.get("models")
                 envelope["blended"] = event.raw.get("blended")
             handle = self._handle(received.date().isoformat(), event.collection_mode)
+            touched.append(handle)
             encoded = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
             encoded_bytes += len(encoded.encode("utf-8")) + 1
             handle.write(encoded)
             handle.write("\n")
-        for handle in self.handles.values():
-            handle.flush()
+        self.progress.commit(touched)
         self.last_raw_batch_rows = len(events)
         self.last_raw_batch_bytes = encoded_bytes
         self.warehouse.append_weather_stream_events(events)
@@ -697,6 +701,7 @@ class WeatherDaemon:
                 async with self.http_request_slots:
                     event = await fetch()
                 now_iso = datetime.now(UTC).isoformat()
+                self.metrics.successful_requests += 1
                 self.request_outcomes.append((time.monotonic(), True))
                 self.metrics.last_successful_request_at = now_iso
                 station_metrics["last_successful_request_at"] = now_iso
@@ -1223,9 +1228,16 @@ class WeatherDaemon:
                 HTTP_POOL_ACCOUNTING_GAP_DEGRADED_THRESHOLD
             ),
             "queue_depth": self.queue.qsize(),
+            "business_sample": producer_progress_sample(
+                run_id=self.run_id, generation=self.run_id, positions=self.sink.progress.positions,
+                as_of=datetime.now(UTC), pending_work=not self.queue.empty(),
+                completed_checks=self.metrics.successful_requests,
+                connection_verified=effective_state == "running" and success_age_seconds <= 300),
             "updated_at": datetime.now(UTC).isoformat(),
             "heartbeat": datetime.now(UTC).isoformat(),
             "writer": self.sink.status(),
             "read_only": True,
         }
+        payload["business_sample_previous"] = getattr(self, "_previous_business_sample", None)
         atomic_json_write(self.status_path, payload)
+        self._previous_business_sample = payload["business_sample"]

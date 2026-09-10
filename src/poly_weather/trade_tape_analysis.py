@@ -58,11 +58,30 @@ def load_event_trade_tapes(
     if start_time is not None and end_time is not None and start_time > end_time:
         raise ValueError("start_at must be no later than end_at")
     output: dict[str, list[PublicTrade]] = {}
+    from poly_weather.receipt_journal import (
+        ReceiptIntegrityError,
+        ReceiptJournal,
+        materialization_is_bound,
+        requested_materialization_prefix,
+    )
+
+    journal_root = path / ".receipt_journal"
+    journal = (ReceiptJournal(journal_root, lambda: datetime.now(UTC), read_only=True,
+                              prefix=requested_materialization_prefix(path.glob("*.json")),
+                              allow_pending_tail=True) if journal_root.exists() else None)
     for source in sorted(path.glob("*.json")):
         try:
             payload = json.loads(source.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            if materialization_is_bound(source):
+                raise ReceiptIntegrityError("bound tape is unreadable") from exc
             continue
+        from poly_weather.public_trade_collection import verify_materialized_receipts
+
+        if isinstance(payload, Mapping):
+            verify_materialized_receipts(source, payload, journal=journal)
+        elif materialization_is_bound(source):
+            raise ReceiptIntegrityError("bound tape is not an object")
         if not isinstance(payload, Mapping) or not payload.get("event_slug"):
             # Collection audit/index files live beside event tapes but do not
             # represent a trade tape themselves.
@@ -70,7 +89,6 @@ def load_event_trade_tapes(
         event_slug = str(payload["event_slug"])
         if selected_slugs is not None and event_slug not in selected_slugs:
             continue
-        fetched_at = parse_trade_timestamp(payload.get("fetched_at"))
         output.setdefault(event_slug, []).extend([
             PublicTrade(
                 proxy_wallet=str(row.get("proxy_wallet") or ""),
@@ -85,16 +103,18 @@ def load_event_trade_tapes(
                 timestamp=parse_trade_timestamp(row["timestamp"]),
                 transaction_hash=str(row["transaction_hash"]),
                 source_timestamp_text=str(row.get("source_timestamp_text") or row["timestamp"]),
-                receipt_timestamp_text=str(row.get("available_at") or payload.get("fetched_at") or "") or None,
+                receipt_timestamp_text=str(row.get("available_at") or "") or None,
                 available_at=(
                     parse_trade_timestamp(row["available_at"])
                     if row.get("available_at")
-                    else fetched_at
+                    else None
                 ),
             )
             for row in payload.get("trades") or ()
             if _trade_row_in_window(row, start_at=start_time, end_at=end_time)
         ])
+    if journal is not None:
+        journal.assert_unchanged()
     return output
 
 

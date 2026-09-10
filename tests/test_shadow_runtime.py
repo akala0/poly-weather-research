@@ -69,8 +69,11 @@ def test_shadow_cursor_recovers_from_malformed_positions(tmp_path) -> None:
     assert cursor.sources == {"good": {"offset": 4, "line": 2}}
 
 
-def test_shadow_continuous_cursor_is_idempotent_and_read_only(tmp_path) -> None:
+def test_shadow_continuous_cursor_is_idempotent_and_read_only(tmp_path, monkeypatch) -> None:
+    from runtime_health_support import seed_test_chain
+
     root = tmp_path / "data"
+    seed_test_chain(root, monkeypatch)
     path = root / "raw" / "polymarket_book_checkpoints" / "2026-08-27" / "events.jsonl"
     path.parent.mkdir(parents=True)
     rows = []
@@ -153,8 +156,11 @@ def test_continuous_tail_bootstrap_skips_existing_archive_history(tmp_path) -> N
     assert position["offset"] == path.stat().st_size
 
 
-def test_shadow_continuous_restores_pair_context_after_restart(tmp_path) -> None:
+def test_shadow_continuous_restores_pair_context_after_restart(tmp_path, monkeypatch) -> None:
+    from runtime_health_support import seed_test_chain
+
     root = tmp_path / "data"
+    seed_test_chain(root, monkeypatch)
     path = root / "raw" / "polymarket_book_checkpoints" / "2026-08-27" / "events.jsonl"
     path.parent.mkdir(parents=True)
     rows = [
@@ -388,11 +394,14 @@ def test_processor_replenishes_only_after_fill_and_exits_in_legs(tmp_path) -> No
     assert any(order.side is ShadowSide.SELL and order.state is ShadowOrderState.RESTING for order in engine.orders)
 
 
-def test_continuous_records_supervisor_generation(tmp_path) -> None:
+def test_continuous_records_supervisor_generation(tmp_path, monkeypatch) -> None:
+    from runtime_health_support import seed_test_chain
+
     root = tmp_path / "data"
     supervisor_path = root / "runtime" / "market_supervisor_status.json"
     supervisor_path.parent.mkdir(parents=True)
     supervisor_path.write_text(json.dumps({"generation": 41}), encoding="utf-8")
+    seed_test_chain(root, monkeypatch)
     status = run_shadow_spread_continuous(
         data_dir=root,
         ledger_path=root / "raw" / "shadow_orders.jsonl",
@@ -420,6 +429,7 @@ def test_public_trade_increment_is_receipt_gated_and_requires_identity(tmp_path)
                         "price": "0.70",
                         "size": "5",
                         "transaction_hash": "tx-1",
+                        "available_at": "2026-08-27T12:05:00+00:00",
                     },
                     {
                         "asset_id": "no",

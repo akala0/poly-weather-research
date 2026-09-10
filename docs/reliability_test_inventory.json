@@ -1,0 +1,3813 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-09T12:04:10.377129+00:00",
+  "authority": "generated collection and evidence-layer index; no PASS inference",
+  "formal_authority": "CURRENT_CONCLUSIONS.md#paper-v1-formal-status",
+  "command": [
+    "D:\\poly\\.venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "--collect-only",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "exit_code": 0,
+  "collected_count": 741,
+  "diagnostic_excluded_files": [
+    "tests/test_fees.py",
+    "tests/test_market_supervisor.py",
+    "tests/test_wrh_backfill.py",
+    "tests/test_stream_daemons.py",
+    "tests/test_polymarket_status.py"
+  ],
+  "diagnostic_selected_count": 706,
+  "source_sha256": {
+    "tests/test_adapters.py": "e3a72156796669002e6f83ce42f8384017be747f9ae359c1b7bc8fa36171c619",
+    "tests/test_archive_position_closure.py": "d83f6b6d659a589aa2f1762ae80f46046a58bb8e285d6d19e4eb86a7cab9f91e",
+    "tests/test_bias_significance_audit.py": "5b96d6676ba56c4e313bb18e40418fd368525bcc49b9ff7702f895b8b31aee6b",
+    "tests/test_business_readiness_closure.py": "f63e8205fceec14d6c8ced17da83b3d405b94f5c9347933d2deeef942edfb6fb",
+    "tests/test_calibration.py": "6b7f593a723db359fedd20fb275ccef6247904e4d71d348b099b9b5d79ea56e5",
+    "tests/test_cli.py": "2c274ac2c1ff2e8e2f748649d0cff57a0186f31abad7586250425feda391ad4d",
+    "tests/test_closure_crash_matrix.py": "a879275a63bae09bca5ff89f2d8121840ad4abbe8d6bc12f0334c1068f4be700",
+    "tests/test_complement_pair.py": "d80ac5d2b22db3c00af7c12cbf1cd10cd836979a712ef6f1919aef3a2ecc0297",
+    "tests/test_config.py": "c37acb23bdd933d0bf99b3e2453dc0c0e6d729a3cdb1d7cdcb8aebde7d99ebf1",
+    "tests/test_depth_calibration.py": "4b7854ba6ae0301f573f12ce710f98d97ad84987dabf6786076ff404f2796891",
+    "tests/test_domain.py": "5e5c6401eb880b65f919f56db180749790b60125ea48ed32803e239ccba9f5d2",
+    "tests/test_entry_accessibility.py": "12f9fb90ae7d3bacbdcc842dbfe6d54e204b30e8f445157d76faf25bd97b2747",
+    "tests/test_evidence_closure.py": "490e4ccf181d488e94e77d2e4f1e13f4846d09f27b8d4345ce39173f7bd04752",
+    "tests/test_execution_cost.py": "abae161ae9ab3b38314db04cefbd9d48897ac82a442df2c14ccc5e45e4a94afd",
+    "tests/test_fees.py": "701a292008731a281143b1ce8d87cdc05b758676c6bee6d16d9bfcc1cc6d838a",
+    "tests/test_follower_archive_closure.py": "22836194cf6f39cca2703a8d19a36d67ba77d40ed1fc5723ca3efa97666f5ddb",
+    "tests/test_high_frequency_audit.py": "79f0d800e788c5405b0d2a1d39b398c5d5781c22f0ae4a04c438425545cc9303",
+    "tests/test_historical_weather.py": "bea5aea51bbf7dbefd4a85f038279c4fbb1100683f41a743c900a3945c7ca868",
+    "tests/test_information_clock.py": "c3b1a4e8965878a9265f22bd2698292409b3f522c14166ea51a16d229f2e6f97",
+    "tests/test_intraday_reversal.py": "f7ce52cd23be370b903bc2959c58293b4b3178851846b824130906c8280020bf",
+    "tests/test_liquidity.py": "3128d992cd3a47091bbeb015eb53d7126e6e3d4bee98380641d9e966b66087d6",
+    "tests/test_maintenance_audit.py": "ad8df8577ff631ea5f6b2c1996d9370ea8c441755b057a1561493b906aedc13d",
+    "tests/test_market_lag.py": "cda5f22020138ca480c7424279d65322f28e5d99aa0ecf60ec75742518d5a9df",
+    "tests/test_market_regime.py": "94e4862edccc9da70b8270774b95f46b34958c562f8a43e59b2630f19b842408",
+    "tests/test_market_state_challenger.py": "b1ea328855d31d79a36f14cc17152070521ff00511129a4a576d650708dd5bae",
+    "tests/test_market_supervisor.py": "b625e837b50dcc2ff1ff1e6689480598ebb3101c112e7344cb09b1e906acbbf5",
+    "tests/test_market_trade_tape.py": "de1edad92859e99af6666160a47dcfd72f2e95e96801f197ac9cdbbf703585c8",
+    "tests/test_modeling.py": "63ee0f5603442d64d4b1d9e586497834cc7d01c1c26f6fb07050eb0fd926cda1",
+    "tests/test_monitoring.py": "1c8fe0fc11263f39fa211abf4273be9b3b761e8477258306c6d837f5b320846b",
+    "tests/test_nautilus_conformance.py": "711de0ee59d63b0e252158729fadc9278d0d55e9432428ba8f2016877205c7c6",
+    "tests/test_no_forward.py": "5307fb2dfc642edd5a0aab8e65fc14022aaf9b4d4ef381ba63931e346de03e58",
+    "tests/test_no_side_analysis.py": "1e709d9cb228090dcac6671e7578a936e8aa58253e52c9f221db5dd1bad9f72e",
+    "tests/test_open_meteo.py": "f19a18f3a3612b562a74c42bc33778c899786823e7f1e303c5da4d67f44fce44",
+    "tests/test_paper.py": "83ba13d3d56f6287f69baf4a1b087ec5bc7d575f4a1180a242d190da5f1705f6",
+    "tests/test_paper_account.py": "c7e70d5de84a3f25ed23cdc983ab0991680082ed03349f067cf7af6419f11043",
+    "tests/test_paper_cli.py": "6b90499d4de13308cd3186af202dac699a76655d91afed196d0307ebddcb63ae",
+    "tests/test_paper_recovery.py": "961c73d54234b8fbdd0c043f4bc28a894d4e9c2b4adf484ee9b78b6f25661039",
+    "tests/test_paper_runtime_boundaries.py": "4ab83ec1413735d4f793b72b77dfe6e03811a5feedca936a02be5d4f610b9ca4",
+    "tests/test_paper_seal_blockers.py": "f1b4ac2fe23f0ed39f982b0303d07df956ef69c640a87f1a4fd87a407c80b1d9",
+    "tests/test_paper_spread_runtime.py": "634e9ad5909f6a3f5c5b293933e93c62950eedb6fec1aca99c95094c28c2f0ff",
+    "tests/test_paper_trade_evidence.py": "9c807b420ed9eab16b2eb5c68ecbfd0de13fc3bec1051942e442b579053b57ca",
+    "tests/test_polymarket_data.py": "b897a7bfb3e06f5571001e897f5bcf7d19dac9bfedce90dfdc524ac17b0e281c",
+    "tests/test_polymarket_status.py": "7ea9cb1344d25b74850995ea0ede7f008e108a482720776da0aa6174bfb2fbc2",
+    "tests/test_price_band_accessibility.py": "33b4f1884f14a4e8accc261ea5b37f5aedc9aa0bfcb85fac7c2b778bf6a6b3e9",
+    "tests/test_price_path_analysis.py": "5f31718a526d5800adb2705af7870c4eae32e090b79ea7813d41a682cb416cd2",
+    "tests/test_producer_progress_closure.py": "39351e2bd2c9b8b94ae3f63c7757ce2bbb3cb9c4b1d1d496f6a1c6a225e7a16b",
+    "tests/test_public_trade_collection.py": "be7a47df3328fe1cbb5c19dfb39f3753e19b01a6c2581bbf73e97a026c2d6e88",
+    "tests/test_quiet_order_forensics.py": "7cd2b43fd3090f6641e391dee328ade3c93b9dde7554480e1420f7cad596a4b1",
+    "tests/test_quiet_state_log.py": "dda57c4cc4df454103fff6f94ee14342ba793269b3d738c684ec323660cddc92",
+    "tests/test_quiet_v2_semantics.py": "1fba8d777cb781f1ed041b72f53e8c8cca1d36f2b5956e17bd528ae4f6fe7048",
+    "tests/test_quiet_window_strategy.py": "93f89fa4662fb7750946819d4b0fc35c2534942c9793d37a90a14ca81a40f6b0",
+    "tests/test_real_no_books.py": "8a5bd3fcd802f7efdd60c4ea493dd2ba63341bd2dc764d2a4be7690d452c8feb",
+    "tests/test_reliability_consumers.py": "3dd79bc5e2d7c38896345096290ad38b90fd208f56a8eb8fcb466abeeee2fcd6",
+    "tests/test_reliability_documents.py": "2623925f247ae077accb11569a8c4b4bb5aff1a428edcad1b7d28a24f5d9dbe7",
+    "tests/test_reliability_evidence.py": "de584b78ec6e02ade232fb5d8d0592d06cd522fa71c60ab40159c874d89e657f",
+    "tests/test_reliability_group_contract.py": "a6b895e759843527b0c0f7fa401d1cd0ff219add2f203019898de597686bb0ce",
+    "tests/test_reliability_health.py": "d51ed63d608a45006c8f9b06ea1f15e2e8bae12554e15f010a1e3ba4872e8d8d",
+    "tests/test_reliability_receipts.py": "971a40ffd406d4123c6536d1eacbbc163849018dd0ad07343504449a588963d8",
+    "tests/test_reliability_storage.py": "d008449514dfb841282782f9f97889712092b9adb7e09503828c0c228b49f6ad",
+    "tests/test_research_store.py": "6e1d0f806bc5d0eddf8abffa52b981808d04231dac30c5c3b7c7d9c27bf03747",
+    "tests/test_retention.py": "c4714c605a924bd8096d90d5efe19cd3033fab6214a789c197ffa57bc447a6bd",
+    "tests/test_runtime_safety.py": "ef99e4f4a331bf61ec9ae99266367a3515d61d51dc44ac350439576ec7ab4733",
+    "tests/test_settlement.py": "6f5307dfb9bf71979a618ec83abcba737956b3302736cd522869b8dc1b4b7065",
+    "tests/test_shadow_orders.py": "295fce969ad5ed22114bf93669fbdd3aa09bfa1c5e9231c878b887df1fdc55d7",
+    "tests/test_shadow_runtime.py": "4df1c9a0cc66bac8de052776b4f4862c68136d84195f54b0ac6b9ec01e5335f5",
+    "tests/test_shadow_spread_replay.py": "889acd63816ee1c1f9ec06a892489f40f05f80127d3e9b2a90053dd3f12652cb",
+    "tests/test_signal_archive_closure.py": "6c412cb1873e8a9efff0f77828ab0c8ed5ada45457bf1c67dcfa29a4406ce288",
+    "tests/test_signal_engine.py": "cff09c0b46eb3b997daca1d7081b0daeecae84a4bb6a3cb5ef7fdf73a93b9f3b",
+    "tests/test_signal_retention.py": "c71a71d6902906f490937fee5063703ca4e3ee802e3b5ee72056087a63b2bddd",
+    "tests/test_storage.py": "ef9b0b7960e688c67177fe3c7a795f903e548f6bf1bf8ec4e90e6c8f316b48f6",
+    "tests/test_stream_daemons.py": "c16237cde6b40c204508d2c9320cc83894c040dcea798b1a85478b29370d4637",
+    "tests/test_temperature_precision.py": "3a37c8c57ea42f9effb5237b81fc9beb4850ed473edfa30544b7f16b7a0dff68",
+    "tests/test_trade_tape_analysis.py": "d11dc41c9c89cef2665041c7bb86fae392eeb564c136d0a74c45a300fa0b8ddb",
+    "tests/test_warming_policy.py": "466b14b19bec70f37e6e63a790c67a269927ac22d3a7dfd8a819cac4bf8c3ab2",
+    "tests/test_weather_decision_prefix.py": "06b630e1b353929a08866262a4b6bf8197ad6edf1221bb1314c6dc220898fb20",
+    "tests/test_weather_evidence_closure.py": "7e01df50ee373f8a792f524d2701d55d33c4aa7d89493d652a2da7fa35f4f0fd",
+    "tests/test_weather_market_join.py": "36d1659ae9e5f071dcec437cf2bfc2c6385d4c0a95312eaa2fab5c59ae4e4d78",
+    "tests/test_wrh_backfill.py": "289859d002f9b66fd05474a98d26a97283ab437e8b130b412bb19bac6011bcb1"
+  },
+  "collection_summary": "741 tests collected in 0.35s",
+  "tests": [
+    {
+      "nodeid": "tests/test_adapters.py::test_gamma_client_fetches_and_filters_weather_candidates",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_adapters.py::test_gamma_search_flattens_event_markets_and_inherits_resolution_source",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_adapters.py::test_nws_client_normalizes_latest_observation",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_adapters.py::test_nws_daily_high_uses_local_day_and_marks_next_day_finalization",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_adapters.py::test_clob_batch_price_history_parses_each_token",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_adapters.py::test_clob_batch_quotes_calculates_midpoint_and_spread",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_adapters.py::test_clob_order_book_reads_current_market_rules",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_adapters.py::test_aviation_weather_snapshot_parses_metar_and_taf",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_archive_position_closure.py::test_ar_plain_both_gzip_two_restarts_preserve_input_ids",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_archive_position_closure.py::test_ar_damage_never_advances_position[truncate]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_archive_position_closure.py::test_ar_damage_never_advances_position[replace]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_archive_position_closure.py::test_ar_damage_never_advances_position[bad_row]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_archive_position_closure.py::test_ar_damage_never_advances_position[corrupt_gzip]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_archive_position_closure.py::test_ar_damage_never_advances_position[missing]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_archive_position_closure.py::test_ar_legacy_without_prefix_is_unknown_not_new_tail",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_archive_position_closure.py::test_ar_concurrent_change_and_false_line_count_are_rejected",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_bias_significance_audit.py::test_bias_standard_error_reports_constant_nonzero_bias_as_infinite_z",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_bias_significance_audit.py::test_significance_walk_forward_uses_only_prior_dates",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_bias_significance_audit.py::test_audit_identifies_existing_unconditional_zero_bias_as_2se_difference",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_bias_significance_audit.py::test_load_calibration_samples_decodes_duckdb_json_object",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_bias_significance_audit.py::test_rendered_audit_marks_itself_read_only",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[advance-advancing]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[idle-verified_idle]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[stalled-stalled]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[heartbeat_only-unknown]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[first-unknown]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[reset-reset]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[rollback-rollback]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[gap-gap]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_two_sample_business_progress[clock-unknown]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[market]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[supervisor]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[weather]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[progress]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[active_set]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[rules]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[season]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[quality]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[archive_continuity]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_any_required_gate_unknown_blocks_readiness[account_ledger]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_input_ready_is_not_public_score_eligibility",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_rejected_entry_still_expires_and_releases",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "prepared inventory through actual lifecycle/snapshot gate; not public fills"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_rejected_entry_preserves_native_risk_exit_gate[False]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "prepared inventory through actual lifecycle/snapshot gate; not public fills"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_rejected_entry_preserves_native_risk_exit_gate[True]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "prepared inventory through actual lifecycle/snapshot gate; not public fills"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_weather_raw_collection_has_no_market_dependency",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_supervisor_persistence_failure_keeps_mutation_boundary",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_business_readiness_closure.py::test_he_short_polls_accumulate_pending_work_window",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "readiness rejection and normalized status evidence; no resident certification"
+    },
+    {
+      "nodeid": "tests/test_calibration.py::test_rolling_origin_bias_correction_uses_only_prior_dates",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_calibration.py::test_bucket_skill_scores_true_two_degree_bucket_walk_forward",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_calibration.py::test_bucket_skill_detects_four_degree_regime_shift",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_calibration.py::test_model_weights_are_inverse_mae_and_normalized",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_cli_can_render_help",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_shadow_runtime_requires_supervised_flag_and_is_read_only",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_cli.py::test_stream_status_surfaces_only_token_scoped_shadow_status",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-before-fact]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-before-witness]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-before-manifest]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-before-tape]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-before-cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-before-audit]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-after-fact]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-after-witness]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-after-manifest]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-after-tape]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-after-cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[False-after-audit]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-before-fact]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-before-witness]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-before-manifest]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-before-tape]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-before-cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-before-audit]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-after-fact]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-after-witness]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-after-manifest]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-after-tape]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-after-cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery[True-after-audit]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_preflight_corrupt_tape_cannot_publish_recovery_witness",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_closure_crash_matrix.py::test_ec_readers_ignore_corrupt_unclaimed_tail_but_writer_blocks",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_actual_two_leg_fills_create_locked_pair_not_planned_quotes",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_partial_fills_pair_only_minimum_same_shares",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_pair_risk_budget_is_aggregated_by_station_day_not_per_market",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_reusing_a_token_for_a_different_pair_halts_everything",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_cross_token_fill_routed_into_pair_halts_immediately",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_maintenance_cancels_both_unfilled_legs_and_never_submits_more",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_hedge_cost_cap_refuses_expensive_missing_leg_then_unwinds_real_bid",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_bounded_taker_hedge_records_actual_ask_cost_and_taker_fee",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_replay_strictly_excludes_trade_at_decision_timestamp",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_station_day_is_the_wilson_cluster_not_pair_count",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_predefined_sensitivity_grid_is_fixed_and_complete",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_streaming_replay_matches_finite_replay_without_retaining_all_pairs",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_streaming_replay_rejects_nonchronological_snapshot_input",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_complement_pair.py::test_streaming_grid_shares_archive_scan_semantics_with_single_config",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_config.py::test_example_registry_has_only_evidence_verified_cities_enabled",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_config.py::test_runtime_and_compatibility_registries_match",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_depth_calibration.py::test_depth_replay_is_strictly_no_lookahead_and_applies_deltas",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_domain.py::test_gamma_market_decodes_json_encoded_arrays",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_domain.py::test_unverified_settlement_is_fail_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_domain.py::test_verified_settlement_requires_complete_source_contract",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_entry_accessibility.py::test_entry_accessibility_uses_only_prior_p_and_trade_and_separates_empty_ask",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_entry_accessibility.py::test_current_rule_rows_preserves_current_rule_boundary",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-all]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-partial]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-duplicate]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-provenance]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-contract]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-anchor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-scope]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-count]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-non_object]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-invalid_json]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[historical-missing_scope]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-all]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-partial]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-duplicate]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-provenance]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-contract]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-anchor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-scope]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-count]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-non_object]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-invalid_json]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected[incremental-missing_scope]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_old_prefix_and_uncommitted_tail_remain_readable",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_empty_failure_legacy_and_missing_tape_reconstruction[zero]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_empty_failure_legacy_and_missing_tape_reconstruction[failure]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_empty_failure_legacy_and_missing_tape_reconstruction[legacy]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_reader_cost_measurement[historical-12]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "diagnostic read-cost measurement; not production performance qualification"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_reader_cost_measurement[historical-24]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "diagnostic read-cost measurement; not production performance qualification"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_reader_cost_measurement[incremental-12]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "diagnostic read-cost measurement; not production performance qualification"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_reader_cost_measurement[incremental-24]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "diagnostic read-cost measurement; not production performance qualification"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_cycle_recheck_rejects_mutation_even_with_original_mtime[historical]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_cycle_recheck_rejects_mutation_even_with_original_mtime[incremental]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_evidence_closure.py::test_ec_materialization_commit_failure_does_not_invalidate_old_tape",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_execution_cost.py::test_buy_fill_walks_asks_and_reports_top_slippage",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_execution_cost.py::test_sell_fill_walks_bids_from_high_to_low",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_execution_cost.py::test_fill_reports_partial_depth_and_empty_book",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_execution_cost.py::test_share_sized_sell_walks_bids_for_exact_entry_inventory",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_fees.py::test_weather_taker_fee_peaks_at_half_and_is_symmetric",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_fees.py::test_maker_fee_is_zero",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_fees.py::test_no_fee_uses_no_tokens_own_execution_price",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_fees.py::test_depth_estimate_separates_slippage_and_fee",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_fees.py::test_public_fee_rate_lookup_path",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_fees.py::test_clob_market_info_is_authoritative_curve_check",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_follower_archive_closure.py::test_ar_real_follower_plain_gzip_restart_equivalence[False-None]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "actual temporary follower equivalence with MODEL_KERNEL prepared ledger; zero public queue consumption"
+    },
+    {
+      "nodeid": "tests/test_follower_archive_closure.py::test_ar_real_follower_plain_gzip_restart_equivalence[False-before_cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "actual temporary follower equivalence with MODEL_KERNEL prepared ledger; zero public queue consumption"
+    },
+    {
+      "nodeid": "tests/test_follower_archive_closure.py::test_ar_real_follower_plain_gzip_restart_equivalence[False-after_cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "actual temporary follower equivalence with MODEL_KERNEL prepared ledger; zero public queue consumption"
+    },
+    {
+      "nodeid": "tests/test_follower_archive_closure.py::test_ar_real_follower_plain_gzip_restart_equivalence[True-None]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "actual temporary follower equivalence with MODEL_KERNEL prepared ledger; zero public queue consumption"
+    },
+    {
+      "nodeid": "tests/test_follower_archive_closure.py::test_ar_real_follower_plain_gzip_restart_equivalence[True-before_cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "actual temporary follower equivalence with MODEL_KERNEL prepared ledger; zero public queue consumption"
+    },
+    {
+      "nodeid": "tests/test_follower_archive_closure.py::test_ar_real_follower_plain_gzip_restart_equivalence[True-after_cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "actual temporary follower equivalence with MODEL_KERNEL prepared ledger; zero public queue consumption"
+    },
+    {
+      "nodeid": "tests/test_high_frequency_audit.py::test_wrh_history_loader_converts_to_local_day_and_filters",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_high_frequency_audit.py::test_wrh_history_loader_refuses_realtime_batch",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_historical_weather.py::test_previous_runs_groups_hourly_values_into_daily_highs",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_historical_weather.py::test_previous_runs_day_zero_uses_canonical_response_key",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_historical_weather.py::test_previous_runs_rejects_distant_grid",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_historical_weather.py::test_previous_runs_fetches_multi_model_daily_highs_once",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_historical_weather.py::test_ncei_adapter_reads_tmax_and_ignores_other_stations",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_information_clock.py::test_duplicate_payload_is_dropped_but_same_time_revision_is_retained",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_information_clock.py::test_speci_is_a_distinct_external_information_kind",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_information_clock.py::test_source_and_receipt_cutoff_is_applied_on_both_clocks",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_information_clock.py::test_missing_model_run_initialization_is_not_phase_eligible",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_information_clock.py::test_settlement_payload_context_is_recovered_without_inventing_receipt",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_intraday_reversal.py::test_daily_reversal_uses_nearest_observation_and_first_high_time",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_intraday_reversal.py::test_requested_metric_does_not_prove_post_decision_warming",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_intraday_reversal.py::test_percentile_uses_linear_interpolation",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_intraday_reversal.py::test_certainty_curve_is_strictly_no_lookahead_and_uses_running_high",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_intraday_reversal.py::test_certainty_curve_skips_day_without_observation_by_scan_time",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_intraday_reversal.py::test_certainty_curve_supports_one_degree_celsius_buckets",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_intraday_reversal.py::test_iem_loader_skips_null_and_empty_temperature_rows",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_liquidity.py::test_liquidity_health_uses_full_ask_depth_and_candidate_window",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_liquidity.py::test_jsonl_liquidity_reader_keeps_latest_book_per_asset_minute",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_maintenance_audit.py::test_reconnect_audit_attributes_exact_rows_but_not_legacy_count",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_maintenance_audit.py::test_reconnect_audit_distinguishes_observed_recovery_window",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_lag.py::test_latest_market_price_is_strictly_no_lookahead",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_lag.py::test_proxy_trade_pnl_handles_exit_and_binary_settlement",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_lag.py::test_resolved_bucket_is_unique_yes_outcome_at_one",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_regime.py::test_new_information_resets_event_and_duplicate_payload_does_not",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_regime.py::test_reaction_end_is_recorded_once_and_quiet_persists",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_regime.py::test_pre_release_and_health_failure_are_fail_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_regime.py::test_predictable_release_uses_adjacent_intervals_without_lookahead",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_strict_prior_confirmation_and_future_windows_do_not_overlap",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_same_timestamp_candidate_quote_cannot_confirm_breakout",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_surviving_failed_and_unconfirmed_are_price_path_states",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_unknown_propagates_for_quality_gap_incomplete_book_and_rule_provenance",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_hard_reset_segments_episodes_deduplicates_and_contaminates_confirmation",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_hard_reset_after_decision_censors_only_affected_outcome_horizon",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_soft_update_after_decision_is_reported_without_censoring_outcome",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_hard_reset_starts_a_fresh_trailing_baseline",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_decision_uses_first_snapshot_at_or_after_confirmation_cutoff",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_duplicate_window_timestamp_fails_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_token_scope_prevents_other_token_quotes_from_confirming_or_forming_outcome",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_station_day_is_the_independent_summary_unit_and_states_conserve",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_report_states_non_execution_boundary",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_crossed_or_locked_book_fails_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_config_from_mapping_parses_string_false_for_rule_provenance",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_enrich_microstructure_sorts_trades_by_effective_availability_time",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_state_challenger.py::test_raw_event_without_impact_class_gets_classified_through_clock",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_supervisor.py::test_simulated_rollover_subscribes_and_confirms_before_old_unsubscribe",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_supervisor.py::test_verification_failure_is_fail_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_trade_tape.py::test_rich_ws_trade_parse_keeps_source_and_receipt_times",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_trade_tape.py::test_price_only_ws_event_fails_closed_and_quality_window_is_excluded",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_trade_tape.py::test_cross_source_validation_and_ws_preference",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_trade_tape.py::test_ws_without_hash_keeps_distinct_same_second_sequences",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_trade_tape.py::test_asset_scope_filters_before_parsing_unrelated_ws_trade_rows",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_market_trade_tape.py::test_unmatched_ws_rows_fail_closed_but_api_supplement_remains",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_modeling.py::test_market_bucket_parser_supports_tails_and_ranges",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_modeling.py::test_two_degree_bucket_alignment_uses_even_lower_bound",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_modeling.py::test_bucket_forecast_is_smoothed_and_sums_to_one",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_modeling.py::test_multi_model_blend_uses_equal_defaults_and_normalizes_weights",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_monitoring.py::test_monitor_snapshot_is_healthy_with_fresh_agreeing_sources",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_monitoring.py::test_monitor_snapshot_is_stale_when_primary_noaa_collection_fails",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_conformance_import_is_lazy_and_forbidden_execution_scan_is_clear",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_optional_nautilus_dependency_python_range_and_lock_are_pinned",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_manifest_is_deterministic_token_native_and_rejects_unsequenced_trade",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_conformance_writer_only_allows_explicit_non_data_output",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_optional_nautilus_sandbox_fixture_and_matrix_are_isolated",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_nautilus_touch_case_contains_real_touch_without_trade",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_nautilus_local_and_native_share_availability_timeline",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_nautilus_sequence_limitation_is_not_reported_as_match",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_nautilus_report_hashes_actual_active_venue_config",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_nautilus_conformance.py::test_nautilus_matrix_classifications_are_backed_by_trace_assertions",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_no_forward.py::test_wilson_interval_uses_conservative_lower_bound",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_no_forward.py::test_forward_tracker_records_first_trigger_and_real_book_once",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_no_side_analysis.py::test_no_proxy_audit_is_strictly_no_lookahead_and_measures_unchanged_age",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_open_meteo.py::test_open_meteo_adapter_parses_member_series",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_open_meteo.py::test_open_meteo_ensemble_rejects_distant_grid",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_open_meteo.py::test_open_meteo_deterministic_parses_single_series",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_open_meteo.py::test_open_meteo_multi_model_fetches_three_deterministic_series_once",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper.py::test_paper_decision_chooses_yes_after_costs",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper.py::test_paper_decision_fails_closed_on_future_price_and_unverified_contract",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper.py::test_paper_no_side_uses_own_token_price_and_fails_closed_when_missing",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_account.py::test_global_account_reserves_cash_and_conserves_value",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_account.py::test_global_account_blocks_second_token_when_cash_reserved",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_account.py::test_account_rejects_sell_above_same_token_inventory",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_account.py::test_account_keeps_stranded_cost_occupied",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_account.py::test_paper_ledger_restores_account_events_and_idempotency",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_account.py::test_discrepancy_is_durable_halt",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_account.py::test_paper_ledger_rejects_v2_records_and_halts",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_cli.py::test_paper_engine_requires_explicit_strategy_config",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_cli.py::test_paper_status_uses_empty_isolated_ledger",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_recovery_repairs_order_persisted_before_reserve_account_event",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_recovery_repairs_fill_persisted_before_account_fill_event",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_recovery_repairs_expire_before_residual_release_event",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_recovery_repairs_risk_sell_persisted_before_account_event",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_unfinished_intent_without_order_fact_is_durable_halt",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_duplicate_transition_replay_is_exactly_once",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_truncated_tail_and_middle_corruption_are_distinct_and_halted",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_missing_confirmed_empty_and_corrupt_ledgers_are_not_equivalent",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_order_account_reservation_and_position_conflicts_halt_durably",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_recovery_repair_is_unique_across_restarts",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_corrupt_checkpoint_keeps_valid_ledger_ineligible_not_replayed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_checkpoint_behind_rebuilds_and_ahead_halts",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_unclean_checkpoint_preserves_prior_score_start",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_weather_evidence_uses_only_production_metadata_and_strict_tuple",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_stale_cached_book_cannot_price_max_hold_risk_exit",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_partial_exit_timeout_retries_only_stage_residual",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_restart_derives_completed_exit_stage_after_fill_before_strategy_decision",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_same_second_unsequenced_trade_group_is_unknown_not_a_fill",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_sequenced_same_second_trades_are_ordered_and_cross_source_duplicate_is_deduped",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_restart_labels_persisted_trade_as_duplicate_without_reconsuming_queue",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_first_verified_supervisor_read_after_restart_closes_removed_event",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_isolated_supervisor_cursor_hash_is_verified_and_rejects_tampering",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_continuous_restart_uses_isolated_cursor_to_strand_removed_event",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_new_quality_window_cancels_active_order_and_blocks_new_snapshot",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_restart_preserves_account_orders_strategy_evidence_and_capital_time",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_paper_records_and_status_are_strictly_read_only_and_scan_clear",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_unreadable_upstream_and_health_gates_cannot_create_paper_orders",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_closed_event_cancels_active_buy_and_releases_only_its_reservation",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_four_exit_stages_conserve_shares_and_final_stage_clears_remainder",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_recovery.py::test_later_buy_expands_only_incomplete_exit_stage_basis",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_runtime_boundaries.py::test_paper_continuous_first_start_tail_bootstraps_without_scoring_history",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_runtime_boundaries.py::test_paper_continuous_rejects_unverified_ws_trade",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_runtime_boundaries.py::test_paper_replay_uses_event_clock_not_wall_clock",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_runtime_boundaries.py::test_weather_worsening_cancels_and_releases_buy_reservation",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_runtime_boundaries.py::test_partial_exit_is_not_advanced_until_order_fully_fills",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_runtime_boundaries.py::test_windows_paper_runner_arguments_are_supervised_and_isolated",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_handled_cycle_exception_does_not_commit_source_cursor[source_conversion]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_handled_cycle_exception_does_not_commit_source_cursor[snapshot_conversion]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_handled_cycle_exception_does_not_commit_source_cursor[snapshot_processing]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_handled_cycle_exception_does_not_commit_source_cursor[trade_processing]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_handled_cycle_exception_does_not_commit_source_cursor[lifecycle_processing]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_replayed_evidence_prefix_is_idempotent_after_cycle_failure",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "native follower asserts zero economic consumption"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_evidence_append_oserror_halts_without_cursor_advance",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "native follower asserts zero economic consumption"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_partial_fill_and_trade_consumption_are_one_durable_fact",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_restart_cannot_consume_partial_fill_trade_twice",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_queue_only_trade_replay_does_not_reduce_queue_twice",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_unproven_same_transaction_siblings_remain_unknown",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_multiple_eligible_active_orders_recovered_durably_halts",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_persistence_fault_halts_current_processor[transition_intent]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_persistence_fault_halts_current_processor[order_save]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_persistence_fault_halts_current_processor[account_effect_apply]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_persistence_fault_halts_current_processor[account_commit]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_transition_abort_oserror_halts_current_processor",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_unwritable_halt_record_terminates_follower_fail_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_halted_processor_rejects_snapshot_trade_and_lifecycle_mutation",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_restart_weather_join_uses_only_cursor_visible_prefix[False]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_restart_weather_join_uses_only_cursor_visible_prefix[True]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_profit_exit_precedes_rejected_future_tranche",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_risk_exit_rejects_quality_window_between_quote_and_decision",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_risk_exit_interval_keeps_all_native_quote_boundaries_fail_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_inactive_supervisor_event_cannot_open_first_order",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_supervisor_unreadable_empty_and_active_sets_have_distinct_entry_outcomes",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_stale_snapshot_cannot_open_entry",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_processor_portfolios_share_one_global_200_account",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_closed_event_releases_only_its_own_portfolio_reservation",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_restart_replays_downtime_public_trade_once",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "native follower asserts zero economic consumption"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_unmatched_ws_trade_is_durable_pending_unknown",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_later_public_match_resolves_match_but_not_group_completeness",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "native follower asserts zero economic consumption"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_unrelated_pending_ws_trade_never_changes_another_token_queue",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_exact_paper_config_rejects_each_tampered_field",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_paper_ledger_rejects_non_paper_schema_collision",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_continuous_poll_expires_without_new_token_frame_exactly_once",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_replay_expiration_uses_resting_order_event_clock",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_seal_blockers.py::test_no_native_bid_ignores_all_surrogate_prices",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_initial_tranche_requires_lag_improving_and_no_ask_band",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_rejected_confirmation_is_not_consumed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_fourth_tranche_requires_actual_third_fill",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_max_hold_closes_with_contemporaneous_native_bid",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_closed_event_with_contemporaneous_native_bid_risk_exits",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_closed_event_without_native_bid_strands_and_leaves_pnl_unpriced",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_exit_releases_cash_without_resetting_station_day_cumulative_buy_cost",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_lifecycle_sweep_expires_without_later_token_snapshot_and_releases_residual",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_confirmation_is_receipt_ordered_consumed_once_and_requires_prior_fill",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_conditional_dip_requires_two_ticks_from_latest_actual_fill",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_close_without_native_bid_strands_inventory_and_keeps_cost",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_exit_stages_use_initial_share_quarters_without_oversell",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_spread_runtime.py::test_paper_status_reports_frozen_identity_and_eligibility",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_restarted_economic_trade_is_consumed_once[change0]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_restarted_economic_trade_is_consumed_once[change1]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_ws_quantity_conflict_quarantines_api_fallback",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_bidirectional_alias_repeated_restart_preserves_account[50-data_api-market_ws]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_bidirectional_alias_repeated_restart_preserves_account[50-market_ws-data_api]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_bidirectional_alias_repeated_restart_preserves_account[101-data_api-market_ws]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_bidirectional_alias_repeated_restart_preserves_account[101-market_ws-data_api]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_bidirectional_alias_repeated_restart_preserves_account[1000-data_api-market_ws]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_bidirectional_alias_repeated_restart_preserves_account[1000-market_ws-data_api]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_each_conflicting_field_is_quarantined[changes0-QUANTITY]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_each_conflicting_field_is_quarantined[changes1-PRICE]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_each_conflicting_field_is_quarantined[changes2-SIDE]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_each_conflicting_field_is_quarantined[changes3-TOKEN]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_each_conflicting_field_is_quarantined[changes4-MARKET]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_each_conflicting_field_is_quarantined[changes5-RECEIPT]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_timestamp_precision_and_validation_dependency_receipt",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_mixed_batch_is_per_record_and_ambiguous_siblings_not_overwritten",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_sequence_conflict_is_durable_unknown",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_indistinguishable_same_source_batch_never_consumes",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_nonfinite_trade_is_rejected[NaN-price]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_nonfinite_trade_is_rejected[NaN-size]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_nonfinite_trade_is_rejected[Infinity-price]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_nonfinite_trade_is_rejected[Infinity-size]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_nonfinite_trade_is_rejected[-Infinity-price]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_nonfinite_trade_is_rejected[-Infinity-size]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_pending_restart_uses_complete_validator",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_delayed_evidence_does_not_fill_expired_order",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_real_follower_two_polls_then_restart[data_api]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "native follower asserts zero economic consumption"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_real_follower_two_polls_then_restart[market_ws]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "native follower asserts zero economic consumption"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_real_follower_two_polls_then_restart[conflict]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "native follower asserts zero economic consumption"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_crash_before_after_durable_identity_boundaries[False-observation]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_crash_before_after_durable_identity_boundaries[False-order]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_crash_before_after_durable_identity_boundaries[False-account_intent]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_crash_before_after_durable_identity_boundaries[False-account_commit]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_crash_before_after_durable_identity_boundaries[True-observation]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_crash_before_after_durable_identity_boundaries[True-order]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_crash_before_after_durable_identity_boundaries[True-account_intent]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_crash_before_after_durable_identity_boundaries[True-account_commit]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_explicit_normalized_row_ids_preserve_transaction_siblings",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_legacy_key_halts_paper_and_v2_key_is_unchanged",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_same_batch_cross_source_alias_and_scientific_decimal[source_order0]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_same_batch_cross_source_alias_and_scientific_decimal[source_order1]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_precision_loss_and_naive_time_are_not_silently_repaired[1787820000000.0001]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_precision_loss_and_naive_time_are_not_silently_repaired[2026-08-27T08:40:00.0000001Z]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_precision_loss_and_naive_time_are_not_silently_repaired[2026-08-27T08:40:00]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_precision_loss_and_naive_time_are_not_silently_repaired[NaN]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_precision_loss_and_naive_time_are_not_silently_repaired[Infinity]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_failed_cycle_with_alias_partial_prefix_matches_clean_economics",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_pending_multiple_ws_and_future_receipt_cannot_resolve",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_identity_write_oserror_does_not_commit_follower_cursor",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_alias_observation_crash_after_prior_fill[False]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_alias_observation_crash_after_prior_fill[True]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_paper_trade_evidence.py::test_plain_shadow_cursor_does_not_gain_paper_state",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_polymarket_data.py::test_trade_client_uses_offsets_before_time_window_bisection_and_deduplicates",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_polymarket_data.py::test_trade_client_returns_short_final_offset_page_without_bisection",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_polymarket_data.py::test_last_trade_at_or_before_never_uses_future_execution",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_polymarket_data.py::test_trade_client_queries_comma_separated_market_conditions",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_polymarket_status.py::test_status_parser_uses_component_and_explicit_active_state",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_polymarket_status.py::test_completed_and_unknown_windows_do_not_become_permanently_active",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_polymarket_status.py::test_quality_windows_merge_and_exclude_legacy_rows",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_polymarket_status.py::test_status_client_probes_only_verified_summary_and_atom_endpoints",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_price_band_accessibility.py::test_price_band_boundaries_are_true_ask_bands",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_price_band_accessibility.py::test_empty_ask_cohort_never_uses_a_future_ask_and_paths_use_real_books",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_price_path_analysis.py::test_path_uses_strictly_later_real_no_bids_and_records_gap_floor",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_price_path_analysis.py::test_incomplete_200_entry_is_excluded_and_loader_keeps_source_and_receipt",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_producer_progress_closure.py::test_actual_producer_commits_two_durable_samples[market]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_producer_progress_closure.py::test_actual_producer_commits_two_durable_samples[weather]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_producer_progress_closure.py::test_actual_producer_commits_two_durable_samples[supervisor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_producer_progress_closure.py::test_cross_file_fsync_failure_does_not_publish_partial_frontier",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_producer_progress_closure.py::test_failed_active_set_publish_does_not_advance",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_producer_progress_closure.py::test_signal_progress_requires_successful_state_commit",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_public_trade_collection.py::test_discover_depth_coverage_groups_market_condition_and_tokens",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_public_trade_collection.py::test_collection_is_incremental_deduplicated_and_reports_intersection",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_unknown_minimum_is_not_silently_treated_as_zero",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_no_later_healthy_book_is_distinct_from_no_touch",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_never_touch_is_a_quote_path_finding",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_touch_with_unknown_tape_is_not_a_queue_failure",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_touch_with_no_opposite_trade_is_explicit_zero_tape_volume",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_touch_with_insufficient_queue_consumption_is_separate",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_queue_clear_is_an_upper_bound_not_an_execution_claim",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_same_second_ambiguity_blocks_only_conservative_layer",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_later_touch_after_cancel_is_not_backfilled_into_live_fill",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_counterfactual_horizons_do_not_extend_live_timeout",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_small_size_sensitivity_recomputes_queue_capacity",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_lifecycle_labels_coverage_flicker_separately_from_true_instability",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_episode_book_observations_count_token_native_paired_frames",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_archived_gamma_metadata_restores_pre_order_rule_provenance",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_cross_bucket_sensitivity_separates_missing_buckets_from_age",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_order_forensics.py::test_report_distinguishes_order_and_cluster_wilson_bounds",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_state_log.py::test_forward_log_tail_bootstrap_suppresses_historical_records",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_state_log.py::test_forward_log_preserves_same_timestamp_dedupe_cursor",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_many_same_or_lower_wrh_updates_are_no_op_and_do_not_block_quiet",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_regular_weather_decimal_jitter_is_no_op_until_a_material_risk_band_changes",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_next_observed_daily_high_is_a_hard_reset",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_settlement_unchanged_is_no_op_but_hash_change_is_hard",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_speci_is_not_hard_by_name_but_critical_field_change_is_hard",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_cross_archive_duplicate_payloads_do_not_create_extra_clock_events",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_information_report_breaks_out_station_and_invalid_events",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_trade_intensity_has_explicit_warmup_then_uses_strict_prior_baseline",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_trade_intensity_baseline_is_bounded_but_strictly_prior",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_l2_remove_without_trade_is_churn_not_a_shadow_fill",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_sparse_l2_index_matches_target_snapshot_window",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_sparse_l2_marks_archive_silence_unknown_at_gap_boundary",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_sparse_l2_carries_valid_book_across_snapshot_gap_when_archive_continuous",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_snapshot_store_preserves_exact_token_schedule",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_l2_prefers_plain_archive_and_skips_unrelated_invalid_rows",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_reconnect_or_archive_gap_makes_churn_unknown",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_cross_bucket_desynchronization_is_unknown_not_a_complement_proxy",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_incomplete_token_does_not_poison_healthy_token_same_station_day",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_hard_reset_reanchors_but_no_op_does_not",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_unknown_coverage_and_true_violation_have_distinct_reasons",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_v2_semantics.py::test_future_receipt_never_reaches_information_clock_state_machine",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_quiet_maker_enters_only_after_reaction_and_new_event_cancels_quote",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_transition_observer_receives_existing_token_queue_without_mutating_strategy",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_health_gap_stops_everything_and_uses_only_real_bid_depth_for_reduce_only_exit",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_replay_keeps_fixed_thresholds_and_marks_small_clusters_unreliable",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_three_strategy_risk_book_rejects_shared_cap_overrun",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_decision_regret_is_after_the_fact_only",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_replay_with_quiet_quote_and_later_event_records_regret_gap",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_global_status_is_expanded_to_observed_station_days",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_quiet_window_strategy.py::test_no_quiet_size_grid_shortcut_is_not_a_parameter_search",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_real_no_books.py::test_real_book_pairing_never_uses_future_side",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_real_no_books.py::test_real_book_pairing_reads_retention_gzip",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_real_no_books.py::test_streaming_pairer_merges_paths_chronologically_without_raw_payload",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_real_no_books.py::test_real_book_pairing_excludes_legacy_rows_by_official_window",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_real_no_books.py::test_archived_event_metadata_uses_slug_and_registry_not_rotating_state",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_real_no_books.py::test_paired_books_merge_only_previously_archived_gamma_rules",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_real_no_books.py::test_archived_tick_change_is_effective_only_after_its_receipt",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_consumers.py::test_q01_duplicate_archive_representations_verified_or_blocked[True]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_consumers.py::test_q01_duplicate_archive_representations_verified_or_blocked[False]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_consumers.py::test_q03_quality_interval_interior_rejected_by_all_converters",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_consumers.py::test_q03_durable_receipt_clock_and_corruption_shared_by_loaders",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_consumers.py::test_q05_fixed_weather_fee_math_and_shared_wrappers[0.01]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "fixed-version Decimal fee math, no live fee claim"
+    },
+    {
+      "nodeid": "tests/test_reliability_consumers.py::test_q05_fixed_weather_fee_math_and_shared_wrappers[0.50]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "fixed-version Decimal fee math, no live fee claim"
+    },
+    {
+      "nodeid": "tests/test_reliability_consumers.py::test_q05_fixed_weather_fee_math_and_shared_wrappers[0.82]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "fixed-version Decimal fee math, no live fee claim"
+    },
+    {
+      "nodeid": "tests/test_reliability_consumers.py::test_q05_fixed_weather_fee_math_and_shared_wrappers[0.99]",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "fixed-version Decimal fee math, no live fee claim"
+    },
+    {
+      "nodeid": "tests/test_reliability_documents.py::test_d01_current_matrix_references_collected_tests",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_documents.py::test_d02_inventory_layers_and_source_fingerprints",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_documents.py::test_d03_formal_authority_and_zero_consumption_are_explicit",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_documents.py::test_d04_counts_are_derived_from_collection_not_hardcoded",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f03_distinct_clocks_and_duplicate_receipt",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "collector/receipt conversion assertion only; no group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f03_legacy_missing_receipt_remains_historical_only",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "collector/receipt conversion assertion only; no group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f03_failure_retry_and_late_sibling_freeze_old_receipt",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "collector/receipt conversion assertion only; no group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f03_backwards_response_clock_does_not_commit",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "collector/receipt conversion assertion only; no group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_pending_restart_cannot_upgrade_quality[degraded]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_pending_restart_cannot_upgrade_quality[maintenance]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_pending_restart_cannot_upgrade_quality[unknown]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_old_pending_missing_quality_is_unknown",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f02_late_evidence_invalidates_old_consumption_without_rewriting",
+      "evidence_level": "MODEL_KERNEL",
+      "basis": "private economic kernel is invoked by this test"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_new_healthy_observation_does_not_rewrite_bad_pending",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f02_split_unsequenced_group_never_consumes_queue[False]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f02_split_unsequenced_group_never_consumes_queue[True]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_native_follower_two_polls_restart_preserves_quality[degraded]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_native_follower_two_polls_restart_preserves_quality[maintenance]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_native_follower_two_polls_restart_preserves_quality[unknown]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f01_native_follower_two_polls_restart_preserves_quality[None]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f02_native_follower_batch_file_switch_restart[None-False]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f02_native_follower_batch_file_switch_restart[None-True]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f02_native_follower_batch_file_switch_restart[1-False]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_evidence.py::test_f02_native_follower_batch_file_switch_restart[1-True]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "rejection/preservation, not positive fill capability"
+    },
+    {
+      "nodeid": "tests/test_reliability_group_contract.py::test_no_production_callsite_can_reach_private_ordered_model_kernel",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_group_contract.py::test_unsupported_group_contract_is_explicit_and_zero_consumption",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[dead-stopped-running]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[dead-stopped-connected]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[dead-stopped-healthy]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[dead-stopped-reconnecting]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[dead-stopped-stopped]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[reused-ownership_mismatch-running]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[reused-ownership_mismatch-connected]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[reused-ownership_mismatch-healthy]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[reused-ownership_mismatch-reconnecting]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[reused-ownership_mismatch-stopped]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[ownership_mismatch-ownership_mismatch-running]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[ownership_mismatch-ownership_mismatch-connected]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[ownership_mismatch-ownership_mismatch-healthy]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[ownership_mismatch-ownership_mismatch-reconnecting]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_pid_failure_overrides_every_reported_state[ownership_mismatch-ownership_mismatch-stopped]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_heartbeat_fixed_boundaries_and_no_fallback[None-missing]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_heartbeat_fixed_boundaries_and_no_fallback[bad-invalid]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_heartbeat_fixed_boundaries_and_no_fallback[2026-09-08T12:00:00-invalid]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_heartbeat_fixed_boundaries_and_no_fallback[heartbeat3-fresh]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_heartbeat_fixed_boundaries_and_no_fallback[heartbeat4-future]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_heartbeat_fixed_boundaries_and_no_fallback[heartbeat5-fresh]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_heartbeat_fixed_boundaries_and_no_fallback[heartbeat6-stale]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_missing_or_unknown_pid_never_ready[missing]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_missing_or_unknown_pid_never_ready[unknown]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_read_status_cli_and_downstream_share_truth",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_process_creation_after_heartbeat_is_reused",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_integrity_is_distinct_from_liveness[missing]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_integrity_is_distinct_from_liveness[corrupt]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_integrity_is_distinct_from_liveness[legacy]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_integrity_is_distinct_from_liveness[fallback]",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_runner_and_consumers_use_normalized_gate_static",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_health.py::test_health_short_durable_write_preserves_previous_object",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_crash_reconciliation[before_fact]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_crash_reconciliation[before_witness]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_crash_reconciliation[before_tape]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_crash_reconciliation[before_cursor]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_crash_reconciliation[before_audit]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_corruption_preserves_bytes_and_blocks[tail]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_corruption_preserves_bytes_and_blocks[interior]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_corruption_preserves_bytes_and_blocks[checksum]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_corruption_preserves_bytes_and_blocks[rollback]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_corruption_preserves_bytes_and_blocks[witness]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_tape_conflict_is_quarantined_without_overwrite",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_decimal_and_local_sequence_do_not_create_economic_identity",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_receipts.py::test_receipt_failed_request_is_error_not_successful_empty_page",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "temporary collector journal/reconciliation, not group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_corrupt_tape_bytes_are_not_overwritten",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f05_late_append_is_not_deleted",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f03_no_request_refresh_keeps_first_receipt",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "collector/receipt conversion assertion only; no group closure"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_tape_is_quarantined_and_other_event_collects[]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_tape_is_quarantined_and_other_event_collects[ ]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_tape_is_quarantined_and_other_event_collects[{]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_tape_is_quarantined_and_other_event_collects[[]]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_tape_is_quarantined_and_other_event_collects[{}]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_tape_is_quarantined_and_other_event_collects[{\"trades\": [null]}]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_tape_is_quarantined_and_other_event_collects[\\xff]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_cursor_stops_before_request[]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_cursor_stops_before_request[{]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_cursor_stops_before_request[[]]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_cursor_stops_before_request[{}]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_cursor_stops_before_request[{\"events\": []}]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_cursor_stops_before_request[{\"events\": {\"event-1\": null}}]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_bad_cursor_stops_before_request[{\"events\": {\"event-1\": {\"watermark_end\": \"bad\"}}}]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_unreadable_object_is_not_overwritten[event-1.json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_unreadable_object_is_not_overwritten[.depth_trade_cursor.json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_commit_failure_retry_is_idempotent[False-event-1.json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_commit_failure_retry_is_idempotent[False-.depth_trade_cursor.json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_commit_failure_retry_is_idempotent[False-depth_trade_coverage.json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_commit_failure_retry_is_idempotent[True-event-1.json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_commit_failure_retry_is_idempotent[True-.depth_trade_cursor.json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_commit_failure_retry_is_idempotent[True-depth_trade_coverage.json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_collector_lock_rejects_concurrent_writer",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_verified_empty_tape_is_distinct_from_empty_file",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_missing_tape_does_not_reuse_advanced_cursor",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_durable_writer_failure_keeps_recoverable_tape[False-fsync]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_durable_writer_failure_keeps_recoverable_tape[False-replace]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_durable_writer_failure_keeps_recoverable_tape[True-fsync]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f04_durable_writer_failure_keeps_recoverable_tape[True-replace]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f05_unsealed_retention_never_opens_mutation_handles[bad-gzip]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_reliability_storage.py::test_f05_unsealed_retention_never_opens_mutation_handles[None]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_research_store.py::test_research_warehouse_upserts_and_exports_parquet",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_research_store.py::test_market_price_lookup_never_uses_a_future_point",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_retention.py::test_retention_defers_unsealed_compression_and_expiry_for_all_sources",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_retention.py::test_signal_snapshot_retention_root_rejects_path_escape",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_retention.py::test_retention_preserves_matching_gzip_without_writer_exclusion",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_retention.py::test_retention_preserves_a_mismatched_existing_gzip_archive",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_retention.py::test_disk_capacity_reports_logical_and_physical_rates",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_runtime_safety.py::test_atomic_status_write_has_checksum_sequence_and_last_good",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_runtime_safety.py::test_status_reader_falls_back_from_nul_or_torn_current[\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_runtime_safety.py::test_status_reader_falls_back_from_nul_or_torn_current[{\"state\":\"running\"]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_runtime_safety.py::test_status_reader_falls_back_from_nul_or_torn_current[not-json]",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_runtime_safety.py::test_status_reader_does_not_trust_dead_pid_or_missing_pid",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_runtime_safety.py::test_status_reader_marks_stale_heartbeat",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_runtime_safety.py::test_checksum_tamper_is_rejected_without_last_good",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_settlement.py::test_parse_current_polymarket_rule_wording",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_settlement.py::test_registry_status_is_required_for_verification",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_settlement.py::test_settlement_evidence_hash_is_stable_across_market_order",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_post_only_quote_modes_and_ladder_never_cross",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_tick_minimum_and_post_only_reject_fail_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_queue_ahead_consumes_only_matching_taker_side_and_partial_fills",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_trade_through_requires_strict_cross_and_book_decrease_is_not_fill",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_touch_is_explicit_optimistic_upper_bound",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_budget_counts_active_orders_and_filled_inventory_but_not_unfilled_as_inventory",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_market_day_budget_is_cumulative_after_an_exit",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_restart_and_idempotency_restore_order_and_inventory",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_in_memory_idempotency_is_also_restart_replay_safe_within_process",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_same_second_unordered_trades_are_skipped_conservatively",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_health_gates_cancel_active_and_reject_new_orders",
+      "evidence_level": "CONTAINMENT_ONLY",
+      "basis": "scoped health/evidence rejection; no production fills"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_requote_cancels_old_order_and_preserves_remaining",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_replenish_modes_do_not_allow_unconditional_averaging_down",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_replenishment_rejects_target_at_or_below_weighted_cost",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_exit_plan_and_fee_safe_inventory_summary",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_exit_action_is_maker_first_and_health_fail_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_stop_loss_reports_touch_not_guaranteed_execution",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_emergency_taker_exit_uses_real_bids_and_official_fee",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_bounded_taker_hedge_entry_uses_real_ask_depth_and_fee",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_bounded_taker_hedge_returns_empty_when_no_ask_is_within_cap",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_token_b_sell_is_rejected_after_token_a_buy_same_station_day",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_cross_bucket_sell_cannot_create_pnl",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_same_token_exit_uses_only_that_token_cost_basis",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_station_day_risk_manager_caps_combined_token_reservations",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_timeout_in_one_token_does_not_change_another_token_order",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_token_scoped_ledger_restart_restores_only_own_inventory",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_legacy_schema_ledger_is_quarantined_not_loaded_into_token_state",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_mismatched_trade_asset_raises_token_portfolio_invariant",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_unscoped_engine_binds_first_token_and_rejects_rebinding",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_orders.py::test_reused_idempotency_key_cannot_cross_token_scope",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_shadow_runtime_requires_supervision_and_persists_status",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_shadow_cursor_recovers_from_malformed_positions",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_shadow_continuous_cursor_is_idempotent_and_read_only",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_continuous_tail_bootstrap_skips_existing_archive_history",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_shadow_continuous_restores_pair_context_after_restart",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_pairer_promotes_quality_state_to_cancel_active_orders",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_continuous_persists_queue_position_changes",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_continuous_skips_ambiguous_same_second_api_trades",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_processor_replenishes_only_after_fill_and_exits_in_legs",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_continuous_records_supervisor_generation",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_public_trade_increment_is_receipt_gated_and_requires_identity",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_continuous_hot_token_load_keeps_inventory_and_queue_state_isolated",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_runtime_legacy_ledger_halts_without_rewriting_archival_v1_file",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_runtime.py::test_persisted_token_discrepancy_keeps_runtime_halted_after_restart",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_public_snapshot_helper_preserves_archived_rule_provenance",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_replay_is_market_day_based_and_runs_three_fill_models",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_replay_never_uses_trade_at_entry_timestamp",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_weather_lag_trigger_is_separate_from_price_band",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_report_keeps_n_a_and_shadow_boundary",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_replay_touch_audit_sees_later_ask_touching_buy_limit",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_replay_does_not_consume_trade_before_local_availability",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_two_token_round_trips_remain_one_station_day_cluster",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_shadow_spread_replay.py::test_synthetic_cross_bucket_profit_is_rejected_from_token_scoped_replay",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_archive_closure.py::test_signal_tail_plain_gzip_partial_and_prefix_replacement",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_deterministic_daily_high_extracts_target_day",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_deterministic_daily_high_returns_none_for_missing_day",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_physical_margin_uses_final_settlement_rounding_and_is_monotonic",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_warming_rate_uses_only_past_two_hour_observations",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_warming_rate_rejects_short_restart_fragment",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_wrh_backfill_ingest_is_strictly_no_lookahead",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_signal_engine_rejects_post_hoc_historical_weather",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_signal_book_delta_maintains_full_sorted_depth",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_signal_bootstraps_checkpoint_without_replaying_ticks",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_supervisor_generation_hot_reloads_signal_configs",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_live_calibration_requires_walk_forward_history",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_live_calibration_accepts_bias_only_after_walk_forward_improvement",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_live_calibration_learns_station_multi_model_weights",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_live_calibration_rejects_lookahead_day_zero",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_engine.py::test_implausible_edge_forces_skip_and_blocks_paper_alert",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_retention.py::test_normalized_writer_uses_native_columns_and_archive_precision",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_retention.py::test_writer_uses_column_names_after_v2_fee_column_migration",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_retention.py::test_archive_quantization_does_not_change_settlement_rounding_path",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_retention.py::test_legacy_payload_schema_fails_closed_for_new_writes",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_retention.py::test_vectorized_candidate_migration_is_lossless_and_idempotent",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_retention.py::test_signal_migration_reads_retention_gzip_without_precision_loss",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_retention.py::test_migration_refuses_online_database_name",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_signal_retention.py::test_signal_retention_is_disabled_by_default_and_preserves_critical_rows",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_storage.py::test_archive_and_catalog_preserve_source_data",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_book_state_replaces_and_applies_level_changes",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_market_bot_normalizes_book_price_change_and_trade",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_market_archive_window_uses_each_events_local_timezone",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_market_resolved_is_always_archived",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_market_websocket_has_frame_headroom_without_compression",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_repeated_message_too_big_failures_latch_explicit_fault",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_reconnect_loop_window_excludes_old_identical_failures",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_market_reconnect_log_preserves_unattributed_legacy_count",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_daemon_fetches_normalized_noaa_and_aviation_events",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_event_keeps_nanosecond_receive_clock_and_latency",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_wrh_client_and_weather_event_preserve_settlement_source_precision",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_daemon_accepts_multiple_unique_stations",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_daemon_fixed_intervals_match_measured_update_rates",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_status_reports_degraded_and_stalled",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_http_pool_diagnostics_include_proxy_mounts",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_pool_accounting_gap_marks_running_daemon_degraded",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_http_client_uses_explicit_timeouts",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_stream_daemons.py::test_weather_pool_rebuild_swaps_client_after_requests_drain",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_temperature_precision.py::test_celsius_conversion_rounds_only_after_conversion_at_boundaries",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_temperature_precision.py::test_metar_prefers_tenths_t_group_over_integer_body",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_temperature_precision.py::test_metar_marks_precision_degraded_when_t_group_is_missing",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_temperature_precision.py::test_nws_preserves_decimal_temperature_precision",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_trade_tape_analysis.py::test_trade_tape_staleness_is_strictly_no_lookahead",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_warming_policy.py::test_season_boundaries_are_inclusive_and_outside_is_fail_closed",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_warming_policy.py::test_joint_rule_changes_required_margin_with_time_to_peak",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_warming_policy.py::test_overlapping_seasons_fail_closed_instead_of_borrowing_threshold",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_warming_policy.py::test_disabled_low_resolution_station_cannot_trigger",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_fixed_forecast_requires_every_model_initialization[None-VERIFIED_EXPLICIT_FORECAST_VINTAGE]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_fixed_forecast_requires_every_model_initialization[missing-UNKNOWN_FIXED_FORECAST_VINTAGE]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_fixed_forecast_requires_every_model_initialization[second_model-UNKNOWN_FIXED_FORECAST_VINTAGE]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_fixed_forecast_requires_every_model_initialization[future-FORECAST_INITIALIZATION_AFTER_RECEIPT]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_fixed_forecast_requires_every_model_initialization[naive-UNKNOWN_FIXED_FORECAST_VINTAGE]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_fixed_forecast_requires_every_model_initialization[0-INVALID_FORECAST_LEAD_DAYS]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_fixed_forecast_requires_every_model_initialization[1.5-INVALID_FORECAST_LEAD_DAYS]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_fixed_forecast_requires_every_model_initialization[True-INVALID_FORECAST_LEAD_DAYS]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_we_signal_information_join_prefix_survives_late_high",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_forecast_append_preserves_actual_signal_and_information_prefix",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_nested_wrh_invalid_payload_cannot_partially_mutate_signal[NaN]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_decision_prefix.py::test_nested_wrh_invalid_payload_cannot_partially_mutate_signal[Infinity]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-mode_missing]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-backfill]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-receipt_missing]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-naive]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-source_after_receipt]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-nonfinite]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-clock_conflict]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-inexact_iso]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[join-invalid_temperature]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-mode_missing]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-backfill]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-receipt_missing]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-naive]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-source_after_receipt]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-nonfinite]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-clock_conflict]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-inexact_iso]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[information-invalid_temperature]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-mode_missing]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-backfill]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-receipt_missing]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-naive]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-source_after_receipt]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-nonfinite]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-clock_conflict]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-inexact_iso]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime[signal-invalid_temperature]",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_evidence_closure.py::test_we_real_producer_nanoseconds_never_round_receipt_early",
+      "evidence_level": "PRODUCTION_INGRESS",
+      "basis": "isolated actual reader/converter/publication contract; not deployed or public fills"
+    },
+    {
+      "nodeid": "tests/test_weather_market_join.py::test_weather_join_requires_both_source_and_receipt_cutoffs",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_weather_market_join.py::test_new_observation_is_marked_once_and_lag_uses_real_ask",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_weather_market_join.py::test_join_state_does_not_retrigger_same_observation_across_batches",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_weather_market_join.py::test_loader_skips_historical_backfill",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_weather_market_join.py::test_loader_converts_normalized_celsius_and_nested_nws_temperature",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_wrh_backfill.py::test_wrh_backfill_rejects_more_than_30_calendar_days",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_wrh_backfill.py::test_long_range_is_partitioned_below_public_limit",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_wrh_backfill.py::test_temperature_only_cache_keeps_historical_provenance",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_wrh_backfill.py::test_wrh_history_uses_explicit_range_instead_of_recent",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    },
+    {
+      "nodeid": "tests/test_wrh_backfill.py::test_realtime_reader_ignores_historical_archive_and_provenance",
+      "evidence_level": "UNVERIFIED",
+      "basis": "not individually qualified; collection is not PASS"
+    }
+  ]
+}

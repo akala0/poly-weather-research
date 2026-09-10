@@ -16,6 +16,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from paper_model_support import model_trade
 
 from poly_weather.paper_account import PaperLedger
 from poly_weather.paper_spread_runtime import (
@@ -234,7 +235,7 @@ def _write_public_tape(
     return destination
 
 
-def test_replayed_successful_prefix_is_idempotent_after_cycle_failure(tmp_path: Path) -> None:
+def test_replayed_evidence_prefix_is_idempotent_after_cycle_failure(tmp_path: Path) -> None:
     root = tmp_path / "temporary-data"
     root.mkdir()
     cursor_path = root / "runtime" / "cursor.json"
@@ -248,7 +249,7 @@ def test_replayed_successful_prefix_is_idempotent_after_cycle_failure(tmp_path: 
 
     def fail_after_trade(stage: str) -> None:
         if stage == "trade_processing":
-            raise OSError("after durable queue transition")
+            raise OSError("after durable evidence journal transition")
 
     first = run_paper_spread_continuous(
         data_dir=root,
@@ -266,7 +267,7 @@ def test_replayed_successful_prefix_is_idempotent_after_cycle_failure(tmp_path: 
     assert order.filled_shares == Decimal("0")  # the runner restored a separate live object
     after_failure = PaperLedger(ledger_path)
     filled_after_failure = next(iter(after_failure.orders.values())).filled_shares
-    assert filled_after_failure == Decimal("1")
+    assert filled_after_failure == Decimal("0")
 
     run_paper_spread_continuous(
         data_dir=root,
@@ -281,12 +282,12 @@ def test_replayed_successful_prefix_is_idempotent_after_cycle_failure(tmp_path: 
     )
     recovered = PaperLedger(ledger_path)
     restored_order = next(iter(recovered.orders.values()))
-    assert restored_order.filled_shares == Decimal("1")
-    assert len(restored_order.fills) == 1
+    assert restored_order.filled_shares == Decimal("0")
+    assert len(restored_order.fills) == 0
 
 
-def test_account_commit_oserror_halts_without_cursor_advance(tmp_path: Path) -> None:
-    """A failed durable fill commit cannot acknowledge any staged source row."""
+def test_evidence_append_oserror_halts_without_cursor_advance(tmp_path: Path) -> None:
+    """A failed evidence journal append cannot acknowledge staged source rows."""
 
     root = tmp_path / "temporary-data"
     weather = root / "raw" / "weather_daemon" / "fixture" / "events.jsonl"
@@ -313,8 +314,8 @@ def test_account_commit_oserror_halts_without_cursor_advance(tmp_path: Path) -> 
     _write_public_tape(root, transaction_hash="account-commit-fault", at=order_at + timedelta(seconds=1))
 
     def inject(stage: str) -> None:
-        if stage == "account_commit":
-            raise OSError("fixture account commit failure")
+        if stage == "decision_append":
+            raise OSError("fixture evidence append failure")
 
     failed = run_paper_spread_continuous(
         data_dir=root,
@@ -334,11 +335,8 @@ def test_account_commit_oserror_halts_without_cursor_advance(tmp_path: Path) -> 
     assert failed["cursor_commit_state"] == "not_committed_cycle_failure"
     assert ShadowCursor.load(cursor_path).position(weather)["offset"] == 0
 
-    # The post-trade order snapshot remains durable, but this injected append
-    # failure left a durable discrepancy. The next process must retain that
-    # HALT rather than treating its in-memory account reconstruction as a
-    # clean recovery; replaying the same tape still cannot create another
-    # fill.
+    # No economic effect is admitted. The failed evidence append must retain
+    # durable HALT rather than acknowledging the staged source on restart.
     repaired = run_paper_spread_continuous(
         data_dir=root,
         ledger_path=ledger_path,
@@ -354,8 +352,8 @@ def test_account_commit_oserror_halts_without_cursor_advance(tmp_path: Path) -> 
     restored_order = next(iter(restored.orders.values()))
     assert repaired["state"] == "halted"
     assert restored.invalid is True
-    assert restored_order.filled_shares == Decimal("1")
-    assert len(restored_order.fills) == 1
+    assert restored_order.filled_shares == Decimal("0")
+    assert len(restored_order.fills) == 0
     assert sum(row["event"] == "fill_buy" for row in restored.account_events) == 0
 
 
@@ -363,7 +361,7 @@ def test_partial_fill_and_trade_consumption_are_one_durable_fact(tmp_path: Path)
     paper = processor(tmp_path)
     order = submit_first(paper)
     trade = fill_trade(size="101")
-    fills = paper.process_trade(trade)
+    fills = model_trade(paper, trade)
     assert fills and order.filled_shares == Decimal("1")
     trade_key = paper._durable_trade_event_key(trade)
     trade_rows = [row for row in ledger_rows(paper.ledger.path) if row.get("event_key") == trade_key]
@@ -376,9 +374,9 @@ def test_restart_cannot_consume_partial_fill_trade_twice(tmp_path: Path) -> None
     paper = processor(tmp_path)
     submit_first(paper)
     trade = fill_trade(size="101")
-    assert paper.process_trade(trade)
+    assert model_trade(paper, trade)
     restored = restarted(paper.ledger.path)
-    assert restored.process_trade(trade) == ()
+    assert model_trade(restored, trade) == ()
     order = next(iter(restored.ledger.orders.values()))
     assert order.filled_shares == Decimal("1")
     assert len(order.fills) == 1
@@ -389,11 +387,11 @@ def test_queue_only_trade_replay_does_not_reduce_queue_twice(tmp_path: Path) -> 
     paper = processor(tmp_path)
     order = submit_first(paper)
     trade = fill_trade(event_id="queue-only", size="100")
-    assert paper.process_trade(trade) == ()
+    assert model_trade(paper, trade) == ()
     assert order.volume_ahead == Decimal("0")
     restored = restarted(paper.ledger.path)
     restored_order = next(iter(restored.ledger.orders.values()))
-    assert restored.process_trade(trade) == ()
+    assert model_trade(restored, trade) == ()
     assert restored_order.volume_ahead == Decimal("0")
     assert restored_order.filled_shares == Decimal("0")
 
@@ -407,7 +405,7 @@ def test_unproven_same_transaction_siblings_remain_unknown(tmp_path: Path) -> No
     first = TradeEvent(at, "token", ShadowSide.SELL, "0.75", "100", "same-tx", sequence=1)
     second = TradeEvent(at, "token", ShadowSide.SELL, "0.75", "101", "same-tx", sequence=2)
 
-    fills = paper.process_trades((first, second))
+    fills = paper._process_ordered_model_trades((first, second))
     assert fills == ()
     assert order.filled_shares == Decimal("0")
     trade_rows = [
@@ -419,7 +417,7 @@ def test_unproven_same_transaction_siblings_remain_unknown(tmp_path: Path) -> No
     assert paper.trade_evidence_counts["UNKNOWN_TRADE_IDENTITY_CONFLICT"] == 1
 
     restored = restarted(paper.ledger.path)
-    assert restored.process_trades((first, second)) == ()
+    assert restored._process_ordered_model_trades((first, second)) == ()
     restored_order = next(iter(restored.ledger.orders.values()))
     assert restored_order.filled_shares == order.filled_shares
     assert len(restored_order.fills) == 0
@@ -518,7 +516,7 @@ def test_halted_processor_rejects_snapshot_trade_and_lifecycle_mutation(tmp_path
     }
 
     assert paper.process_snapshot(snapshot(at=BASE + timedelta(minutes=2))) is None
-    assert paper.process_trade(fill_trade()) == ()
+    assert model_trade(paper, fill_trade()) == ()
     assert paper.sweep_lifecycle(as_of=BASE + timedelta(minutes=20)) == ()
     paper.close_portfolio(snapshot(at=BASE + timedelta(minutes=20)), reason="fixture-close")
     assert paper._submit_exit_if_eligible(snapshot(at=BASE + timedelta(minutes=20))) is None
@@ -640,7 +638,7 @@ def test_profit_exit_precedes_rejected_future_tranche(tmp_path: Path) -> None:
     for tranche_index in (1, 2, 3):
         paper = processor(tmp_path / str(tranche_index))
         submit_first(paper)
-        assert paper.process_trade(fill_trade(size="1000"))
+        assert model_trade(paper, fill_trade(size="1000"))
         state = next(iter(paper.states.values()))
         state.tranche_index = tranche_index
         exit_order = paper.process_snapshot(
@@ -888,7 +886,7 @@ def test_restart_replays_downtime_public_trade_once(tmp_path: Path) -> None:
     )
     assert first["data_coverage"]["new_data_api_trade_rows"] == 1
     first_order = next(iter(PaperLedger(ledger_path).orders.values()))
-    assert first_order.filled_shares == Decimal("1")
+    assert first_order.filled_shares == Decimal("0")
 
     # Keep the tape byte-for-byte and mtime-stable. A restart must replay it
     # through the durable trade key, not baseline it or fill a second time.
@@ -907,8 +905,8 @@ def test_restart_replays_downtime_public_trade_once(tmp_path: Path) -> None:
     assert tape.stat().st_mtime_ns == before_stat.st_mtime_ns
     assert second["data_coverage"]["new_data_api_trade_rows"] == 1
     second_order = next(iter(PaperLedger(ledger_path).orders.values()))
-    assert second_order.filled_shares == Decimal("1")
-    assert len(second_order.fills) == 1
+    assert second_order.filled_shares == Decimal("0")
+    assert len(second_order.fills) == 0
 
 
 def _write_ws_trade(
@@ -920,7 +918,8 @@ def _write_ws_trade(
     websocket.write_text(
         json.dumps(
             {
-                "run_id": "fixture",
+                  "run_id": "fixture",
+                  "upstream_status": "normal",
                 "sequence": 1,
                 "received_at": (timestamp + timedelta(seconds=2)).isoformat(),
                 "source_timestamp_ms": int(timestamp.timestamp() * 1000),
@@ -975,7 +974,7 @@ def test_unmatched_ws_trade_is_durable_pending_unknown(tmp_path: Path) -> None:
     assert restored.status()["paper_score_eligible"] is False
 
 
-def test_later_public_match_resolves_unknown_and_consumes_once(tmp_path: Path) -> None:
+def test_later_public_match_resolves_match_but_not_group_completeness(tmp_path: Path) -> None:
     root = tmp_path / "temporary-data"
     root.mkdir()
     order_at = _runtime_base()
@@ -1005,15 +1004,16 @@ def test_later_public_match_resolves_unknown_and_consumes_once(tmp_path: Path) -
     restored = restarted(ledger_path)
     order = next(iter(restored.ledger.orders.values()))
     assert not restored.pending_ws_trade_evidence
-    assert order.filled_shares == Decimal("1")
-    assert len(order.fills) == 1
+    assert order.filled_shares == Decimal("0")
+    assert len(order.fills) == 0
     assert any(row.get("decision") == "trade_evidence_resolved" for row in restored.ledger.decisions)
-    assert resolved["data_coverage"]["accepted_queue_trade_rows"] >= 1
+    assert resolved["data_coverage"]["matched_trade_rows"] >= 1
+    assert resolved["data_coverage"]["accepted_queue_trade_rows"] == 0
 
     run_paper_spread_continuous(**kwargs)
     again = next(iter(PaperLedger(ledger_path).orders.values()))
-    assert again.filled_shares == Decimal("1")
-    assert len(again.fills) == 1
+    assert again.filled_shares == Decimal("0")
+    assert len(again.fills) == 0
 
 
 def test_unrelated_pending_ws_trade_never_changes_another_token_queue(tmp_path: Path) -> None:
@@ -1034,7 +1034,7 @@ def test_unrelated_pending_ws_trade_never_changes_another_token_queue(tmp_path: 
     paper._record_pending_ws_trade(pending)
     assert order.volume_ahead == Decimal("100")
 
-    assert paper.process_trade(fill_trade(event_id="target-token-queue-only", size="100")) == ()
+    assert model_trade(paper, fill_trade(event_id="target-token-queue-only", size="100")) == ()
     assert order.volume_ahead == Decimal("0")
     assert order.filled_shares == Decimal("0")
     assert paper.pending_ws_trade_evidence
@@ -1156,7 +1156,7 @@ def test_no_native_bid_ignores_all_surrogate_prices(tmp_path: Path) -> None:
 
     paper = processor(tmp_path)
     submit_first(paper)
-    assert paper.process_trade(fill_trade(size="1000"))
+    assert model_trade(paper, fill_trade(size="1000"))
     closing = BookSnapshot(
         timestamp=BASE + timedelta(minutes=2),
         event_id="event",

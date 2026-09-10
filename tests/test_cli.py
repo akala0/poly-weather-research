@@ -88,7 +88,10 @@ def test_stream_status_surfaces_only_token_scoped_shadow_status(tmp_path) -> Non
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["shadow"]["schema_version"] == 2
-    assert payload["shadow"]["state"] == "healthy"
+    assert payload["shadow"]["reported_state"] == "healthy"
+    assert payload["shadow"]["state"] == "stale"
+    assert payload["shadow"]["pid_state"] == "missing"
+    assert payload["shadow"]["health_ready"] is False
     assert payload["shadow"]["legacy_status"] == "superseded_v1_read_only"
     assert payload["shadow"]["legacy_status_path"].endswith(
         "shadow_spread_status_v1_legacy_read_only.json"

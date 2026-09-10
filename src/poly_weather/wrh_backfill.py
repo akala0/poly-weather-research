@@ -246,7 +246,7 @@ def realtime_wrh_points_many(
                     row = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if str(row.get("collection_mode") or REALTIME) != REALTIME:
+                if row.get("collection_mode") != REALTIME:
                     continue
                 station_id = str(row.get("station_id") or "").upper()
                 if station_id not in intervals:

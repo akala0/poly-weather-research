@@ -22,6 +22,7 @@ from poly_weather.adapters.polymarket_data import PublicTrade
 from poly_weather.archive_io import open_jsonl_text
 from poly_weather.polymarket_status import (
     UpstreamQualityWindow,
+    excluded_market_data_window_overlaps,
     market_record_is_analysis_eligible,
 )
 from poly_weather.shadow_orders import ShadowSide, TradeEvent
@@ -63,6 +64,7 @@ class MarketWsTrade:
     source: str = "market_ws"
     source_timestamp_text: str | None = None
     receipt_timestamp_text: str | None = None
+    upstream_incident_id: str | None = None
 
     @property
     def event_id(self) -> str:
@@ -193,7 +195,8 @@ def parse_market_ws_trade(
         transaction_hash=transaction_hash,
         sequence=int(row["sequence"]) if row.get("sequence") is not None else None,
         run_id=str(row.get("run_id")) if row.get("run_id") else None,
-        upstream_status=str(row.get("upstream_status") or "normal"),
+        upstream_status=str(row.get("upstream_status") or "unknown"),
+        upstream_incident_id=row.get("upstream_incident_id"),
         source_timestamp_text=str(raw.get("timestamp") or row.get("source_timestamp_ms")),
         receipt_timestamp_text=str(received_value),
     )
@@ -435,7 +438,10 @@ def match_ws_trade(
         return {**base, "reason": "UNKNOWN_RECEIPT_QUALITY"}
     if any(not market_record_is_analysis_eligible(
         {"upstream_status": trade.upstream_status}, point, tuple(quality_windows)
-    ) for point in (trade.source_timestamp, trade.received_at, row.timestamp, row.available_at)):
+    ) for point in (trade.source_timestamp, trade.received_at, row.timestamp, row.available_at)) or excluded_market_data_window_overlaps(
+        list(quality_windows), start_at=min(trade.source_timestamp, row.timestamp),
+        end_at=max(trade.received_at, row.available_at),
+    ) is not None:
         return {**base, "reason": "UNKNOWN_QUALITY_WINDOW"}
     return {**base, "allowed": True, "reason": "MATCHED_COMPLETE",
             "validated_at": max(trade.received_at, row.available_at).astimezone(UTC).isoformat()}
@@ -523,7 +529,9 @@ def build_shadow_trade_events(
             continue
         if any(not market_record_is_analysis_eligible(
             {"upstream_status": "normal"}, point, tuple(quality_windows)
-        ) for point in (row.timestamp, row.available_at)):
+        ) for point in (row.timestamp, row.available_at)) or excluded_market_data_window_overlaps(
+            list(quality_windows), start_at=row.timestamp, end_at=row.available_at,
+        ) is not None:
             continue
         try:
             events.append(

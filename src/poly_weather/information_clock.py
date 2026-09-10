@@ -610,7 +610,24 @@ def _forecast_initialisation(payload: Any) -> datetime | None:
 def _weather_daemon_events(
     row: Mapping[str, Any], *, market_day: str | None
 ) -> tuple[InformationEvent, ...]:
-    available_at = _utc(row.get("received_at") or row.get("received_at_ns"))
+    from poly_weather.weather_market_join import parse_weather_observation
+    from poly_weather.weather_provenance import require_realtime_for_no_lookahead
+
+    qualified_observation = None
+    try:
+        require_realtime_for_no_lookahead((row,))
+        if row.get("product") in {"wrh_timeseries_observation", "latest_observation", "metar"}:
+            qualified_observation = parse_weather_observation(row)
+    except (TypeError, ValueError) as exc:
+        return (InformationEvent(
+            event_id=f"invalid_weather:{payload_hash(row)}", source="weather_daemon",
+            kind=str(row.get("product") or "weather"), source_at=None, available_at=None,
+            station_id=str(row.get("station_id") or "").upper() or None, market_day=market_day,
+            payload_hash=payload_hash(row), receipt_verified=False,
+            metadata={"qualification_reason": str(exc)},
+        ),)
+    available_at = (qualified_observation.received_at if qualified_observation is not None
+                    else _utc(row.get("received_at") or row.get("received_at_ns")))
     station = str(row.get("station_id") or "").upper() or None
     product = str(row.get("product") or "")
     source = str(row.get("provider") or "weather_daemon")
@@ -632,6 +649,9 @@ def _weather_daemon_events(
             )
     source_at = _utc(row.get("source_timestamp_ms"))
     if product == "multi_model_deterministic_forecast":
+        from poly_weather.weather_provenance import forecast_vintage
+
+        _, vintage_reason = forecast_vintage(row)
         models = raw.get("models") if isinstance(raw, Mapping) else None
         model_rows = models.items() if isinstance(models, Mapping) else (("blend", raw),)
         output: list[InformationEvent] = []
@@ -649,7 +669,9 @@ def _weather_daemon_events(
                     market_day=market_day,
                     payload_hash=digest,
                     predictable=False,
+                    receipt_verified=vintage_reason == "VERIFIED_EXPLICIT_FORECAST_VINTAGE",
                     metadata={
+                        "vintage_qualification": vintage_reason,
                         "model": str(model_name),
                         "missing_run_initialization": init is None,
                         "forecast_distribution_hash": digest,
@@ -966,7 +988,7 @@ def iter_information_events(
         market_day = str(
             row.get("market_day") or market_day_by_station.get(station) or ""
         ) or None
-        if row.get("product") is not None and row.get("received_at") is not None:
+        if row.get("product") is not None:
             events = _weather_daemon_events(row, market_day=market_day)
         elif row.get("source") is not None and row.get("fetched_at") is not None:
             events = _archive_events(row, market_day=market_day)

@@ -98,9 +98,8 @@ function Test-VerifiedStatus {
     if ($null -eq $Status) {
         return $false
     }
-    $pidAlive = Get-PropertyValue $Status "status_pid_alive"
-    $integrity = [string](Get-PropertyValue $Status "status_integrity")
-    return ($pidAlive -eq $true -and $integrity -in @("verified", "legacy_unchecked"))
+    # Same normalized truth table as CLI/Paper/signal/shadow; checksum alone is not health.
+    return ((Get-PropertyValue $Status "health_ready") -eq $true)
 }
 
 function Test-MarketReady {
@@ -116,19 +115,17 @@ function Test-MarketReady {
 }
 
 function Test-Dependencies {
-    $status = Get-ChainStatus
-    if ($DaemonName -eq "market-supervisor") {
+    # Raw collectors must keep recording independently of strategy consumers.
+    if ($DaemonName -in @("market-supervisor", "weather-stream")) {
         return $true
     }
+    $status = Get-ChainStatus
     if ($null -eq $status) {
         return $false
     }
     $weather = Get-PropertyValue $status "weather"
     $signal = Get-PropertyValue $status "signal"
     $marketReady = Test-MarketReady $status
-    if ($DaemonName -eq "weather-stream") {
-        return $marketReady
-    }
     if ($DaemonName -eq "signal-engine") {
         return (
             $marketReady -and

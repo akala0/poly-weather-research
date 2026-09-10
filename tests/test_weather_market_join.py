@@ -101,6 +101,7 @@ def test_loader_converts_normalized_celsius_and_nested_nws_temperature(tmp_path)
         {
             "station_id": "KLAX",
             "product": "metar",
+            "collection_mode": "realtime",
             "source_timestamp_ms": 1787820000000,
             "received_at": "2026-08-27T10:00:00+00:00",
             "temperature_c": 25,
@@ -109,6 +110,7 @@ def test_loader_converts_normalized_celsius_and_nested_nws_temperature(tmp_path)
         {
             "station_id": "KLAX",
             "product": "latest_observation",
+            "collection_mode": "realtime",
             "source_timestamp_ms": 1787820060000,
             "received_at": "2026-08-27T10:01:00+00:00",
             "raw": {"id": "nws-1", "properties": {"temperature": {"value": 26}}},

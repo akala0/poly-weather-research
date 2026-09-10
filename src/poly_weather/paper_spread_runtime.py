@@ -42,7 +42,9 @@ from poly_weather.real_no_books import archived_event_metadata
 from poly_weather.runtime_safety import (
     StatusIntegrityError,
     atomic_json_write,
+    read_chain_status,
     read_json_with_fallback,
+    read_status,
 )
 from poly_weather.shadow_orders import (
     ZERO,
@@ -340,6 +342,7 @@ class PaperSpreadProcessor:
         self.pending_ws_trade_evidence: dict[str, dict[str, Any]] = {}
         self._seen_trade_identities: set[str] = set()
         self.trade_observations: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self.trade_time_groups: dict[tuple[str, datetime], list[dict[str, Any]]] = defaultdict(list)
         self.supervisor_generation: str | None = None
         self.supervisor_active_events: set[str] = set()
         self.supervisor_integrity = "unreadable"
@@ -354,6 +357,7 @@ class PaperSpreadProcessor:
         # this to ``unknown`` and blocks readiness until resolved.
         self.feed_continuity = "verified"
         self.new_orders_blocked_reasons: set[str] = set()
+        self.business_readiness: dict[str, Any] | None = None
         self.last_risk_exit_book_age_seconds: float | None = None
         self.capital_time_usd_seconds = ZERO
         self._capital_clock_at: datetime | None = None
@@ -397,6 +401,7 @@ class PaperSpreadProcessor:
             decision = str(row.get("decision") or "")
             if decision == "trade_identity_observation_v2":
                 self.trade_observations[str(details["group"])].append(dict(details))
+                self._index_time_group(details)
                 continue
             if decision == "capital_clock":
                 self.capital_time_usd_seconds = _decimal(details["capital_time_usd_seconds"])
@@ -787,6 +792,16 @@ class PaperSpreadProcessor:
         )
         return not self._mutations_blocked()
 
+    @_paper_mutation_boundary(None)
+    def set_business_readiness(self, evidence: Mapping[str, Any]) -> None:
+        if self._mutations_blocked():
+            return
+        self.business_readiness = dict(evidence)
+        if evidence.get("input_evidence_ready") is True:
+            self.new_orders_blocked_reasons.discard("business_readiness_unverified")
+        else:
+            self.new_orders_blocked_reasons.add("business_readiness_unverified")
+
     @_paper_mutation_boundary(())
     def set_supervisor_evidence(
         self,
@@ -963,6 +978,12 @@ class PaperSpreadProcessor:
             "size": _exact_decimal_text(parsed.size),
             "side": str(parsed.side),
             "sequence": parsed.sequence,
+            "evidence_schema_version": 2,
+            "upstream_status": getattr(parsed, "upstream_status", "unknown"),
+            "upstream_incident_id": getattr(parsed, "upstream_incident_id", None),
+            "run_id": getattr(parsed, "run_id", None),
+            "source": getattr(parsed, "source", "market_ws"),
+            "market_slug": getattr(parsed, "market_slug", None),
         }
         encoded = json.dumps(details, sort_keys=True, separators=(",", ":"))
         details.update(source_timestamp_text=getattr(parsed, "source_timestamp_text", None),
@@ -1046,12 +1067,14 @@ class PaperSpreadProcessor:
     def _pending_ws_row(details: Mapping[str, Any]) -> MarketWsTrade:
         return MarketWsTrade(
             asset_id=str(details["asset_id"]), market_id=str(details["market_id"]),
-            market_slug=None, price=Decimal(str(details["price"])),
+            market_slug=details.get("market_slug"), price=Decimal(str(details["price"])),
             size=Decimal(str(details["size"])), side=ShadowSide(str(details["side"])),
             source_timestamp=datetime.fromisoformat(str(details["source_timestamp"])),
             received_at=datetime.fromisoformat(str(details["received_at"])),
             transaction_hash=details.get("transaction_hash"), sequence=details.get("sequence"),
-            run_id=None, upstream_status="normal",
+            run_id=details.get("run_id"), upstream_status=str(details.get("upstream_status") or "unknown"),
+            upstream_incident_id=details.get("upstream_incident_id"),
+            source=str(details.get("source") or "market_ws"),
             source_timestamp_text=details.get("source_timestamp_text"),
             receipt_timestamp_text=details.get("receipt_timestamp_text"),
         )
@@ -1555,6 +1578,7 @@ class PaperSpreadProcessor:
             self._record_decision(event_key=event_key, decision="trade_identity_observation_v2",
                                   details=details)
             observations.append(details)
+            self._index_time_group(details)
         if conflict or any(row.get("conflict") for row in observations):
             self._record_trade_evidence(
                 code="UNKNOWN_TRADE_IDENTITY_CONFLICT", event_key=f"identity-conflict:{group}",
@@ -1562,6 +1586,48 @@ class PaperSpreadProcessor:
             )
             return False
         return True
+
+    def _index_time_group(self, observation: Mapping[str, Any]) -> None:
+        """Rebuild membership from the existing append-only identity journal."""
+        identity = json.loads(str(observation["identity"]))
+        timestamp = datetime.fromisoformat(identity[3]).astimezone(UTC).replace(microsecond=0)
+        self.trade_time_groups[(identity[2], timestamp)].append(dict(observation))
+
+    def _time_group_is_unknown(self, trade: TradeEvent) -> bool:
+        timestamp = trade.timestamp.astimezone(UTC).replace(microsecond=0)
+        key = (trade.asset_id, timestamp)
+        rows = self.trade_time_groups[key]
+        by_sequence: dict[int, set[str]] = defaultdict(set)
+        sequenced_identities: set[str] = set()
+        for row in rows:
+            if row["sequence"] is not None:
+                by_sequence[row["sequence"]].add(row["identity"])
+                sequenced_identities.add(row["identity"])
+        unknown = any(row["identity"] not in sequenced_identities for row in rows) or any(
+            len(identities) > 1 for identities in by_sequence.values()
+        )
+        if not unknown:
+            return False
+        self._record_trade_evidence(
+            code="UNKNOWN_TRADE_SEQUENCE",
+            event_key=f"unknown-trade-sequence:{key[0]}:{timestamp.isoformat()}",
+            details={"token_id": key[0], "timestamp": timestamp.isoformat(),
+                     "group_complete": False, "reason": "persistent_unsequenced_or_conflicting_group"},
+        )
+        # Old candidates may have consumed an apparently-singleton group.
+        # Append an invalidation, never rewrite their economic facts.
+        self._invalidate_time_group_consumptions(key[0], timestamp)
+        return True
+
+    def _invalidate_time_group_consumptions(self, token_id: str, timestamp: datetime) -> None:
+        for row in self.trade_time_groups[(token_id, timestamp)]:
+            durable_key = "paper-trade-v2:" + hashlib.sha256(row["identity"].encode("utf-8")).hexdigest()
+            if self.ledger.event_seen(durable_key):
+                self._record_trade_evidence(
+                    code="UNKNOWN_TRADE_GROUP_INVALIDATED",
+                    event_key=f"invalidated-time-group:{durable_key}",
+                    details={"durable_trade_key": durable_key, "group_complete": False},
+                )
 
     @staticmethod
     def _trade_group(trade: TradeEvent) -> str:
@@ -1704,7 +1770,43 @@ class PaperSpreadProcessor:
 
     @_paper_mutation_boundary(())
     def process_trades(self, trades: Sequence[TradeEvent]) -> tuple[ShadowFill, ...]:
-        """Batch by token/second; unresolved order is evidence, never a fill."""
+        """Journal public observations; unknown completeness never authorizes effects.
+
+        Neither the public API nor the archived WS transport sequence proves
+        token/second group closure. There is intentionally no boolean/JSON
+        escape hatch. A future completeness protocol needs its own reviewed
+        producer and verifier before this entry can invoke the model kernel.
+        """
+        if self._mutations_blocked():
+            return ()
+        counts = Counter((trade.event_id, trade.asset_id, trade.source) for trade in trades)
+        for trade in trades:
+            self._observe_trade_identity(
+                trade, ambiguous=counts[(trade.event_id, trade.asset_id, trade.source)] > 1,
+            )
+        for trade in trades:
+            if self._mutations_blocked():
+                return ()
+            self._time_group_is_unknown(trade)
+            timestamp = trade.timestamp.astimezone(UTC).replace(microsecond=0)
+            self._record_trade_evidence(
+                code="UNKNOWN_TRADE_GROUP_COMPLETENESS",
+                event_key=f"unproven-time-group:{trade.asset_id}:{timestamp.isoformat()}",
+                details={"token_id": trade.asset_id, "timestamp": timestamp.isoformat(),
+                         "group_complete": False, "ordering_is_not_closure": True,
+                         "support_state": "UNSUPPORTED_GROUP_COMPLETENESS"},
+            )
+            self._invalidate_time_group_consumptions(trade.asset_id, timestamp)
+        return ()
+
+    @_paper_mutation_boundary(())
+    def _process_ordered_model_trades(self, trades: Sequence[TradeEvent]) -> tuple[ShadowFill, ...]:
+        """Non-authoritative economic kernel, not a public-evidence admission API.
+
+        Kept for isolated lower-layer accounting/recovery conformance tests.
+        Current production ingress never calls this kernel: complete-group
+        evidence is unavailable. Model fixtures cannot establish eligibility.
+        """
 
         if self._mutations_blocked():
             return ()
@@ -1716,6 +1818,8 @@ class PaperSpreadProcessor:
             trade, ambiguous=observation_counts[(trade.event_id, trade.asset_id, trade.source)] > 1
         )]
         for trade in admitted:
+            if self._time_group_is_unknown(trade):
+                continue
             group_key = self._trade_group(trade)
             if any(row.get("conflict") for row in self.trade_observations[group_key]):
                 continue
@@ -2092,6 +2196,8 @@ class PaperSpreadProcessor:
             "duplicate_evidence_record_count": self.trade_evidence_counts.get("duplicate_trade", 0),
             "legal_sibling_event_count": sum(count for count in sibling_groups.values() if count > 1),
             "pending_observation_count": len(self.pending_ws_trade_evidence),
+            "time_group_count": len(self.trade_time_groups),
+            "group_completeness": "unproven" if self.trade_time_groups else "no_observations",
             "conflict_group_count": sum(any(row["conflict"] for row in rows)
                                         for rows in self.trade_observations.values()),
             "queue_shares_consumed": str(sum((Decimal(row["queue_shares"]) for row in consumed.values()), ZERO)),
@@ -2118,6 +2224,10 @@ class PaperSpreadProcessor:
             reasons.append("halted")
         if any(row.get("conflict") for rows in self.trade_observations.values() for row in rows):
             reasons.append("unknown_trade_identity_conflict")
+        if self.trade_evidence_counts.get("UNKNOWN_TRADE_SEQUENCE", 0):
+            reasons.append("unknown_trade_group_order_or_completeness")
+        if self.trade_time_groups:
+            reasons.append("unproven_trade_group_completeness")
         if self.config_mismatch:
             reasons.append("config_mismatch")
         if overdue:
@@ -2184,6 +2294,7 @@ class PaperSpreadProcessor:
             "execution_enabled": False,
             "trade_identity_version": 2,
             "trade_evidence_summary": self._trade_evidence_summary(),
+            "business_readiness": self.business_readiness,
             "strategy_version": self.strategy.version,
             "config_path": str(self.strategy.config_path),
             "config_sha256": self.strategy.config_sha256,
@@ -2487,7 +2598,7 @@ def _visible_weather_observations(
         observation
         for source in weather_paths
         for row in _cursor_visible_jsonl_rows(
-            source, cursor.sources.get(str(source.resolve()))
+            source, cursor.existing_position(source)
         )
         for observation in _parse_observation_safely(row)
     ]
@@ -2532,7 +2643,7 @@ def _rebuild_paper_join_state_from_cursor(
     latest_asks: dict[tuple[str, str], tuple[datetime, Decimal]] = {}
     for source in checkpoint_paths:
         for row in _cursor_visible_jsonl_rows(
-            source, cursor.sources.get(str(source.resolve()))
+            source, cursor.existing_position(source)
         ):
             try:
                 received_at = datetime.fromisoformat(
@@ -2602,6 +2713,10 @@ def _cursor_visible_jsonl_rows(
     weather history.
     """
 
+    if position is not None and position.get("archive_position_schema") == 2:
+        from poly_weather.archive_position import read_positioned_rows
+
+        return read_positioned_rows(path, position, committed_only=True)[0]
     if position is None or not path.exists() or bool(position.get("skip_existing_gzip")):
         return []
     rows: list[dict[str, Any]] = []
@@ -2645,6 +2760,12 @@ def _cursor_visible_jsonl_rows(
         if isinstance(value, dict):
             rows.append(value)
     return rows
+
+
+def _archive_receipt_visible(row: Mapping[str, Any], cutoff: datetime) -> bool:
+    from poly_weather.weather_provenance import weather_receipt_time
+
+    return weather_receipt_time(row) <= cutoff
 
 
 def run_paper_spread_continuous(
@@ -2843,6 +2964,7 @@ def run_paper_spread_continuous(
         else None
     )
     supervisor_integrity = "unreadable"
+    previous_chain = None
     while True:
         cycles += 1
         staged_cursor = copy.deepcopy(cursor)
@@ -2863,6 +2985,17 @@ def run_paper_spread_continuous(
         affected_quality_orders = 0
         api_trade_events: list[TradeEvent] = []
         cycle_as_of = datetime.now(UTC)
+        from poly_weather.business_readiness import paper_readiness
+
+        chain = read_chain_status(root, now=cycle_as_of, previous=previous_chain)
+        previous_chain = chain
+        operational = {name: chain[name].get("health_ready") is True
+                       for name in ("market", "supervisor", "weather")}
+        progress_ready = all(chain[name].get("business_ready") is True
+                             for name in ("market", "supervisor", "weather"))
+        processor.set_business_readiness(paper_readiness(
+            as_of=cycle_as_of, scope="cycle:no_snapshot", operational=operational,
+            evidence={"progress": progress_ready}, group_completeness="unsupported"))
         def inject_fault(stage: str) -> None:
             if _fault_injector is not None:
                 _fault_injector(stage)
@@ -2891,9 +3024,10 @@ def run_paper_spread_continuous(
         closed_event_ids: set[str] = set()
         supervisor_status = root / "runtime" / "market_supervisor_status.json"
         try:
-            payload, read_integrity, _source = read_json_with_fallback(supervisor_status)
-            if read_integrity != "verified":
-                raise StatusIntegrityError("supervisor status did not pass checksum verification")
+            payload = read_status(supervisor_status, stale_after_seconds=360,
+                                  now=cycle_as_of, dependency_state="not_required")
+            if payload.get("health_ready") is not True:
+                raise StatusIntegrityError("supervisor operational health gate failed")
             active = {
                 str(row.get("event_id"))
                 for row in payload.get("active_events", ())
@@ -2960,14 +3094,17 @@ def run_paper_spread_continuous(
                 ]
             for source in checkpoint_paths:
                 checkpoint_rows.extend(
-                    _incremental_jsonl_rows(source, staged_cursor.position(source))
+                    _incremental_jsonl_rows(source, staged_cursor.position(source),
+                                            visible=lambda row, cutoff=cycle_as_of: _archive_receipt_visible(row, cutoff))
                 )
             for source in weather_paths:
                 weather_rows.extend(
-                    _incremental_jsonl_rows(source, staged_cursor.position(source))
+                    _incremental_jsonl_rows(source, staged_cursor.position(source),
+                                            visible=lambda row, cutoff=cycle_as_of: _archive_receipt_visible(row, cutoff))
                 )
             for source in ws_paths:
-                ws_rows.extend(_incremental_jsonl_rows(source, staged_cursor.position(source)))
+                ws_rows.extend(_incremental_jsonl_rows(source, staged_cursor.position(source),
+                                                      visible=lambda row, cutoff=cycle_as_of: _archive_receipt_visible(row, cutoff)))
             staged_observations.extend(
                 observation
                 for row in weather_rows
@@ -3016,6 +3153,22 @@ def run_paper_spread_continuous(
                 )
                 for row in aligned:
                     snapshot = BookSnapshot.from_mapping(row)
+                    weather_evidence, _ = PaperWeatherEvidence.parse(snapshot)
+                    processor.set_business_readiness(paper_readiness(
+                        as_of=cycle_as_of, scope=snapshot.portfolio_key.identifier,
+                        operational=operational,
+                        evidence={"progress": progress_ready,
+                                  "active_set": processor.supervisor_integrity == "verified"
+                                  and snapshot.event_id in processor.supervisor_active_events,
+                                  "weather": weather_evidence is not None,
+                                  "rules": row.get("settlement_verified") is True,
+                                  "season": bool(snapshot.season_version) and snapshot.in_season,
+                                  "quality": processor.quality_integrity == "verified"
+                                  and not processor._quality_excludes(snapshot.timestamp),
+                                  "archive_continuity": processor.feed_continuity == "verified",
+                                  "account_ledger": not processor.is_halted
+                                  and processor.checkpoint_integrity == "verified"},
+                        group_completeness="unsupported"))
                     inject_fault("snapshot_conversion")
                     processor.process_snapshot(snapshot)
                     inject_fault("snapshot_processing")
@@ -3122,7 +3275,10 @@ def run_paper_spread_continuous(
                     "new_weather_rows": len(weather_rows),
                     "new_ws_trade_rows": len(ws_rows),
                     "new_data_api_trade_rows": len(api_trade_events),
-                    "accepted_queue_trade_rows": len(accepted_trade_events),
+                    "matched_trade_rows": len(accepted_trade_events),
+                    "accepted_queue_trade_rows": 0,
+                    "group_completeness_support": "UNSUPPORTED_GROUP_COMPLETENESS",
+                    "group_completeness": "unproven",
                     "trade_validation": _validation,
                     "unmatched_ws_trade_count": unmatched_ws_trade_count,
                     "quality_excluded_ws_trade_count": quality_excluded_ws_trade_count,

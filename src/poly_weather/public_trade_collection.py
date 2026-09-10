@@ -11,16 +11,18 @@ from __future__ import annotations
 
 import json
 import os
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Protocol
+from uuid import uuid4
 
 from poly_weather.adapters.polymarket_data import PublicTrade
 from poly_weather.archive_io import open_jsonl_text
+from poly_weather.receipt_journal import ReceiptIntegrityError, ReceiptJournal, _read, digest
 from poly_weather.runtime_safety import atomic_json_write
 
 
@@ -259,6 +261,9 @@ def load_trade_cursor(path: Path | str) -> dict[str, Any]:
 def _merge_trades(
     existing: Sequence[Mapping[str, Any]],
     fetched: Sequence[PublicTrade],
+    *,
+    request_started_at: datetime | None = None,
+    response_received_at: datetime | None = None,
 ) -> list[dict[str, Any]]:
     merged: dict[tuple[Any, ...], dict[str, Any]] = {}
     for row in existing:
@@ -266,10 +271,141 @@ def _merge_trades(
             continue
         merged.setdefault(public_trade_key(row), dict(row))
     for trade in fetched:
-        merged.setdefault(public_trade_key(trade), trade.as_json())
+        row = trade.as_json()
+        if response_received_at is not None:
+            receipt = response_received_at.isoformat()
+            row.update(
+                available_at=receipt, first_seen_at=receipt,
+                receipt_timestamp_text=receipt,
+                request_started_at=request_started_at.isoformat() if request_started_at else None,
+                response_received_at=receipt,
+                receipt_provenance="collector_market_trades_return_v1",
+            )
+        # Existing rows, including legacy rows with unknown receipt, are facts.
+        # A later response never upgrades or rewrites their first visibility.
+        merged.setdefault(public_trade_key(trade), row)
     rows = list(merged.values())
     rows.sort(key=lambda row: (str(row.get("timestamp") or ""), public_trade_key(row)))
     return rows
+
+
+def _member_identity(row: Mapping[str, Any]) -> str:
+    values = []
+    for value in public_trade_key(row):
+        if isinstance(value, Decimal):
+            if not value.is_finite():
+                raise ValueError("nonfinite trade identity")
+            text = format(value, "f")
+            values.append(text.rstrip("0").rstrip(".") if "." in text else text)
+        elif isinstance(value, datetime):
+            values.append(value.isoformat())
+        else:
+            values.append(str(value))
+    return digest(values)
+
+
+def _receipt_rows(record: Mapping[str, Any]) -> list[dict[str, Any]]:
+    fact, witness = record["fact"], record["witness"]
+    rows = []
+    for member in fact["members"]:
+        row = dict(member)
+        visible = max(_utc(row["timestamp"]), _utc(fact["response_received_at"]),
+                      _utc(witness["receipt_committed_at"])).isoformat()
+        coherent = _utc(row["timestamp"]) <= _utc(fact["response_received_at"])
+        if not coherent:
+            visible = None
+        row.update(
+            source_timestamp=row["timestamp"],
+            request_started_at=fact["request_started_at"],
+            response_received_at=fact["response_received_at"],
+            first_seen_at=fact["response_received_at"],
+            receipt_committed_at=witness["receipt_committed_at"],
+            decision_visible_at=visible, available_at=visible,
+            receipt_validation_state="verified" if coherent else "UNKNOWN_FUTURE_SOURCE",
+            receipt_timestamp_text=fact["response_received_at"],
+            receipt_provenance="durable_public_receipt_v1",
+            receipt_journal_sequence=fact["sequence"],
+            receipt_fact_digest=fact["checksum"],
+            receipt_member_id=_member_identity(row),
+        )
+        rows.append(row)
+    return rows
+
+
+def _reconcile_receipts(old_rows, records, journal, event_slug):
+    baseline = records[0]["fact"].get("legacy_baseline", []) if records else []
+    merged = {public_trade_key(row): dict(row) for row in [*baseline, *old_rows]}
+    expected = {}
+    for record in records:
+        for row in _receipt_rows(record):
+            expected.setdefault(public_trade_key(row), row)
+    for key, row in expected.items():
+        prior = merged.get(key)
+        if prior is not None and prior.get("receipt_provenance") == "durable_public_receipt_v1":
+            if prior != row:
+                journal.discrepancy({"event_slug": event_slug, "member_id": row["receipt_member_id"],
+                                     "reason": "existing_receipt_conflict"})
+                raise ReceiptIntegrityError("journal/tape receipt conflict")
+        # Existing legacy or pre-journal rows are never promoted by a retry.
+        merged.setdefault(key, row)
+    for key, row in merged.items():
+        if row.get("receipt_provenance") == "durable_public_receipt_v1" and key not in expected:
+            journal.discrepancy({"event_slug": event_slug, "reason": "orphan_tape_member"})
+            raise ReceiptIntegrityError("journal/tape orphan member")
+    return sorted(merged.values(), key=lambda row: (str(row.get("timestamp")), public_trade_key(row)))
+
+
+def verify_materialized_receipts(path: Path, payload: Mapping[str, Any], *,
+                                 journal: ReceiptJournal | None = None) -> None:
+    """Read-only consumer verification; legacy tapes are not promoted to journal facts."""
+    rows = payload.get("trades") or []
+    journal_rows = [row for row in rows if isinstance(row, Mapping) and row.get("receipt_provenance") == "durable_public_receipt_v1"]
+    root = path.parent / ".receipt_journal"
+    directory = root / "materializations" / digest(path.stem)
+    if payload.get("receipt_contract") != "durable_public_receipt_v1" and not journal_rows and not directory.exists():
+        return
+    if not isinstance(rows, list) or any(not isinstance(row, Mapping) for row in rows):
+        raise ReceiptIntegrityError("invalid materialized members schema")
+    anchor = payload.get("receipt_journal_anchor")
+    if not isinstance(anchor, Mapping):
+        raise ReceiptIntegrityError("materialized receipt anchor missing")
+    journal = journal or ReceiptJournal(root, lambda: datetime.now(UTC), read_only=True,
+                                        prefix=anchor.get("sequence"))
+    if journal.root.resolve() != root.resolve():
+        raise ReceiptIntegrityError("receipt journal scope mismatch")
+    journal.verify_anchor(anchor)
+    event = str(payload.get("event_slug") or "")
+    if event != path.stem:
+        raise ReceiptIntegrityError("materialized event scope conflict")
+    identity = payload.get("materialization_id")
+    if not isinstance(identity, str) or len(identity) != 64 or any(c not in "0123456789abcdef" for c in identity):
+        raise ReceiptIntegrityError("materialization identity missing or invalid")
+    manifest = _read(directory / f"{identity}.json")
+    manifest_path = directory / f"{identity}.json"
+    stat = manifest_path.stat()
+    journal.verified_objects[manifest_path] = (manifest["checksum"], stat.st_dev, stat.st_ino)
+    body = {key: value for key, value in payload.items() if key != "materialization_id"}
+    if (manifest.get("schema_version") != 1 or manifest.get("execution_enabled") is not False
+            or manifest.get("event_slug") != event or manifest.get("payload") != body
+            or digest(body) != identity or body.get("receipt_contract") != "durable_public_receipt_v1"):
+        raise ReceiptIntegrityError("materialization payload conflict")
+    expected = {}
+    event_records = [record for record in journal.records if record["fact"]["event_slug"] == event
+                     and record["fact"]["sequence"] <= anchor["sequence"]]
+    if not event_records or event_records[-1]["fact"]["sequence"] != anchor["sequence"]:
+        raise ReceiptIntegrityError("materialization anchor scope conflict")
+    for row in event_records[0]["fact"].get("legacy_baseline", []):
+        expected.setdefault(public_trade_key(row), row)
+    for record in event_records:
+        for row in _receipt_rows(record):
+            expected.setdefault(public_trade_key(row), row)
+    if len(rows) != len(expected) or payload.get("trade_count") != len(expected):
+        raise ReceiptIntegrityError("materialized receipt member set incomplete or duplicated")
+    if len({public_trade_key(row) for row in rows}) != len(rows):
+        raise ReceiptIntegrityError("duplicate materialized receipt member")
+    for row in rows:
+        if expected.get(public_trade_key(row)) != row:
+            raise ReceiptIntegrityError("materialized receipt member mismatch")
 
 
 def collect_depth_event_trades(
@@ -280,11 +416,16 @@ def collect_depth_event_trades(
     cursor_path: Path | str | None = None,
     overlap: timedelta = timedelta(seconds=2),
     now: datetime | None = None,
+    clock: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     """Incrementally fetch and merge tapes for every archived depth event.
 
     ``overlap`` catches a second-resolution boundary without re-fetching the
     complete history.  Exact identity de-duplication makes the overlap safe.
+    ``now`` controls report generation only (legacy call compatibility).
+    ``clock`` supplies actual request/response/persistence clocks; production
+    uses UTC wall time. Receipt is the fully materialized client-return bound,
+    not a claim about an earlier HTTP page or socket arrival.
     """
     destination_root = Path(output_dir)
     destination_root.mkdir(parents=True, exist_ok=True)
@@ -299,6 +440,7 @@ def collect_depth_event_trades(
         return _collect_depth_event_trades_locked(
             coverages, client=client, destination_root=destination_root,
             cursor_file=cursor_file, overlap=overlap, now=now,
+            clock=clock or (lambda: datetime.now(UTC)),
         )
 
 
@@ -306,8 +448,43 @@ def _collect_depth_event_trades_locked(
     coverages: Sequence[DepthEventCoverage], *, client: TradeClient,
     destination_root: Path, cursor_file: Path, overlap: timedelta,
     now: datetime | None,
+    clock: Callable[[], datetime],
 ) -> dict[str, Any]:
+    previous_clock: datetime | None = None
+
+    def read_clock() -> datetime:
+        nonlocal previous_clock
+        value = clock()
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("collector clock must be timezone-aware")
+        value = value.astimezone(UTC)
+        if previous_clock is not None and value < previous_clock:
+            raise ValueError("collector clock moved backwards")
+        previous_clock = value
+        return value
+
     cursor = load_trade_cursor(cursor_file)
+    journal = ReceiptJournal(destination_root / ".receipt_journal", read_clock,
+                             read_only=True, allow_pending_tail=True)
+    journal.verify_anchor(cursor.get("receipt_journal_anchor"))
+    # No recovery witness or tape overwrite before existing evidence is validated.
+    for existing in destination_root.glob("*.json"):
+        if existing.name == "depth_trade_coverage.json":
+            continue
+        bound_events = {record["fact"]["event_slug"] for record in journal.records}
+        if journal.pending_fact:
+            bound_events.add(journal.pending_fact["event_slug"])
+        if existing.stem not in bound_events:
+            continue  # Existing legacy corrupt-file quarantine remains per event.
+        try:
+            prior = _read_payload(existing)
+            if prior is not None:
+                verify_materialized_receipts(existing, prior)
+        except (TradeStorageError, ReceiptIntegrityError) as exc:
+            journal.discrepancy({"event_slug": existing.stem, "reason": "materialization_preflight_conflict"})
+            raise ReceiptIntegrityError("journal/tape preflight conflict") from exc
+    journal.recover_pending()
+    collector_run_id = uuid4().hex
     events_cursor = cursor.setdefault("events", {})
     fetched_at = (now or datetime.now(UTC)).astimezone(UTC).isoformat()
     summaries: list[dict[str, Any]] = []
@@ -338,9 +515,22 @@ def _collect_depth_event_trades_locked(
             })
             continue
         old_payload = old_payload or {}
+        journal.verify_anchor(old_payload.get("receipt_journal_anchor"))
         old_rows = old_payload.get("trades", [])
         state = events_cursor.setdefault(event_slug, {})
+        records = [record for record in journal.records
+                   if record["fact"]["event_slug"] == event_slug]
+        old_rows = _reconcile_receipts(old_rows, records, journal, event_slug)
+        if records:
+            latest = records[-1]["fact"]
+            old_payload = {**old_payload, "collection_status": latest["collection_status"]}
+            for record in records:
+                if record["fact"]["collection_status"] != "collection_error":
+                    state["watermark_end"] = record["fact"]["coverage_end"]
         previous_end = None
+        request_started_at = None
+        response_received_at = None
+        failure_observed_at = None
         if old_payload and state.get("watermark_end"):
             try:
                 previous_end = _utc(str(state["watermark_end"]))
@@ -358,6 +548,7 @@ def _collect_depth_event_trades_locked(
                 coverage.start_at, previous_end - overlap
             )
             request_end = coverage.end_at + timedelta(seconds=1)
+            request_started_at = read_clock()
             try:
                 fetched = client.market_trades(
                     market_ids=coverage.condition_ids,
@@ -368,10 +559,38 @@ def _collect_depth_event_trades_locked(
             except Exception as exc:  # network/API failure is recorded, not mislabelled zero
                 fetched = []
                 status = "collection_error"
-                state["last_error"] = f"{type(exc).__name__}: {exc}"
+                # Never persist exception bodies that may contain request secrets.
+                state["last_error"] = type(exc).__name__
+                failure_observed_at = read_clock()
             else:
+                response_received_at = read_clock()
+                if response_received_at < request_started_at:
+                    raise ValueError("collector clock moved backwards during request")
                 status = "collected_nonzero" if fetched else "collected_zero"
-        rows = _merge_trades(old_rows, fetched)
+            members = [trade.as_json() for trade in fetched]
+            # Response -> fact fsync -> post-fsync witness -> tape -> cursor -> audit.
+            record = journal.append({
+                "source": "public_data_api_trades", "collector_run_id": collector_run_id,
+                "event_slug": event_slug, "condition_ids": list(coverage.condition_ids),
+                "asset_ids": list(coverage.asset_ids), "coverage_end": coverage.end_at.isoformat(),
+                "request_started_at": request_started_at.isoformat(),
+                "response_received_at": response_received_at.isoformat() if response_received_at else None,
+                "response_complete": status != "collection_error",
+                "failure_observed_at": failure_observed_at.isoformat() if failure_observed_at else None,
+                "query": {"start": request_start.isoformat(), "end": request_end.isoformat(),
+                          "taker_only": True},
+                "page_coverage": "UNKNOWN_ADAPTER_DOES_NOT_EXPOSE_PAGE_RECEIPTS",
+                "upstream_quality": "unknown", "incident": None, "gap": "unknown",
+                "collection_status": status,
+                "error_type": state.get("last_error") if status == "collection_error" else None,
+                "producer_version": "durable_public_receipt_v1",
+                "config_hash": digest({"taker_only": True, "overlap": str(overlap)}),
+                "members": members, "member_ids": [_member_identity(row) for row in members],
+                "member_count": len(members),
+                "legacy_baseline": old_rows if not records else [],
+            })
+            records.append(record)
+        rows = _reconcile_receipts(old_rows, records, journal, event_slug)
         trade_assets = {str(row.get("asset_id") or "") for row in rows if row.get("asset_id")}
         intersected = sorted(set(coverage.asset_ids) & trade_assets)
         unmatched = [
@@ -381,8 +600,14 @@ def _collect_depth_event_trades_locked(
         ]
         payload = {
             **old_payload,
-            "schema_version": 2,
-            "fetched_at": fetched_at,
+            "schema_version": 3,
+            "fetched_at": (response_received_at.isoformat() if response_received_at
+                           else old_payload.get("fetched_at")),
+            "file_written_at": read_clock().isoformat(),
+            "receipt_contract": "durable_public_receipt_v1",
+            "receipt_journal_anchor": ({"sequence": records[-1]["fact"]["sequence"],
+                                        "digest": records[-1]["fact"]["checksum"]}
+                                       if records else old_payload.get("receipt_journal_anchor")),
             "source": "https://data-api.polymarket.com/trades",
             "event_slug": event_slug,
             "condition_ids": list(coverage.condition_ids),
@@ -417,6 +642,9 @@ def _collect_depth_event_trades_locked(
             if fetched
             else old_payload.get("fetched_ranges", []),
         }
+        payload["materialization_id"] = journal.commit_materialization(event_slug, {
+            key: value for key, value in payload.items() if key != "materialization_id"
+        })
         _atomic_json_write(path, payload)
         state.update(
             {
@@ -442,6 +670,11 @@ def _collect_depth_event_trades_locked(
             }
         )
     cursor["schema_version"] = 1
+    if journal.records:
+        cursor["receipt_journal_anchor"] = {
+            "sequence": journal.records[-1]["fact"]["sequence"],
+            "digest": journal.records[-1]["fact"]["checksum"],
+        }
     cursor["updated_at"] = fetched_at
     _atomic_json_write(cursor_file, cursor)
     audit = {

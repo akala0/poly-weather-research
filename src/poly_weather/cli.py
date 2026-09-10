@@ -197,7 +197,7 @@ from poly_weather.real_no_books import (
     render_real_no_report,
 )
 from poly_weather.research_store import ResearchWarehouse
-from poly_weather.runtime_safety import read_status
+from poly_weather.runtime_safety import read_chain_status
 from poly_weather.settlement import (
     parse_settlement_evidence,
     verify_settlement_evidence,
@@ -4269,29 +4269,7 @@ def stream_status(
     data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
 ) -> None:
     """Read daemon heartbeat files without contacting external services."""
-    statuses = {}
-    stale_after_seconds = {
-        "market": 120.0,
-        "supervisor": 360.0,
-        "weather": 300.0,
-        "signal": 120.0,
-        "shadow": 120.0,
-    }
-    for name, filename in (
-        ("market", "polymarket_ws_status.json"),
-        ("supervisor", "market_supervisor_status.json"),
-        ("weather", "weather_daemon_status.json"),
-        ("signal", "signal_engine_status.json"),
-        # v1 used a station-day-wide inventory scope and is evidence only.
-        # Keep it out of the live status surface so an operator cannot mistake
-        # it for the token-scoped read-only shadow daemon.
-        ("shadow", "shadow_spread_status_v2_token_scoped.json"),
-    ):
-        path = data_dir / "runtime" / filename
-        statuses[name] = read_status(
-            path,
-            stale_after_seconds=stale_after_seconds[name],
-        )
+    statuses = read_chain_status(data_dir)
     legacy_shadow_status = data_dir / "runtime" / "shadow_spread_status_v1_legacy_read_only.json"
     statuses["shadow"]["legacy_status_path"] = str(legacy_shadow_status.resolve())
     statuses["shadow"]["legacy_status"] = "superseded_v1_read_only"

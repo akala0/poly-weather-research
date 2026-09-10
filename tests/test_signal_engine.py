@@ -102,6 +102,7 @@ def test_wrh_backfill_ingest_is_strictly_no_lookahead(tmp_path) -> None:
         engine._ingest_weather(
             {
                 "station_id": "KTEST",
+                "collection_mode": "realtime",
                 "product": "wrh_timeseries_observation",
                 "received_at_ns": int(received.timestamp() * 1_000_000_000),
                 "source_timestamp_ms": int(received.timestamp() * 1000),
@@ -385,7 +386,9 @@ def test_live_calibration_rejects_lookahead_day_zero() -> None:
         )
 
 
-def test_implausible_edge_forces_skip_and_blocks_paper_alert(tmp_path) -> None:
+def test_implausible_edge_forces_skip_and_blocks_paper_alert(tmp_path, monkeypatch) -> None:
+    from runtime_health_support import seed_test_chain
+
     def market(market_id: str, slug_suffix: str) -> Market:
         return Market.from_gamma(
             {
@@ -442,6 +445,8 @@ def test_implausible_edge_forces_skip_and_blocks_paper_alert(tmp_path) -> None:
         }
         engine.weather[("KTEST", "multi_model_deterministic_forecast")] = {
             "raw": {
+                "run_initialization": "2026-08-21T12:00:00+00:00",
+                "lead_days": 1,
                 "blended": {
                     "time": ["2026-08-22T12:00"],
                     "temperature_2m": [80.0],
@@ -449,6 +454,14 @@ def test_implausible_edge_forces_skip_and_blocks_paper_alert(tmp_path) -> None:
                 }
             }
         }
+        # Exercise actual envelope ingestion, not the unversioned diagnostic cache.
+        envelopes = tuple(engine.weather.items())
+        engine.weather.clear()
+        for (station_id, product), payload in envelopes:
+            engine._ingest_weather({**payload, "station_id": station_id, "product": product,
+                                    "collection_mode": "realtime", "source_timestamp_ms": source_timestamp_ms,
+                                    "received_at_ns": int(generated_at.timestamp()) * 10**9,
+                                    "received_at": generated_at.isoformat()})
         for item in config.markets:
             yes_token, no_token = item.clob_token_ids
             engine.books[yes_token] = {
@@ -474,6 +487,7 @@ def test_implausible_edge_forces_skip_and_blocks_paper_alert(tmp_path) -> None:
             {"state": "running", "updated_at": generated_at.isoformat()},
         )
 
+        seed_test_chain(tmp_path, monkeypatch, now=generated_at)
         result = engine._event_signal(config, generated_at)
     finally:
         engine.sink.close()

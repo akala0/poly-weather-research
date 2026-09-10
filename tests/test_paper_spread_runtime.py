@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+from paper_model_support import model_trade
+
 from poly_weather.paper_account import PaperLedger
 from poly_weather.paper_spread_runtime import PaperSpreadProcessor, PaperStrategyConfig
 from poly_weather.shadow_orders import BookSnapshot, ShadowOrderState, ShadowSide, TradeEvent
@@ -57,7 +59,7 @@ def processor(tmp_path) -> PaperSpreadProcessor:
 def fill_first(processor: PaperSpreadProcessor) -> None:
     order = processor.process_snapshot(snapshot())
     assert order is not None
-    processor.process_trade(TradeEvent(BASE + timedelta(minutes=1), "token", ShadowSide.SELL, "0.75", "200", "entry"))
+    model_trade(processor, TradeEvent(BASE + timedelta(minutes=1), "token", ShadowSide.SELL, "0.75", "200", "entry", sequence=1))
 
 
 def test_initial_tranche_requires_lag_improving_and_no_ask_band(tmp_path) -> None:
@@ -94,8 +96,8 @@ def test_fourth_tranche_requires_actual_third_fill(tmp_path) -> None:
         ),
     )
     assert second is not None
-    paper.process_trade(
-        TradeEvent(BASE + timedelta(minutes=3), "token", ShadowSide.SELL, "0.75", "200", "second")
+    model_trade(
+        paper, TradeEvent(BASE + timedelta(minutes=3), "token", ShadowSide.SELL, "0.75", "200", "second", sequence=1)
     )
     third = paper.process_snapshot(
         snapshot(at=BASE + timedelta(minutes=4), bid="0.73", ask="0.78"),
@@ -177,7 +179,7 @@ def test_lifecycle_sweep_expires_without_later_token_snapshot_and_releases_resid
     paper = processor(tmp_path)
     order = paper.process_snapshot(snapshot())
     assert order is not None
-    paper.process_trade(TradeEvent(BASE + timedelta(minutes=1), "token", ShadowSide.SELL, "0.75", "101", "queue-only"))
+    model_trade(paper, TradeEvent(BASE + timedelta(minutes=1), "token", ShadowSide.SELL, "0.75", "101", "queue-only", sequence=1))
     expired = paper.sweep_lifecycle(as_of=BASE + timedelta(minutes=15))
     assert expired == (order,)
     assert order.state is ShadowOrderState.EXPIRED
@@ -221,7 +223,7 @@ def test_conditional_dip_requires_two_ticks_from_latest_actual_fill(tmp_path) ->
     )
     second = paper.process_snapshot(confirmation)
     assert second is not None
-    paper.process_trade(TradeEvent(BASE + timedelta(minutes=3), "token", ShadowSide.SELL, "0.75", "200", "entry-2"))
+    model_trade(paper, TradeEvent(BASE + timedelta(minutes=3), "token", ShadowSide.SELL, "0.75", "200", "entry-2", sequence=1))
     one_tick = snapshot(at=BASE + timedelta(minutes=4), bid="0.74", ask="0.79", metadata={"weather_unchanged": True})
     assert paper.process_snapshot(one_tick) is None
     two_ticks = snapshot(at=BASE + timedelta(minutes=5), bid="0.73", ask="0.78", metadata={"weather_unchanged": True})
@@ -250,7 +252,7 @@ def test_exit_stages_use_initial_share_quarters_without_oversell(tmp_path) -> No
     first = paper._submit_exit_if_eligible(snapshot(at=BASE + timedelta(minutes=2), bid="0.80", ask="0.85"))
     assert first is not None
     assert first.requested_shares == state.cumulative_bought_shares * Decimal("0.25")
-    paper.process_trade(TradeEvent(BASE + timedelta(minutes=3), "token", ShadowSide.BUY, "0.85", "200", "exit"))
+    model_trade(paper, TradeEvent(BASE + timedelta(minutes=3), "token", ShadowSide.BUY, "0.85", "200", "exit", sequence=1))
     state.completed_exit_stages.add(0)
     later = paper._submit_exit_if_eligible(snapshot(at=BASE + timedelta(minutes=4), bid="0.85", ask="0.90"))
     assert later is not None

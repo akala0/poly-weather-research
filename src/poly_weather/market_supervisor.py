@@ -7,9 +7,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from poly_weather.adapters.polymarket import EventSnapshot, GammaClient
+from poly_weather.business_readiness import producer_progress_sample
 from poly_weather.domain import SettlementSpec
 from poly_weather.market_stream import EventArchivePolicy, MarketWebSocketBot
 from poly_weather.retention import RetentionConfig, apply_market_retention, disk_capacity_status
@@ -103,6 +105,9 @@ class MarketEventSupervisor:
         self.data_dir = data_dir
         self.discovery_interval_seconds = discovery_interval_seconds
         self.metrics = SupervisorMetrics()
+        self.run_id = uuid4().hex
+        self.published_count = 0
+        self.published_generation = None
         self.active: dict[str, ActiveEvent] = {}
         self.failures: dict[str, dict[str, Any]] = {}
         self.status_path = data_dir / "runtime" / "market_supervisor_status.json"
@@ -231,10 +236,19 @@ class MarketEventSupervisor:
             "events": [asdict(item) for item in self.active.values()],
         }
         self._atomic_json(self.signal_update_path, payload)
+        self.published_count += 1
+        self.published_generation = payload["generation"]
 
     def _write_status(self) -> None:
         payload = {
             **asdict(self.metrics),
+            "run_id": self.run_id,
+            "generation": self.published_generation,
+            "business_sample": producer_progress_sample(
+                run_id=self.run_id, generation=str(tuple(sorted((key, value.evidence_sha256) for key, value in self.active.items()))),
+                positions={"published_active_set": self.published_count}, as_of=datetime.now(UTC),
+                pending_work=bool(self.metrics.last_error), completed_checks=self.published_count,
+                connection_verified=self.metrics.state == "running" and not self.metrics.last_error),
             "pid": __import__("os").getpid(),
             "updated_at": datetime.now(UTC).isoformat(),
             "heartbeat": datetime.now(UTC).isoformat(),
@@ -244,7 +258,9 @@ class MarketEventSupervisor:
             "signal_update_path": str(self.signal_update_path.resolve()),
             "execution_enabled": False,
         }
+        payload["business_sample_previous"] = getattr(self, "_previous_business_sample", None)
         self._atomic_json(self.status_path, payload)
+        self._previous_business_sample = payload["business_sample"]
 
     @staticmethod
     def _atomic_json(path: Path, payload: dict[str, Any]) -> None:

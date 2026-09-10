@@ -3,6 +3,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+from paper_model_support import model_trade
+
 from poly_weather.paper_account import PaperLedger
 from poly_weather.paper_spread_runtime import (
     PaperSpreadProcessor,
@@ -62,7 +64,7 @@ def processor(tmp_path) -> PaperSpreadProcessor:
 
 def fill_first(paper: PaperSpreadProcessor) -> None:
     assert paper.process_snapshot(snapshot()) is not None
-    paper.process_trade(TradeEvent(BASE + timedelta(minutes=1), "token", ShadowSide.SELL, "0.75", "200", "entry"))
+    model_trade(paper, TradeEvent(BASE + timedelta(minutes=1), "token", ShadowSide.SELL, "0.75", "200", "entry", sequence=1))
 
 
 def test_paper_continuous_first_start_tail_bootstraps_without_scoring_history(tmp_path) -> None:
@@ -194,7 +196,7 @@ def test_partial_exit_is_not_advanced_until_order_fully_fills(tmp_path) -> None:
     fill_first(paper)
     order = paper._submit_exit_if_eligible(snapshot(at=BASE + timedelta(minutes=2), bid="0.80", ask="0.85"))
     assert order is not None
-    paper.process_trade(TradeEvent(BASE + timedelta(minutes=3), "token", ShadowSide.BUY, "0.85", "101", "partial-exit"))
+    model_trade(paper, TradeEvent(BASE + timedelta(minutes=3), "token", ShadowSide.BUY, "0.85", "101", "partial-exit", sequence=1))
     state = next(iter(paper.states.values()))
     assert 0 not in state.completed_exit_stages
     assert state.exit_stage_filled_shares[0] > Decimal("0")

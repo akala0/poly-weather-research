@@ -14,7 +14,7 @@ import json
 import os
 import sys
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -37,6 +37,7 @@ from poly_weather.real_no_books import archived_event_metadata, paired_book_snap
 from poly_weather.runtime_safety import (
     StatusIntegrityError,
     atomic_json_write,
+    read_chain_status,
     read_json_with_fallback,
 )
 from poly_weather.shadow_orders import (
@@ -99,7 +100,7 @@ class ShadowCursor:
     """Atomic line/byte positions for the append-only local feeds."""
 
     path: Path
-    sources: dict[str, dict[str, int | bool]] = field(default_factory=dict)
+    sources: dict[str, dict[str, Any]] = field(default_factory=dict)
     generation: str | None = None
     restart_count: int = 0
     pair_latest: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -133,6 +134,8 @@ class ShadowCursor:
             except (TypeError, ValueError):
                 continue
             position: dict[str, int | bool] = {"offset": offset, "line": line}
+            if value.get("archive_position_schema") == 2:
+                position = dict(value)
             # Gzip archives are immutable retention artifacts, not an
             # appendable live feed. A tail bootstrap must never reopen all of
             # them on every continuous-daemon restart.
@@ -168,8 +171,23 @@ class ShadowCursor:
             paper_state,
         )
 
-    def position(self, path: Path) -> dict[str, int | bool]:
-        return self.sources.setdefault(str(path.resolve()), {"offset": 0, "line": 0})
+    def existing_position(self, path: Path) -> dict[str, Any] | None:
+        from poly_weather.archive_position import logical_archive
+
+        logical = logical_archive(path)
+        matches = [value for key, value in self.sources.items()
+                   if logical_archive(Path(key)) == logical]
+        if len(matches) > 1:
+            raise RuntimeError("AMBIGUOUS_ARCHIVE_CURSOR")
+        return matches[0] if matches else None
+
+    def position(self, path: Path) -> dict[str, Any]:
+        from poly_weather.archive_position import logical_archive
+
+        existing = self.existing_position(path)
+        if existing is not None:
+            return existing
+        return self.sources.setdefault(logical_archive(path), {"offset": 0, "line": 0})
 
     def bootstrap_at_tail(self, paths: Sequence[Path]) -> int:
         """Commit current archive ends without replaying pre-daemon history.
@@ -178,21 +196,13 @@ class ShadowCursor:
         separate archive-pass command is the explicit way to replay old data.
         On a first continuous start, processing every historical CLOB JSONL
         would both mislabel old data as forward evidence and monopolize disk
-        I/O. Plain JSONL can safely seek to its present byte end; retention
-        gzip files are immutable and are permanently ignored by the follower.
+        I/O. Both representations commit only a content-verified, complete-line
+        boundary; incomplete final bytes remain pending until a later cycle.
         """
         seeded = 0
         for source in paths:
-            try:
-                size = source.stat().st_size
-            except OSError:
-                continue
             position = self.position(source)
-            position["offset"] = size
-            position["line"] = 0
-            position.pop("skip_existing_gzip", None)
-            if source.suffix == ".gz":
-                position["skip_existing_gzip"] = True
+            _incremental_jsonl_rows(source, position)
             seeded += 1
         return seeded
 
@@ -214,55 +224,14 @@ class ShadowCursor:
 
 
 def _incremental_jsonl_rows(
-    path: Path, position: dict[str, int | bool]
+    path: Path, position: dict[str, Any], *,
+    visible: Callable[[Mapping[str, Any]], bool] | None = None,
 ) -> list[dict[str, Any]]:
-    """Read only newly appended complete lines; gzip uses a line watermark."""
-    if not path.exists():
-        return []
-    # A supervisor may rotate a plain JSONL file in place.  Never seek beyond
-    # the new file and silently lose its first rows.
-    offset = int(position.get("offset", 0))
-    if path.suffix != ".gz" and path.stat().st_size < offset:
-        position["offset"] = 0
-        position["line"] = 0
-    rows: list[dict[str, Any]] = []
-    if path.suffix == ".gz":
-        if bool(position.get("skip_existing_gzip", False)):
-            # Retention gzip files are rewritten as whole files, not appended.
-            # Treat a rewrite as a fresh immutable baseline rather than
-            # replaying history under a later continuous-run timestamp.
-            position["offset"] = path.stat().st_size
-            return []
-        from poly_weather.archive_io import open_jsonl_text
+    from poly_weather.archive_position import read_positioned_rows
 
-        with open_jsonl_text(path) as handle:
-            for index, line in enumerate(handle):
-                if index < int(position.get("line", 0)):
-                    continue
-                try:
-                    value = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(value, dict):
-                    rows.append(value)
-                position["line"] = index + 1
-        position["offset"] = path.stat().st_size
-        return rows
-    with path.open("rb") as handle:
-        handle.seek(int(position.get("offset", 0)))
-        payload = handle.read()
-        complete = payload.rsplit(b"\n", 1)
-        if not payload.endswith(b"\n"):
-            payload = complete[0] if len(complete) == 2 else b""
-        position["offset"] += len(payload)
-    for line in payload.splitlines():
-        try:
-            value = json.loads(line.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            continue
-        if isinstance(value, dict):
-            rows.append(value)
-        position["line"] = int(position.get("line", 0)) + 1
+    rows, updated = read_positioned_rows(path, position, visible=visible)
+    position.clear()
+    position.update(updated)
     return rows
 
 
@@ -1149,6 +1118,7 @@ def run_shadow_spread_continuous(
     current_generation: str | None = None
     last_weather_event: str | None = None
     last_signal_event: str | None = None
+    previous_chain_health = None
     while True:
         cycles += 1
         checkpoint_rows: list[dict[str, Any]] = []
@@ -1159,7 +1129,16 @@ def run_shadow_spread_continuous(
         unmatched_ws_trade_count = 0
         api_trade_events: list[TradeEvent] = []
         accepted_ws_trade_identities: set[tuple[str, str]] = set()
+        chain_health = read_chain_status(root, previous=previous_chain_health)
+        previous_chain_health = chain_health
+        upstream_ready = all(chain_health[name].get("business_ready") is True
+                             for name in ("market", "supervisor", "weather", "signal"))
         try:
+            if not upstream_ready:
+                for engine in processor.engines.values():
+                    engine.cancel_all(timestamp=datetime.now(UTC), reason="upstream_health_unverified")
+                # Do not advance archive cursors while dependency evidence is unhealthy.
+                raise ValueError("upstream_health_unverified")
             # The market supervisor may append a newly observed maintenance or
             # recovery interval while this follower is already running.  Read
             # the small quality-window file each cycle so active orders are
@@ -1170,23 +1149,23 @@ def run_shadow_spread_continuous(
             )
             public_trade_dir = root / "public_trades"
             if public_trade_dir.exists():
-                changed_public = False
+                changed_paths = []
+                staged_mtimes = {}
                 for public_path in public_trade_dir.glob("*.json"):
                     try:
                         mtime = public_path.stat().st_mtime_ns
                     except OSError:
                         continue
                     if public_trade_mtimes.get(public_path) != mtime:
-                        public_trade_mtimes[public_path] = mtime
-                        changed_public = True
-                        api_trade_events.extend(
-                            _public_trade_events_from_file(
-                                public_path, quality_windows=quality_windows
-                            )
-                        )
-                if changed_public:
+                        staged_mtimes[public_path] = mtime
+                        changed_paths.append(public_path)
+                if changed_paths:
+                    api_trade_events.extend(_public_trade_events_from_files(
+                        changed_paths, quality_windows=quality_windows,
+                    ))
                     tapes = load_event_trade_tapes(public_trade_dir)
                     all_public_trades = [trade for rows in tapes.values() for trade in rows]
+                    public_trade_mtimes.update(staged_mtimes)
             checkpoint_paths = jsonl_archive_paths(root / "raw" / "polymarket_book_checkpoints")
             for path in checkpoint_paths:
                 checkpoint_rows.extend(_incremental_jsonl_rows(path, cursor.position(path)))
@@ -1293,12 +1272,9 @@ def run_shadow_spread_continuous(
                     continue
                 cycle_trade_events.append(event)
             processor.process_trades(cycle_trade_events)
-            supervisor_status = root / "runtime" / "market_supervisor_status.json"
-            if supervisor_status.exists():
-                try:
-                    generation = str(json.loads(supervisor_status.read_text(encoding="utf-8")).get("generation") or "")
-                except (OSError, json.JSONDecodeError):
-                    generation = None
+            supervisor_status = chain_health["supervisor"]
+            if supervisor_status.get("health_ready") is True:
+                generation = str(supervisor_status.get("generation") or "")
                 if generation and generation != current_generation:
                     cursor.generation = generation
                     current_generation = generation
@@ -1313,7 +1289,9 @@ def run_shadow_spread_continuous(
             last_error = f"cycle:{type(exc).__name__}: {exc}"
         runtime_status = {
             "schema_version": 2,
-            "state": "running",
+            "state": "running" if upstream_ready else "degraded",
+            "dependency_state": "healthy" if upstream_ready else "unhealthy",
+            "upstream_health": chain_health,
             "pid": os.getpid(),
             "started_at": started_at,
             "checked_at": datetime.now(UTC).isoformat(),
@@ -1397,20 +1375,29 @@ def _public_trade_events_from_file(
     path: Path,
     *,
     quality_windows: Sequence[Any] = (),
+    receipt_journal: Any = None,
 ) -> tuple[TradeEvent, ...]:
     """Convert a newly-written public tape into receipt-gated queue events.
 
-    The tape's ``fetched_at`` is the earliest local availability bound.  It is
-    deliberately not treated as a quote and is used only to prevent a later
-    API refresh from backfilling an order before the data was observed.
+    Only row-level receipt is evidence of local availability. Legacy file
+    fetched_at/mtime is not a receipt and must not authorize queue consumption.
     """
+    from poly_weather.receipt_journal import ReceiptIntegrityError, materialization_is_bound
+
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        if materialization_is_bound(path):
+            raise ReceiptIntegrityError("bound tape is unreadable") from exc
         return ()
+    from poly_weather.public_trade_collection import verify_materialized_receipts
+
+    if isinstance(payload, Mapping):
+        verify_materialized_receipts(path, payload, journal=receipt_journal)
+    elif materialization_is_bound(path):
+        raise ReceiptIntegrityError("bound tape is not an object")
     if not isinstance(payload, Mapping) or not payload.get("event_slug"):
         return ()
-    fetched_at = parse_trade_timestamp(payload.get("fetched_at"))
     events: list[TradeEvent] = []
     for row in payload.get("trades") or ():
         if not isinstance(row, Mapping):
@@ -1431,12 +1418,18 @@ def _public_trade_events_from_file(
                 # A refreshed API row without a stable identity cannot be
                 # replayed idempotently; keep it out of the queue model.
                 continue
-            available_value = row.get("available_at") or fetched_at
+            available_value = row.get("available_at")
             available_at = parse_trade_timestamp(available_value)
             # A receipt which predates the exchange event is not a coherent
             # forward-evidence record.  Do not repair it with a file mtime or
             # a synthetic current timestamp.
-            if available_at is not None and available_at < timestamp:
+            if available_at is None or available_at < timestamp:
+                continue
+            from poly_weather.polymarket_status import excluded_market_data_window_overlaps
+
+            if excluded_market_data_window_overlaps(
+                list(quality_windows), start_at=timestamp, end_at=available_at,
+            ) is not None:
                 continue
             events.append(
                 TradeEvent(
@@ -1449,7 +1442,7 @@ def _public_trade_events_from_file(
                     event_id=transaction_hash,
                     source="data_api",
                     source_timestamp_text=str(row.get("source_timestamp_text") or timestamp_value),
-                    receipt_timestamp_text=str(row.get("available_at") or payload.get("fetched_at") or "") or None,
+                    receipt_timestamp_text=str(row.get("available_at") or "") or None,
                     sequence=(
                         int(row["sequence"])
                         if row.get("sequence") is not None
@@ -1459,4 +1452,25 @@ def _public_trade_events_from_file(
             )
         except (ArithmeticError, TypeError, ValueError, KeyError):
             continue
+    return tuple(events)
+
+
+def _public_trade_events_from_files(paths: Sequence[Path], *, quality_windows: Sequence[Any] = ()) -> tuple[TradeEvent, ...]:
+    """One immutable verification snapshot per root and poll; no persistent mtime cache."""
+    from poly_weather.receipt_journal import ReceiptJournal, requested_materialization_prefix
+
+    journals = {}
+    events = []
+    for path in paths:
+        root = path.parent / ".receipt_journal"
+        if root not in journals:
+            journals[root] = (ReceiptJournal(root, lambda: datetime.now(UTC), read_only=True,
+                                             prefix=requested_materialization_prefix(
+                                                 p for p in paths if p.parent == path.parent),
+                                             allow_pending_tail=True) if root.exists() else None)
+        events.extend(_public_trade_events_from_file(path, quality_windows=quality_windows,
+                                                    receipt_journal=journals[root]))
+    for journal in journals.values():
+        if journal is not None:
+            journal.assert_unchanged()
     return tuple(events)

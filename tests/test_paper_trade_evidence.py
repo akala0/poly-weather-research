@@ -6,6 +6,7 @@ from datetime import timedelta, timezone
 from decimal import Decimal
 
 import pytest
+from paper_model_support import model_trade
 from test_market_trade_tape import _row
 from test_paper_seal_blockers import (
     STRATEGY_PATH,
@@ -40,10 +41,12 @@ from poly_weather.trade_evidence import parse_trade_timestamp
 def test_restarted_economic_trade_is_consumed_once(tmp_path, change):
     paper = processor(tmp_path)
     submit_first(paper)
-    trade = replace(fill_trade(), source="data_api", sequence=None)
-    assert sum(fill.shares for fill in paper.process_trade(trade)) == Decimal("1")
+    # A sequenced unit fixture isolates duplicate economics. Unsequenced
+    # singleton admission is separately forbidden by the F02 regressions.
+    trade = replace(fill_trade(), source="data_api", sequence=1)
+    assert sum(fill.shares for fill in model_trade(paper, trade)) == Decimal("1")
     recovered = restarted(tmp_path / "paper.jsonl")
-    assert recovered.process_trade(replace(trade, **change)) == ()
+    assert model_trade(recovered, replace(trade, **change)) == ()
 
 
 def test_ws_quantity_conflict_quarantines_api_fallback():
@@ -76,8 +79,8 @@ def test_bidirectional_alias_repeated_restart_preserves_account(tmp_path, first_
     paper = processor(tmp_path)
     order = submit_first(paper)
     trade = replace(fill_trade(size=size), source=first_source,
-                    sequence=1 if first_source == "market_ws" else None)
-    paper.process_trade(trade)
+                    sequence=1)
+    model_trade(paper, trade)
     expected_order = order.as_dict()
     expected_cost = paper.account.inventory_cost_usd
     expected_economics = economic_state(paper)
@@ -86,7 +89,7 @@ def test_bidirectional_alias_repeated_restart_preserves_account(tmp_path, first_
                     price=Decimal("0.7500"), size=Decimal(size + ".00"))
     for _ in range(3):
         paper = restarted(tmp_path / "paper.jsonl")
-        assert paper.process_trade(alias) == ()
+        assert model_trade(paper, alias) == ()
         assert next(iter(paper.ledger.orders.values())).as_dict() == expected_order
         assert paper.account.inventory_cost_usd == expected_cost
         assert economic_state(paper) == expected_economics
@@ -135,13 +138,13 @@ def test_sequence_conflict_is_durable_unknown(tmp_path):
     paper = processor(tmp_path)
     order = submit_first(paper)
     trade = fill_trade(size="50")
-    paper.process_trade(trade)
+    model_trade(paper, trade)
     before = order.as_dict()
     paper = restarted(tmp_path / "paper.jsonl")
-    assert paper.process_trade(replace(trade, sequence=2)) == ()
+    assert model_trade(paper, replace(trade, sequence=2)) == ()
     assert paper.trade_evidence_counts["UNKNOWN_TRADE_IDENTITY_CONFLICT"] == 1
     again = restarted(tmp_path / "paper.jsonl")
-    assert again.process_trade(trade) == ()
+    assert model_trade(again, trade) == ()
     assert next(iter(again.ledger.orders.values())).as_dict() == before
 
 
@@ -149,10 +152,10 @@ def test_indistinguishable_same_source_batch_never_consumes(tmp_path):
     paper = processor(tmp_path)
     order = submit_first(paper)
     trade = fill_trade()
-    assert paper.process_trades([trade, trade]) == ()
+    assert paper._process_ordered_model_trades([trade, trade]) == ()
     assert order.volume_ahead == Decimal("100")
     again = restarted(tmp_path / "paper.jsonl")
-    assert again.process_trade(trade) == ()
+    assert model_trade(again, trade) == ()
 
 
 @pytest.mark.parametrize("field", ["price", "size"])
@@ -180,11 +183,11 @@ def test_delayed_evidence_does_not_fill_expired_order(tmp_path):
     paper = processor(tmp_path)
     order = submit_first(paper)
     trade = replace(fill_trade(), available_at=order.submitted_at + paper.strategy.order_timeout)
-    assert paper.process_trade(trade) == ()
+    assert model_trade(paper, trade) == ()
     assert not order.is_active
     assert order.filled_shares == 0
     again = restarted(tmp_path / "paper.jsonl")
-    assert again.process_trade(fill_trade()) == ()
+    assert model_trade(again, fill_trade()) == ()
 
 
 @pytest.mark.parametrize("first", ["data_api", "market_ws", "conflict"])
@@ -240,7 +243,7 @@ def test_real_follower_two_polls_then_restart(tmp_path, first):
     assert completed_polls == 2
     recovered = restarted(ledger_path)
     expected = next(iter(recovered.ledger.orders.values())).as_dict()
-    assert Decimal(expected["filled_shares"]) == (Decimal("0") if first == "conflict" else Decimal("1"))
+    assert Decimal(expected["filled_shares"]) == 0  # matched evidence is not group closure
     assert bool(recovered.pending_ws_trade_evidence) == (first == "conflict")
     run_paper_spread_continuous(**kwargs)
     assert next(iter(restarted(ledger_path).ledger.orders.values())).as_dict() == expected
@@ -286,20 +289,20 @@ def test_crash_before_after_durable_identity_boundaries(tmp_path, monkeypatch, k
 
     monkeypatch.setattr(paper.ledger, "_append", crash_append)
     with pytest.raises(Crash):
-        paper.process_trade(trade)
+        model_trade(paper, trade)
     recovered = restarted(tmp_path / "paper.jsonl")
     print(f"crash boundary={kind} after={after} halted={recovered.is_halted}")
     if recovered.is_halted:
         before = economic_state(recovered)
-        assert recovered.process_trade(trade) == ()
+        assert model_trade(recovered, trade) == ()
         assert economic_state(recovered) == before
     else:
-        recovered.process_trade(trade)
+        model_trade(recovered, trade)
         baseline = processor(tmp_path / "baseline")
         submit_first(baseline)
-        baseline.process_trade(trade)
+        model_trade(baseline, trade)
         assert economic_state(recovered) == economic_state(baseline)
-        assert restarted(tmp_path / "paper.jsonl").process_trade(trade) == ()
+        assert model_trade(restarted(tmp_path / "paper.jsonl"), trade) == ()
 
 
 def test_explicit_normalized_row_ids_preserve_transaction_siblings(tmp_path):
@@ -307,12 +310,12 @@ def test_explicit_normalized_row_ids_preserve_transaction_siblings(tmp_path):
     order = submit_first(paper)
     first = replace(fill_trade(size="100"), event_id="actual-row-1", transaction_hash="same-tx")
     second = replace(first, event_id="actual-row-2", size=Decimal("101"), sequence=2)
-    paper.process_trades([first, second])
+    paper._process_ordered_model_trades([first, second])
     assert order.filled_shares > 0
     assert len(order.metadata["paper_trade_consumptions_v2"]) == 2
     again = restarted(tmp_path / "paper.jsonl")
     before = economic_state(again)
-    assert again.process_trades([first, second]) == ()
+    assert again._process_ordered_model_trades([first, second]) == ()
     assert economic_state(again) == before
 
 
@@ -325,7 +328,7 @@ def test_legacy_key_halts_paper_and_v2_key_is_unchanged(tmp_path):
     paper.ledger.save(order, event_key=legacy)
     again = restarted(tmp_path / "paper.jsonl")
     assert again.is_halted
-    assert again.process_trade(trade) == ()
+    assert model_trade(again, trade) == ()
     assert canonical_trade_event_key(TradeEvent.from_mapping({
         "timestamp": trade.timestamp.isoformat(), "asset_id": "token", "side": "SELL",
         "price": "0.75", "size": "101", "id": "trade-fill", "sequence": 1,
@@ -338,7 +341,7 @@ def test_same_batch_cross_source_alias_and_scientific_decimal(tmp_path, source_o
     order = submit_first(paper)
     rows = [replace(fill_trade(), source=source, sequence=1 if source == "market_ws" else None,
                     price=Decimal("7.50e-1"), size=Decimal("1.010e2")) for source in source_order]
-    assert len(paper.process_trades(rows)) == 1
+    assert len(paper._process_ordered_model_trades(rows)) == 1
     assert order.filled_shares == 1
     summary = paper.status()["trade_evidence_summary"]
     assert summary["consumed_economic_event_count"] == 1
@@ -437,7 +440,7 @@ def test_identity_write_oserror_does_not_commit_follower_cursor(tmp_path):
     recovered = restarted(ledger_path)
     before = economic_state(recovered)
     assert next(iter(recovered.ledger.orders.values())).filled_shares == 0
-    assert recovered.process_trade(fill_trade()) == ()
+    assert model_trade(recovered, fill_trade()) == ()
     assert economic_state(recovered) == before
 
 
@@ -448,8 +451,8 @@ def test_alias_observation_crash_after_prior_fill(tmp_path, monkeypatch, after):
 
     paper = processor(tmp_path)
     submit_first(paper)
-    trade = replace(fill_trade(), source="data_api", sequence=None)
-    paper.process_trade(trade)
+    trade = replace(fill_trade(), source="data_api", sequence=1)
+    model_trade(paper, trade)
     before = economic_state(paper)
     alias = replace(trade, source="market_ws", sequence=1)
     append = paper.ledger._append
@@ -464,9 +467,9 @@ def test_alias_observation_crash_after_prior_fill(tmp_path, monkeypatch, after):
 
     monkeypatch.setattr(paper.ledger, "_append", interrupt_alias)
     with pytest.raises(Crash):
-        paper.process_trade(alias)
+        model_trade(paper, alias)
     recovered = restarted(tmp_path / "paper.jsonl")
-    assert recovered.process_trade(alias) == ()
+    assert model_trade(recovered, alias) == ()
     assert economic_state(recovered) == before
 
 
