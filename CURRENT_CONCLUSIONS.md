@@ -2,6 +2,30 @@
 
 生成时间：2026-09-01 14:30 +08:00。
 
+<a id="paper-v1-formal-status"></a>
+## Paper V1 正式证据与启动状态（工程入口）
+
+As-of：2026-09-09；来源：本地候选交付与独立完整测试，尚无新的正式运行报告。
+正式状态唯一声明：`formal Paper N=0; PnL=N/A; DO NOT START PAPER; NOT SEALED`。
+当前公共 queue 入口为安全 containment，模型测试不构成正式 forward fill。
+新阶段正式文件检查完成前，不声称本条是新的全量 data 审计。
+测试名/计数统一见 `docs/reliability_test_inventory.json`；下面研究数字保持原截止口径。
+
+2026-09-09 同任务本地证据闭合交付：最终定向 366 passed、诊断 706 passed
+（明确排除五个文件）、可选 Nautilus 10 passed，实际收集 741 项。
+随后独立复测完整套件：**741 passed in 34.44s，exit 0，无文件排除、无跳过**；
+使用 180 秒外层上限、逐项输出与耗时统计，正常结束。220 个候选文件测试前后指纹一致。
+前一次 60 秒超时保留为历史，不能据其继续断言当前 socket 阻塞，也不宣称旧故障根因已修复。
+详见 [独立完整复测](docs/reliability_independent_full_validation_20260909.json) 和
+[交付及未关闭边界](docs/reliability_evidence_closure_report_20260909.md)。
+临时真实生产者、跨文件恢复、plain/gzip follower、天气历史版本与业务闸门有定向证据；
+没有部署。真实 forecast 缺固定初始化时间仍 UNKNOWN，规则证据缺失仍拒绝 readiness，
+公共 group closure 仍 UNSUPPORTED。旧非零 cursor 缺前缀哈希时阻断，不允许直接恢复旧守护链。
+
+当前阶段：**本地整改实现及完整回归已完成，部分独立复核已有证据，正式运行前验收未完成**。
+下一步集中处理来源能力边界、部署前规模/延迟验证、旧 cursor 的独立兼容方案及具名剩余审计。
+GitHub 同步是源码与证据交付，不代表部署或启动授权；正式数据、守护链和 Paper 启动边界保持不变。
+
 本文件是当前结论的唯一入口。下方明确区分稳定判断和会随归档增长的快照；历史报告若与本文件冲突，
 以本文件及其链接的当前报告为准。
 
@@ -9,7 +33,8 @@
 
 2026-08-29 00:08–2026-08-31 08:50 UTC 发生本地 daemon outage，约 50 小时无前向数据。原因：天气 DuckDB writer OOM（当时无内存限制）、市场 ws status 文件全 NUL、shadow cursor 文件损坏。质量窗口已关闭（`local-daemon-outage-2026-08-29`），该时段所有分析默认排除。
 
-修复后四个守护进程已由 Windows Task Scheduler 接管，当前状态正常：
+历史验收当时四个守护进程已由 Windows Task Scheduler 接管；以下仅为 2026-08-31 快照，
+**不代表当前健康**。当前状态须另用 `stream-status` 按健康契约只读核验，本轮未操作任务计划：
 - market-supervisor: PID 48720，任务 `Running`，440/440 book complete；仅做一次必要的接管重启，未做额外 kill 测试
 - weather-daemon: PID 45400，任务 `Running`，受控 kill 后由 runner 自动重启，WRH/NWS/METAR 持续更新
 - signal-engine: PID 47376，任务 `Running`，受控 kill 后由 runner 自动重启，evaluation 与 heartbeat 持续前进

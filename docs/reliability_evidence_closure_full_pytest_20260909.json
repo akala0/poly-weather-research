@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "scope": "One bounded default-suite attempt on final code candidate; no daemon operations",
+  "raw_result": {
+    "chunk_id": "1fa876",
+    "wall_time_seconds": 0.0000016,
+    "exit_code": 1,
+    "original_token_count": 214,
+    "output": "{\"command\": [\"D:\\\\poly\\\\.venv\\\\Scripts\\\\python.exe\", \"-m\", \"pytest\", \"-q\", \"-p\", \"no:cacheprovider\", \"--tb=short\", \"-o\", \"faulthandler_timeout=15\"], \"started_at\": \"2026-09-09T11:59:36.115883+00:00\", \"owned_test_pid\": 33276}\r\n{\"owned_tree_cleanup_exit\": 0}\r\n........................................................................ [  9%]\r\n........................................................................ [ 19%]\r\n........................................................................ [ 29%]\r\n........................................................................ [ 38%]\r\n........................................................................ [ 48%]\r\n........................................................................ [ 58%]\r\n........................................................................ [ 68%]\r\n........................................................................ [ 77%]\r\n........................................................................ [ 87%]\r\n...........................\r\n{\"exit_code\": 124, \"timed_out\": true, \"owned_test_pid\": 33276}\r\n"
+  },
+  "wrapper_reported_exit_code": 124,
+  "classification": "OUTER_TIMEOUT_NO_STACK_CAPTURED",
+  "interpretation": "No full PASS. Current output does not establish socketpair as cause; older stack is historical only."
+}

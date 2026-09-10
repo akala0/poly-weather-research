@@ -1,0 +1,7 @@
+{
+  "chunk_id": "1289e8",
+  "wall_time_seconds": 1.1193664,
+  "exit_code": 1,
+  "original_token_count": 244,
+  "output": "F                                                                        [100%]\r\n================================== FAILURES ===================================\r\n__________ test_we_signal_information_join_prefix_survives_late_high __________\r\ntests\\test_weather_decision_prefix.py:35: in test_we_signal_information_join_prefix_survives_late_high\r\n    assert engine._event_signal(config, cutoff) == original_signal\r\nE   AssertionError: assert {'calibration...r': 0.01, ...} == {'calibration...r': 0.01, ...}\r\nE     \r\nE     Omitting 36 identical items, use -vv to show\r\nE     Differing items:\r\nE     {'wrh_temperature_f': 113.0} != {'wrh_temperature_f': 77.18}\r\nE     {'current_observed_high_f': 113.0} != {'current_observed_high_f': 77.18}\r\nE     Use -v to get more diff\r\n=========================== short test summary info ===========================\r\nFAILED tests/test_weather_decision_prefix.py::test_we_signal_information_join_prefix_survives_late_high\r\n1 failed in 0.38s\r\n"
+}

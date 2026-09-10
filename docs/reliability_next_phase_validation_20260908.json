@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "task": "CODEX_PROJECT_RELIABILITY_NEXT_PHASE_TASK.md",
+  "scope": "Local candidate; executed 2026-09-08 and resumed 2026-09-09; not deployed",
+  "head": "35ccb4530f6ec031d4b590e9ef688a49e5e60112",
+  "runtime": {
+    "python": "3.14.3",
+    "pytest": "8.4.2",
+    "ruff": "0.16.4",
+    "httpx": "0.28.1",
+    "duckdb": "1.5.5",
+    "nautilus-trader": "2.0.0rc4"
+  },
+  "targeted": {
+    "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/test_reliability_documents.py tests/test_reliability_receipts.py tests/test_reliability_health.py tests/test_reliability_group_contract.py tests/test_reliability_consumers.py tests/test_reliability_evidence.py tests/test_paper_trade_evidence.py tests/test_paper_recovery.py tests/test_paper_runtime_boundaries.py tests/test_shadow_runtime.py -p no:cacheprovider --tb=short",
+    "chunk_id": "2fd422",
+    "wall_time_seconds": 9.7147072,
+    "exit_code": 0,
+    "original_token_count": 66,
+    "output": "........................................................................ [ 39%]\r\n........................................................................ [ 79%]\r\n......................................                                   [100%]\r\n182 passed in 9.08s\r\n"
+  },
+  "optional": {
+    "command": ".\\.venv\\Scripts\\python.exe -m pytest -q tests/test_nautilus_conformance.py -p no:cacheprovider --tb=short",
+    "chunk_id": "768858",
+    "wall_time_seconds": 1.1879927000000001,
+    "exit_code": 0,
+    "original_token_count": 26,
+    "output": "..........                                                               [100%]\r\n10 passed in 0.66s\r\n"
+  },
+  "diagnostic": {
+    "command": ".\\.venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider --tb=short --ignore=tests/test_fees.py --ignore=tests/test_market_supervisor.py --ignore=tests/test_wrh_backfill.py --ignore=tests/test_stream_daemons.py --ignore=tests/test_polymarket_status.py",
+    "exit_code": 0,
+    "summary": "560 passed in 15.77s",
+    "excluded_files": [
+      "tests/test_fees.py",
+      "tests/test_market_supervisor.py",
+      "tests/test_wrh_backfill.py",
+      "tests/test_stream_daemons.py",
+      "tests/test_polymarket_status.py"
+    ],
+    "is_full_suite": false
+  },
+  "full_attempt": {
+    "command": ".\\.venv\\Scripts\\python.exe scripts/reliability_bounded_pytest.py",
+    "inner_command": ".\\.venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider --tb=short -o faulthandler_timeout=15",
+    "started_at": "2026-09-08T11:43:50.042179+00:00",
+    "outer_timeout_seconds": 60,
+    "owned_test_pid": 39228,
+    "owned_tree_cleanup_exit": 0,
+    "wrapper_reported_exit_code": 124,
+    "tool_process_exit_code": 1,
+    "completed_suite": false,
+    "stack": [
+      "socket.py:298 accept",
+      "socket.py:633 _fallback_socketpair",
+      "asyncio/proactor_events.py:786 _make_self_pipe",
+      "asyncio/windows_events.py:316 __init__",
+      "tests/test_fees.py:59 test_public_fee_rate_lookup_path"
+    ],
+    "classification": "ENVIRONMENT_BLOCKER; not a PASS; no retry on resume"
+  },
+  "collect": {
+    "command": ".\\.venv\\Scripts\\python.exe -m pytest --collect-only -q -p no:cacheprovider",
+    "exit_code": 0,
+    "summary": "595 tests collected in 0.34s",
+    "inventory": "docs/reliability_test_inventory.json"
+  },
+  "checks": {
+    "ruff": {
+      "command": ".\\.venv\\Scripts\\python.exe -m ruff check src tests",
+      "chunk_id": "e2e993",
+      "wall_time_seconds": 0.1158695,
+      "exit_code": 0,
+      "original_token_count": 5,
+      "output": "All checks passed!\n"
+    },
+    "diff": {
+      "command": "git -c safe.directory=D:/poly diff --check",
+      "chunk_id": "270846",
+      "wall_time_seconds": 0.102953,
+      "exit_code": 0,
+      "original_token_count": 758,
+      "output": "warning: in the working copy of 'CURRENT_CONCLUSIONS.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/paper_v1_seal_validation_status.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/paper_v1_test_matrix.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/reliability_remediation_status.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'scripts/windows/poly-weather-daemon-runner.ps1', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'scripts/windows/poly-weather-status.ps1', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/archive_io.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/cli.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/daemon_recovery.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/market_trade_tape.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/paper_spread_runtime.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/public_trade_collection.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/runtime_safety.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/shadow_runtime.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/signal_engine.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'src/poly_weather/trade_tape_analysis.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'tests/test_cli.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'tests/test_paper_recovery.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'tests/test_paper_runtime_boundaries.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'tests/test_paper_seal_blockers.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'tests/test_paper_spread_runtime.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'tests/test_paper_trade_evidence.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'tests/test_shadow_runtime.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'tests/test_signal_engine.py', LF will be replaced by CRLF the next time Git touches it\n"
+    },
+    "data_status": {
+      "command": "git -c safe.directory=D:/poly status --short -- data",
+      "chunk_id": "d8265a",
+      "wall_time_seconds": 0.085652,
+      "exit_code": 0,
+      "original_token_count": 0,
+      "output": ""
+    },
+    "data_diff": {
+      "command": "git -c safe.directory=D:/poly diff --stat -- data",
+      "chunk_id": "8e9372",
+      "wall_time_seconds": 0.0869878,
+      "exit_code": 0,
+      "original_token_count": 0,
+      "output": ""
+    },
+    "formal_names": {
+      "command": "rg --files --hidden --no-ignore data -g '*paper_spread_v1*' -g '*paper_v1*'",
+      "chunk_id": "8ddb75",
+      "wall_time_seconds": 0.1057063,
+      "exit_code": 1,
+      "original_token_count": 0,
+      "output": ""
+    },
+    "lock": {
+      "command": "uv lock --check --offline",
+      "exit_code": 0,
+      "output": "Resolved 32 packages in 0.97ms"
+    }
+  },
+  "earlier_results": [
+    {
+      "stage": "P0 red before inventory/doc correction",
+      "result": "4 failed"
+    },
+    {
+      "stage": "P0 after correction",
+      "result": "4 passed"
+    },
+    {
+      "stage": "receipt integration first run",
+      "result": "2 failed, 54 passed; old clock/provenance fixtures updated"
+    },
+    {
+      "stage": "receipt tests first run",
+      "result": "6 failed, 63 passed; fixture construction error corrected"
+    },
+    {
+      "stage": "receipt regression",
+      "result": "69 passed in 4.04s"
+    },
+    {
+      "stage": "health first affected regression",
+      "result": "4 failed, 123 passed; explicit isolated health fixtures supplied"
+    },
+    {
+      "stage": "shared consumer regression",
+      "result": "80 passed in 3.11s"
+    },
+    {
+      "stage": "initial diagnostic",
+      "result": "1 failed, 558 passed; missing-PID healthy assertion corrected"
+    },
+    {
+      "stage": "diagnostic before final failure-receipt distinction",
+      "result": "560 passed in 20.73s"
+    },
+    {
+      "stage": "failure receipt correction",
+      "result": "41 passed in 3.43s"
+    },
+    {
+      "stage": "requested final retry 2026-09-08",
+      "result": "not launched; approval quota limit; resumed successfully 2026-09-09"
+    }
+  ],
+  "safety": {
+    "formal_data_content_read": false,
+    "formal_data_written": false,
+    "daemon_or_scheduler_operated": false,
+    "production_paper_started": false,
+    "external_probes": false,
+    "dependencies_installed": false,
+    "credentials_read": false,
+    "git_commit_or_push": false,
+    "formal_artifact_filename_check_only": true
+  },
+  "limits": [
+    "Group closure unsupported; public Paper accepted_queue_trade_rows=0",
+    "Journal fault injections are process-boundary simulations, not Windows power-loss certification",
+    "Progress defaults UNKNOWN; operational liveness readiness is not business-progress proof",
+    "Shared multi-ledger recovery and legacy quality provenance not fully qualified",
+    "Q02/Q04/Q07/Q08 pending",
+    "No independent review"
+  ]
+}

@@ -1,5 +1,35 @@
 # Paper V1 validation status - 2026-09-08
 
+## Current engineering qualification — full regression passed, not sealed (2026-09-09)
+
+Public ingress currently has **accepted_queue_trade_rows=0**: containment only,
+not restored fill capability. Private model-kernel results cannot qualify it.
+Formal evidence/startup authority is [CURRENT_CONCLUSIONS](../CURRENT_CONCLUSIONS.md#paper-v1-formal-status).
+Current collected test names/counts/exclusions are generated solely in
+[reliability_test_inventory.json](reliability_test_inventory.json), not copied from historical runs.
+Actual new-stage execution outcomes belong in `reliability_remediation_status.md`;
+the inventory is collection evidence, never a passing suite result.
+
+The historical positive-follower statements, old test names and old count claims below
+are **SUPERSEDED as current authority** by the current matrix and Stage 2 containment.
+Past runtime/PID observations are historical snapshots, not live status.
+P1 journal and scoped crash tests, P2 UNSUPPORTED decision, P3 normalized health,
+and P4 scoped consumer fixes are recorded in the
+[next-phase report](reliability_next_phase_report_20260908.md).
+E01–E04 scoped receipt/archive/weather/business-progress evidence is now recorded in
+[evidence closure delivery](reliability_evidence_closure_report_20260909.md).
+Independent full regression completed: **741 passed in 34.44s, exit 0**, no excluded
+files or skips; 220 candidate fingerprints matched before and after the run.
+See [independent validation](reliability_independent_full_validation_20260909.json).
+Earlier timeout records below are historical; the current suite blocker is cleared
+for this candidate/environment, without claiming a root-cause fix to old socket failures.
+Public group closure, real forecast vintage, legacy cursor recovery, production-scale
+performance and deferred audits remain unresolved. Full project sealing and deployment
+are not approved. DO NOT START PAPER.
+
+<!-- SUPERSEDED_HISTORY -->
+## SUPERSEDED historical validation — retained without requalification
+
 ## Trade evidence repair candidate - 2026-09-08
 
 The two supplied counterexamples are no longer reproduced by the regression

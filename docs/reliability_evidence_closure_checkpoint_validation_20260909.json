@@ -1,0 +1,28 @@
+{
+  "status": "PARTIAL_CHECKPOINT_NOT_FINAL_ACCEPTANCE",
+  "execution_enabled": false,
+  "paper_started": false,
+  "formal_n": 0,
+  "formal_pnl": null,
+  "seal_status": "NOT SEALED",
+  "collected_count": 713,
+  "diagnostic": {
+    "result": "passed",
+    "passed": 678,
+    "seconds": 34.52,
+    "exit_code": 0,
+    "excluded_files": ["tests/test_fees.py", "tests/test_market_supervisor.py", "tests/test_wrh_backfill.py", "tests/test_stream_daemons.py", "tests/test_polymarket_status.py"],
+    "raw_completion": "678 passed in 34.52s"
+  },
+  "default_suite": "NOT_RUN_FOR_THIS_PARTIAL_CHECKPOINT",
+  "optional_suite": "NOT_RERUN_FOR_THIS_PARTIAL_CHECKPOINT",
+  "final_fingerprint": "DEFERRED_UNTIL_FINAL_CANDIDATE",
+  "legacy_cursor_without_prefix_hash": "BLOCKED_NO_AUTOMATIC_MIGRATION",
+  "remaining": [
+    "Full signal and fixed-vintage future-append invariance",
+    "Actual producer business-sample provenance and committed-position certification",
+    "Signal/shadow business-progress consumer integration",
+    "Complete native risk-exit matrix under readiness rejection",
+    "Final default and optional regression, offline lock verification and candidate fingerprint"
+  ]
+}

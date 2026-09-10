@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-09",
+  "state": "LOCAL_REMEDIATION_DELIVERED_NOT_SEALED",
+  "formal": {
+    "N": 0,
+    "PnL": null,
+    "execution_enabled": false,
+    "public_group_completeness": "UNSUPPORTED",
+    "accepted_queue_trade_rows": 0,
+    "paper_start_authorized": false
+  },
+  "head": "35ccb4530f6ec031d4b590e9ef688a49e5e60112",
+  "collection": {
+    "count": 741,
+    "exit_code": 0,
+    "artifact": "reliability_test_inventory.json"
+  },
+  "targeted": {
+    "passed": 366,
+    "seconds": 32.28,
+    "exit_code": 0
+  },
+  "diagnostic": {
+    "passed": 706,
+    "seconds": 42.12,
+    "excluded_node_count": 35,
+    "excluded_files": [
+      "tests/test_fees.py",
+      "tests/test_market_supervisor.py",
+      "tests/test_wrh_backfill.py",
+      "tests/test_stream_daemons.py",
+      "tests/test_polymarket_status.py"
+    ],
+    "raw_result": {
+      "chunk_id": "d37643",
+      "wall_time_seconds": 0.0000017,
+      "exit_code": 0,
+      "original_token_count": 168,
+      "output": "........................................................................ [ 10%]\r\n........................................................................ [ 20%]\r\n........................................................................ [ 30%]\r\n........................................................................ [ 40%]\r\n........................................................................ [ 50%]\r\n........................................................................ [ 61%]\r\n........................................................................ [ 71%]\r\n........................................................................ [ 81%]\r\n........................................................................ [ 91%]\r\n..........................................................               [100%]\r\n706 passed in 42.12s\r\n"
+    }
+  },
+  "optional_nautilus": {
+    "passed": 10,
+    "seconds": 0.81,
+    "exit_code": 0,
+    "official_score": false
+  },
+  "full_default": {
+    "passed": false,
+    "attempts": 1,
+    "timeout_seconds": 60,
+    "wrapper_reported_exit_code": 124,
+    "tool_exit_code": 1,
+    "stack_captured": false,
+    "root_cause": "UNDETERMINED_CURRENT_ATTEMPT",
+    "artifact": "reliability_evidence_closure_full_pytest_20260909.json"
+  },
+  "performance": {
+    "chunk_id": "8b67bb",
+    "wall_time_seconds": 2.0058687,
+    "exit_code": 0,
+    "original_token_count": 135,
+    "output": "{\"reader\": \"historical\", \"scale\": 12, \"reads\": 72, \"bytes\": 123476, \"seconds\": 0.035838600000715815, \"peak_bytes\": 358464}\r\n.{\"reader\": \"historical\", \"scale\": 24, \"reads\": 144, \"bytes\": 247292, \"seconds\": 0.08613169999989623, \"peak_bytes\": 552982}\r\n.{\"reader\": \"incremental\", \"scale\": 12, \"reads\": 72, \"bytes\": 123476, \"seconds\": 0.03011190000052011, \"peak_bytes\": 330975}\r\n.{\"reader\": \"incremental\", \"scale\": 24, \"reads\": 144, \"bytes\": 247292, \"seconds\": 0.061153500000727945, \"peak_bytes\": 527560}\r\n.\r\n4 passed, 29 deselected in 1.49s\r\n"
+  },
+  "ruff": "PASS",
+  "offline_lock": "PASS; 32 packages; default cache permission failure followed by authorized retry",
+  "git_data_check": "name-only status/diff empty; not content audit",
+  "boundaries": [
+    "no Paper/daemon/scheduler operation",
+    "no formal data edits",
+    "no commit/push",
+    "no installs/network/system repair",
+    "old nonzero cursor without prefix hash not migrated",
+    "original EC01 RED raw output missing",
+    "large archive/signal-history/fsync latency unqualified"
+  ],
+  "acceptance": [
+    {
+      "id": "EC01",
+      "node": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected",
+      "assertion": "exact members reject deletion",
+      "limit": "original RED raw log unavailable",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "EC02",
+      "node": "tests/test_evidence_closure.py::test_ec_missing_or_contradictory_members_rejected",
+      "assertion": "reject downgrade duplicate scope/count contradictions",
+      "limit": "no upstream group claim",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "EC03",
+      "node": "tests/test_evidence_closure.py::test_ec_empty_failure_legacy_and_missing_tape_reconstruction",
+      "assertion": "empty/failure/legacy distinct",
+      "limit": "legacy receipt not promoted",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "EC04",
+      "node": "tests/test_evidence_closure.py::test_ec_old_prefix_and_uncommitted_tail_remain_readable",
+      "assertion": "old anchor excludes future facts",
+      "limit": "all-authority coordinated rollback undetectable",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "EC05",
+      "node": "tests/test_closure_crash_matrix.py::test_ec_cross_file_commit_recovery",
+      "assertion": "before/after six publications plus two recoveries",
+      "limit": "not OS power loss",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "EC06",
+      "node": "tests/test_closure_crash_matrix.py::test_ec_readers_ignore_corrupt_unclaimed_tail_but_writer_blocks",
+      "assertion": "bounded reader and full writer policy",
+      "limit": "preflight corrupt tape blocks witness",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "EC07",
+      "node": "tests/test_evidence_closure.py::test_ec_reader_cost_measurement",
+      "assertion": "12/24-event actual journal cost",
+      "limit": "small fixture only; diagnostic not performance PASS",
+      "status": "MEASURED_ONLY"
+    },
+    {
+      "id": "AR01",
+      "node": "tests/test_follower_archive_closure.py::test_ar_real_follower_plain_gzip_restart_equivalence",
+      "assertion": "input/weather/queue/account equivalence across representations",
+      "limit": "MODEL_KERNEL prepared ledger, zero public fills",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "AR02",
+      "node": "tests/test_signal_archive_closure.py::test_signal_tail_plain_gzip_partial_and_prefix_replacement",
+      "assertion": "multibyte partial line and replacement",
+      "limit": "legacy nonzero cursor unbound remains blocked",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "WE01",
+      "node": "tests/test_weather_evidence_closure.py::test_we_invalid_weather_cannot_become_realtime",
+      "assertion": "three actual converters reject mode/clock/temperature damage",
+      "limit": "legacy source unknown",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "WE02",
+      "node": "tests/test_weather_decision_prefix.py::test_forecast_append_preserves_actual_signal_and_information_prefix",
+      "assertion": "nonempty past signal/information prefix invariant",
+      "limit": "actual Open-Meteo fixed initialization absent",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "HE01",
+      "node": "tests/test_producer_progress_closure.py::test_actual_producer_commits_two_durable_samples",
+      "assertion": "actual durable commits, heartbeat no advance; signal fault separately",
+      "limit": "no resident run or deployment certification",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "HE02",
+      "node": "tests/test_business_readiness_closure.py::test_he_input_ready_is_not_public_score_eligibility",
+      "assertion": "full composition separates input and score; unknown gate blocks",
+      "limit": "missing production rule evidence still false",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "HE03",
+      "node": "tests/test_business_readiness_closure.py::test_he_rejected_entry_preserves_native_risk_exit_gate",
+      "assertion": "entry rejection permits expiry/release and fresh native risk exit",
+      "limit": "MODEL_KERNEL prepared inventory",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    },
+    {
+      "id": "SA01",
+      "node": "tests/test_reliability_group_contract.py",
+      "assertion": "public group remains unsupported with zero queue consumption",
+      "limit": "not positive public-fill capability",
+      "status": "SCOPED_ASSERTIONS_PASSED"
+    }
+  ]
+}

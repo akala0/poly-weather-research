@@ -1,0 +1,1110 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-09-09T12:05:25.2092990Z",
+  "scope": "Local source/tests/config/docs/scripts and named root documentation; excludes formal data, .claude, secrets and self",
+  "head": "35ccb4530f6ec031d4b590e9ef688a49e5e60112",
+  "file_count": 220,
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "size": 34825,
+      "sha256": "1f0f93d958fee8f72f4dd9f9d1763d5b4393b3060b1355e433fcf41d33fbcf1d"
+    },
+    {
+      "path": "CODEX_PAPER_SIMULATION_TASK.md",
+      "size": 16962,
+      "sha256": "89c740b016eb39946a427d619d3716d2380a6e765cd4626e8649397d20462574"
+    },
+    {
+      "path": "CODEX_PAPER_V1_HARDENING_NAUTILUS_TASK.md",
+      "size": 32712,
+      "sha256": "e838a58c247af79b836b90f026302265205b7cc6d3a4144034fd9aec9209c105"
+    },
+    {
+      "path": "CODEX_PAPER_V1_SEAL_BLOCKERS_TASK.md",
+      "size": 34355,
+      "sha256": "3e8149f4089a9c9be45955f45d2775dd5155b844c0b84dc4d85bc851ff11a26b"
+    },
+    {
+      "path": "CODEX_PAPER_V1_TRADE_EVIDENCE_FIX_TASK.md",
+      "size": 18274,
+      "sha256": "1053a84389f848741c37c1892ab9e7e744a33953d28be907843079bc99d81904"
+    },
+    {
+      "path": "CODEX_PROJECT_RELIABILITY_EVIDENCE_CLOSURE_TASK.md",
+      "size": 20481,
+      "sha256": "951f44b3085a2c65d7f5b908dd619c39a569163d55954fe0a9f7e468579b46bf"
+    },
+    {
+      "path": "CODEX_PROJECT_RELIABILITY_NEXT_PHASE_TASK.md",
+      "size": 33323,
+      "sha256": "a26bec07644885ebfb9540927b04f789823f110859bebf6fe93662e39235718a"
+    },
+    {
+      "path": "CODEX_PROJECT_RELIABILITY_REMEDIATION_TASK.md",
+      "size": 18971,
+      "sha256": "fc1c5d99a37c59448bfc4497d2e2d508b110a4aa77fbcacf7a28f9ce32c24988"
+    },
+    {
+      "path": "configs/market_state_challenger_v1.json",
+      "size": 995,
+      "sha256": "3b9eba683783ba132a2d5904913925043947463b0f30ce067fd8bd14cbe847b6"
+    },
+    {
+      "path": "configs/paper_spread_strategy_v1.json",
+      "size": 967,
+      "sha256": "ea7283cbb070385aace5052d30787d15f18473ba544c0058047c02b807134dc3"
+    },
+    {
+      "path": "configs/polymarket_quality_overrides.json",
+      "size": 1203,
+      "sha256": "c695b1e161a69c9ae2b3eb2c9cb3b0f95cf3b38e3eb49bb4119707b7559c2122"
+    },
+    {
+      "path": "configs/settlements.example.json",
+      "size": 10903,
+      "sha256": "c22d8ab8e0ce05f65ef4c5a526c698b14bf2e4421c8c6d8d9f962472e19f70dd"
+    },
+    {
+      "path": "configs/settlements.json",
+      "size": 10903,
+      "sha256": "c22d8ab8e0ce05f65ef4c5a526c698b14bf2e4421c8c6d8d9f962472e19f70dd"
+    },
+    {
+      "path": "configs/shadow_spread_strategy.json",
+      "size": 1169,
+      "sha256": "2673bf89b454700516c87fb8b5a0e43deacd88dbcf055d204010df2c48ce221d"
+    },
+    {
+      "path": "configs/warming_window_no_thresholds.json",
+      "size": 49974,
+      "sha256": "80ad9cbc6e1f63ec6c6e572218f95fbfe32025e86a71e7819af30d493c8d9b87"
+    },
+    {
+      "path": "CURRENT_CONCLUSIONS.md",
+      "size": 27938,
+      "sha256": "fe4ab9370cf67f507cf535756dad4d0de178be336d0ccfc2f76b8d44d1c8a5c2"
+    },
+    {
+      "path": "docs/ENGINEERING_ACCEPTANCE_STANDARD.md",
+      "size": 15391,
+      "sha256": "dffe502aa4deae1ca4293d9752f9a8bc5381488ace3bbf686fafaec1cefa1bde"
+    },
+    {
+      "path": "docs/onchain_sql_evaluation.md",
+      "size": 3687,
+      "sha256": "0fcf5f362a48ccb8a05644afa1e8c072298533aa33f2afbcc2a28dbb32cc951e"
+    },
+    {
+      "path": "docs/paper_v1_seal_validation_status.md",
+      "size": 15342,
+      "sha256": "a4dd483ad16ed9f58c67eb8ffa80ce0500dc4d178da89887ada39f230b47740b"
+    },
+    {
+      "path": "docs/paper_v1_test_matrix.md",
+      "size": 27540,
+      "sha256": "9fa43286a7480a03bee0cef4fae1a3ab01a7ec96c88f243f268602deff86b4bb"
+    },
+    {
+      "path": "docs/paper_v1_trade_evidence_contract.md",
+      "size": 3425,
+      "sha256": "36cbdbd48c313e57828ef394f4ef1464fa7cdc8ec15d71fd026a5823c92a2c8d"
+    },
+    {
+      "path": "docs/polymarket_api_reference.md",
+      "size": 15329,
+      "sha256": "80d6c8dcb3a7e8499b9ec22d4e0e7b3e1652ad05af8b4973844f732960407ff8"
+    },
+    {
+      "path": "docs/quiet_report_canonical_paths.md",
+      "size": 2649,
+      "sha256": "30e2c01ac320684f5e94bb996ff3025f526de850a9c3a90d3004c59ab6132fa4"
+    },
+    {
+      "path": "docs/reliability_archive_cursor_contract.md",
+      "size": 1362,
+      "sha256": "3a1bdc5bc015d9507dfd98e0b2123371f246531ee754c8801a78ba962accfc9c"
+    },
+    {
+      "path": "docs/reliability_baseline_20260908.json",
+      "size": 29039,
+      "sha256": "de73d60f36df54801cf9fbc5e3835fe1c444a5e278db8c398f6fa9fe8ffeb051"
+    },
+    {
+      "path": "docs/reliability_consumer_audit.md",
+      "size": 6207,
+      "sha256": "5297e440d1d34b3a69c1bd209ad86baefa9f9a0ae42b2f8a646601942a40dbd8"
+    },
+    {
+      "path": "docs/reliability_evidence_closure_checkpoint_validation_20260909.json",
+      "size": 1184,
+      "sha256": "1f24f554fa3abc3e556728e01e3549419b848f354e7bc3fcf5defff4cca5347b"
+    },
+    {
+      "path": "docs/reliability_evidence_closure_full_pytest_20260909.json",
+      "size": 1638,
+      "sha256": "311cafb7c64484c0638c7c415b45cd1ac129b93de2740e266ecd4f20dde78ef7"
+    },
+    {
+      "path": "docs/reliability_evidence_closure_report_20260909.md",
+      "size": 16071,
+      "sha256": "1308b0de7691c2dfbb25e1155ec7018efaab5d176c34a144d4279c00f205d0ca"
+    },
+    {
+      "path": "docs/reliability_evidence_closure_validation_20260909.json",
+      "size": 8172,
+      "sha256": "997e4deeedaa47d832ac3aaea79719d799890395b27bdac73413129352f2eb1a"
+    },
+    {
+      "path": "docs/reliability_health_contract.md",
+      "size": 4829,
+      "sha256": "41b02d5dcf7a28e579fb9ee5cec51099d4c29638087928834e55add2f4407dde"
+    },
+    {
+      "path": "docs/reliability_materialization_contract.md",
+      "size": 2630,
+      "sha256": "c4d4a3993b329bc24ae50ffda999ba0d9c463d20cf401352a66d9b2a1e151fc0"
+    },
+    {
+      "path": "docs/reliability_next_phase_fingerprint_20260908.json",
+      "size": 35895,
+      "sha256": "da96a350670f3fea5d63062ac0aef9052817067cb2a44850f522cdcea828548a"
+    },
+    {
+      "path": "docs/reliability_next_phase_report_20260908.md",
+      "size": 12434,
+      "sha256": "44518cb9faa8e7dcda1ae22709fff8f7251127543fc52007a6ca408ffe1e0c40"
+    },
+    {
+      "path": "docs/reliability_next_phase_validation_20260908.json",
+      "size": 9837,
+      "sha256": "38e3e50098879cf9bcff85840f2ffa1ba45c7b478bfcfa35b4678c8901a1b84a"
+    },
+    {
+      "path": "docs/reliability_receipt_contract.md",
+      "size": 4484,
+      "sha256": "01e3657489e1052fd62b5e1708d291cd37987ec274e37b667c2cfd50666750bf"
+    },
+    {
+      "path": "docs/reliability_remediation_status.md",
+      "size": 17948,
+      "sha256": "6b08f86ea5c1b105b76763b1d1767718657eb072e36af0de230d37c60950b9db"
+    },
+    {
+      "path": "docs/reliability_signal_prefix_red_20260909.json",
+      "size": 1133,
+      "sha256": "c138240761a850e5ff6354aaefcf2024c361759f81d2496d007d6db1ef975af3"
+    },
+    {
+      "path": "docs/reliability_stage1_fingerprint_20260908.json",
+      "size": 31508,
+      "sha256": "e66f9886389719178dec3242f196ef029f75a439ad2005db890ec96fab2026e7"
+    },
+    {
+      "path": "docs/reliability_stage2_fingerprint_20260908.json",
+      "size": 30922,
+      "sha256": "47e94be51c9651979ef53db429eb56b9d7c74b76ecdd2da135022e8228806564"
+    },
+    {
+      "path": "docs/reliability_test_inventory.json",
+      "size": 188721,
+      "sha256": "10d535531dbb9d729a0a0728fe74a95a19cc86b2e1560e5677846b26176f0bf0"
+    },
+    {
+      "path": "docs/reliability_trade_source_semantics.md",
+      "size": 2884,
+      "sha256": "e2baeeced95d297e0847ce383ee4cd5b1fe9e7699fa312901e5e18b951876776"
+    },
+    {
+      "path": "docs/reliability_weather_qualification.md",
+      "size": 2635,
+      "sha256": "e9fc0f3571c008ed694ef1a26e4996cb7e99463fd56f6ea7b18dbe36686d804c"
+    },
+    {
+      "path": "docs/reliability_weather_red_20260909.json",
+      "size": 3332,
+      "sha256": "9cf1b5f701f1f7436ef01472355514581a3dcee09d9efabec7b540daa9de208f"
+    },
+    {
+      "path": "docs/signal_snapshot_storage_report.md",
+      "size": 3362,
+      "sha256": "7a618b7cd1e72e8909f433d863d88fe6d194a881c073723b0c48bdfb5d7783a3"
+    },
+    {
+      "path": "docs/strategy_reference_survey.md",
+      "size": 23148,
+      "sha256": "3995831acd556363cd55cf5b58df8e8b8c383bb721700b9b5d43f8b5603badfa"
+    },
+    {
+      "path": "HANDOFF.md",
+      "size": 27192,
+      "sha256": "5f5b0c808bb6e8e823336d0cdb8cda17ee8df2247ca0e0d641790626122ad323"
+    },
+    {
+      "path": "pyproject.toml",
+      "size": 994,
+      "sha256": "de9c700644c85127d3f36fbfe2dcbb9c8b06f8236d766f3a54cf74f6b20e61e5"
+    },
+    {
+      "path": "README.md",
+      "size": 18878,
+      "sha256": "889bfeca71507039cbb0650b8c0833051c6436d173e934a0dd9ad5606d062f3b"
+    },
+    {
+      "path": "scripts/reliability_bounded_pytest.py",
+      "size": 1516,
+      "sha256": "2e7c9fcf80f24a5b99b1e6cad15bf1f6c9e0402b269c5f9eb68f055e27b8d628"
+    },
+    {
+      "path": "scripts/reliability_inventory.py",
+      "size": 5471,
+      "sha256": "ce872a80fab10c2e5ed6c86fa0735918fbaba89236f50d24ab7001ac0f5499fd"
+    },
+    {
+      "path": "scripts/run_wrh_daily_backfill.ps1",
+      "size": 1325,
+      "sha256": "cdfc5a17e26c6a14f9f510d260d045f481c270cb98ad1d7984a2af18343565bd"
+    },
+    {
+      "path": "scripts/windows/install-poly-weather-tasks.ps1",
+      "size": 2590,
+      "sha256": "cd2f485379c95f7f0a81278a870e79eff67a31b2680aeed87db3cff2a1e66a1a"
+    },
+    {
+      "path": "scripts/windows/poly-weather-daemon-runner.ps1",
+      "size": 10079,
+      "sha256": "6b9bb34e2504e38aa38ea4f4a7910a312e0ac35b281c9b7658e0bccd7864f876"
+    },
+    {
+      "path": "scripts/windows/poly-weather-kill-test.ps1",
+      "size": 3216,
+      "sha256": "09c706080a29a957d7cc77d48e1bfa7bc281203d90c722ba3289bd1e137d7b60"
+    },
+    {
+      "path": "scripts/windows/poly-weather-status.ps1",
+      "size": 7282,
+      "sha256": "e624dc6d7506aadc5d30c95cb6b94d2b7729815b8f84e2677d475835f8e3026a"
+    },
+    {
+      "path": "scripts/windows/stop-poly-weather-tasks.ps1",
+      "size": 522,
+      "sha256": "9c48698ae983c76517bf0bd68731dfc4eb6b411d07e075f1e22a08d9e5bebb7e"
+    },
+    {
+      "path": "scripts/windows/task-definitions/PolyWeather-market-supervisor.xml",
+      "size": 1735,
+      "sha256": "276d17520ccc77ec43c26eae54cb5fed5b2aee2b7d8e5360c5fd0fe59dde955a"
+    },
+    {
+      "path": "scripts/windows/task-definitions/PolyWeather-shadow-spread-engine.xml",
+      "size": 1744,
+      "sha256": "f549b43ecb6ebb642103090420302b15d57d7da66c874d2a5d5b7abb2a85c068"
+    },
+    {
+      "path": "scripts/windows/task-definitions/PolyWeather-signal-engine.xml",
+      "size": 1723,
+      "sha256": "2608c713f457c6d79cceb1c5c0adc23d33121291a227b185f3fd5290391d1e50"
+    },
+    {
+      "path": "scripts/windows/task-definitions/PolyWeather-weather-stream.xml",
+      "size": 1726,
+      "sha256": "651c0e9542625a74e8c46b6ee0a0e05962801a81ce4f262eb055518cb87ab5cd"
+    },
+    {
+      "path": "scripts/windows/uninstall-poly-weather-tasks.ps1",
+      "size": 432,
+      "sha256": "900c752d9e4859923aff644915a4e0bf4e2f7cdab7b3d876ff5cbfd5fd9c9bc5"
+    },
+    {
+      "path": "src/poly_weather/__init__.py",
+      "size": 79,
+      "sha256": "ddedee447fd8c89e16c233a1318256ffd5a796c4ff0f4e1a1df54edaed23a9b4"
+    },
+    {
+      "path": "src/poly_weather/__main__.py",
+      "size": 72,
+      "sha256": "b08186b7ade8dcf6619e2a20c76fa51f38ed42901ebed365daa29ee20908d750"
+    },
+    {
+      "path": "src/poly_weather/adapters/__init__.py",
+      "size": 38,
+      "sha256": "2e87eadcc641aea60cd982f23690ec6dcf5c444b5157373a1801151f79aa82c3"
+    },
+    {
+      "path": "src/poly_weather/adapters/aviation_weather.py",
+      "size": 6657,
+      "sha256": "855c024073b1c06fd7974f65606c959f1ee870973fd91aeeb6763ffb94cf392b"
+    },
+    {
+      "path": "src/poly_weather/adapters/clob.py",
+      "size": 9328,
+      "sha256": "dcb80f4122e01fbadb07acce46640c5267a392e64694e2d5be0eb5b36bdf39c8"
+    },
+    {
+      "path": "src/poly_weather/adapters/historical_weather.py",
+      "size": 9282,
+      "sha256": "b45a952fc4582a73aa712d2e5891261cdd6a2b2cc725d1be1a8027444e153ee9"
+    },
+    {
+      "path": "src/poly_weather/adapters/nws.py",
+      "size": 6340,
+      "sha256": "45440d8f48be6f85d680683dd904c0835aeda83eeca2b11ee0b326b50ed7b2bb"
+    },
+    {
+      "path": "src/poly_weather/adapters/open_meteo.py",
+      "size": 11695,
+      "sha256": "b03e3cdf14c2ea2829d6bb8ec47ad64ab22efa762f5ba204a1d086119fb405aa"
+    },
+    {
+      "path": "src/poly_weather/adapters/polymarket_data.py",
+      "size": 10063,
+      "sha256": "4a06a56986d2c9428be78534a2f40be156301c2eafae58598696ae2b432755a7"
+    },
+    {
+      "path": "src/poly_weather/adapters/polymarket.py",
+      "size": 7685,
+      "sha256": "056444f439ef8bb991c732a6981790414209b9b6f5a390e5557c73a29ff27dfc"
+    },
+    {
+      "path": "src/poly_weather/adapters/wrh.py",
+      "size": 7320,
+      "sha256": "f4c8ffa84e11d3d7e5a199c1a58a3b80f902aedd736ca91f39f4041a2bb6fc16"
+    },
+    {
+      "path": "src/poly_weather/archive_io.py",
+      "size": 1784,
+      "sha256": "2cf129eead0dee7feaaf5ae06c266ed735c17d634073c467c3e08aff4f64c455"
+    },
+    {
+      "path": "src/poly_weather/archive_position.py",
+      "size": 4268,
+      "sha256": "ad15f03a06b52e1b33f571a00943cebcd1786da8ae27cc18621787ad2cf4d09a"
+    },
+    {
+      "path": "src/poly_weather/bias_significance_audit.py",
+      "size": 17012,
+      "sha256": "4f17371c650a3a4db79f3f371c55607b008fcf4f5e261e99df23438da886b974"
+    },
+    {
+      "path": "src/poly_weather/business_readiness.py",
+      "size": 5476,
+      "sha256": "86c231085c4d4f770751cc99f3fb72a6313cb7469518e100a3f194cc9aa55435"
+    },
+    {
+      "path": "src/poly_weather/calibration.py",
+      "size": 9393,
+      "sha256": "49cab0e334eb185a49d4ff996aa5eb45672c8e8601e27bf81e251eb66f0cf743"
+    },
+    {
+      "path": "src/poly_weather/certainty_report.py",
+      "size": 6558,
+      "sha256": "9917e2a2e05713bec91b0b783db5099e2c1ad2526617b8b1280a21c2f4c3083c"
+    },
+    {
+      "path": "src/poly_weather/cli.py",
+      "size": 188579,
+      "sha256": "23441caf5ef7cd8463a993be091665c0917a70011276b3799eac32a2ced3ec72"
+    },
+    {
+      "path": "src/poly_weather/complement_pair.py",
+      "size": 57530,
+      "sha256": "43ff005205de72e202e6258be3ae1a8c182390df747b1272ef6df894955c6d5b"
+    },
+    {
+      "path": "src/poly_weather/config.py",
+      "size": 264,
+      "sha256": "8ca9172df9f239c61ca38eef26e9c0faa01bf6b3f21fccfa94bb66bc1ffe26cc"
+    },
+    {
+      "path": "src/poly_weather/daemon_recovery.py",
+      "size": 4389,
+      "sha256": "ba796b9cb76aa3124df6ff8c8a1072386e080f420b9ece711382f85fadcbe9aa"
+    },
+    {
+      "path": "src/poly_weather/depth_calibration.py",
+      "size": 13573,
+      "sha256": "2ffa2e5c850163b2f7da966e6978407eda4b1ca9a02d754887ef6aae989c6fc5"
+    },
+    {
+      "path": "src/poly_weather/domain.py",
+      "size": 17448,
+      "sha256": "779fabf014053fb38cee79b96e28f821afcab9bd96c90cb9389517d1e7302f96"
+    },
+    {
+      "path": "src/poly_weather/entry_accessibility.py",
+      "size": 53378,
+      "sha256": "a1b8db19a4be89c9000dbd8e1b07c4bfc9518b526b9543b56e81afd9f410d861"
+    },
+    {
+      "path": "src/poly_weather/execution_cost.py",
+      "size": 6670,
+      "sha256": "c78d12ad8edafa951b27cf1ed376976a572aa564b17d552d31727de2b6855f67"
+    },
+    {
+      "path": "src/poly_weather/fees.py",
+      "size": 5329,
+      "sha256": "9275a9840759d8e03513f2102f505a3a07155ee75512ba4e13410654b4dc5ca3"
+    },
+    {
+      "path": "src/poly_weather/high_frequency_audit.py",
+      "size": 10909,
+      "sha256": "d3c0b9ddff286c9bea64667d9bcf4f706643183e27c06d3208ecbd10ec10bad4"
+    },
+    {
+      "path": "src/poly_weather/information_clock.py",
+      "size": 55104,
+      "sha256": "9e593a615ddf7ded3fc3da3d9481f3ebf9e52e303f66a66216b70520a63f7176"
+    },
+    {
+      "path": "src/poly_weather/intraday_reversal.py",
+      "size": 10914,
+      "sha256": "758ccd9a88f33e72dcbda71eee57d14ea7dbc13d691e663b7d165f1c264e1b09"
+    },
+    {
+      "path": "src/poly_weather/liquidity.py",
+      "size": 13913,
+      "sha256": "2928b65ed64acf7cf70352d919e73e451db5d568d343f2e99f4a0ec2c4131c4e"
+    },
+    {
+      "path": "src/poly_weather/maintenance_audit.py",
+      "size": 8952,
+      "sha256": "b076291eca993362a7e004ab5bfe63c7d7796d45eb0470948419955c8c9e9563"
+    },
+    {
+      "path": "src/poly_weather/market_lag.py",
+      "size": 24888,
+      "sha256": "ad54762acb7aab2fa3068a867e516196eadf461c3550ac3ec5db8d4897f84c41"
+    },
+    {
+      "path": "src/poly_weather/market_microstructure.py",
+      "size": 43866,
+      "sha256": "63879bba3e543aa7d57d29b96807ddb697fe50abf3933bcad021ab24fabb9e24"
+    },
+    {
+      "path": "src/poly_weather/market_regime.py",
+      "size": 42634,
+      "sha256": "fed185934f44495867bcf66678d9d43b572501454392e52459a7729d917e994f"
+    },
+    {
+      "path": "src/poly_weather/market_state_challenger.py",
+      "size": 48161,
+      "sha256": "6d7bacf617f0a36d6b4d614f076cdc5f91d07b42f72ca51a8a135ae3a6a6d0c7"
+    },
+    {
+      "path": "src/poly_weather/market_stream.py",
+      "size": 46745,
+      "sha256": "78da756f61d04fcad2d20be7e9707b6b5a53e50a55faa2cc39c582e106fd5ac8"
+    },
+    {
+      "path": "src/poly_weather/market_supervisor.py",
+      "size": 13232,
+      "sha256": "3a1fab4dd7ac537b566dbffc38e8c7ad18740d20bee8b944322f6c3596f7c207"
+    },
+    {
+      "path": "src/poly_weather/market_trade_tape.py",
+      "size": 24694,
+      "sha256": "278117b5139af7918f78a2b77cdaa98338d0492ef1118be278434cd6637c48bf"
+    },
+    {
+      "path": "src/poly_weather/modeling.py",
+      "size": 9102,
+      "sha256": "a641b4989ffc192f2c4ade405cbe09973039c2747e903051dadf51e59be09a7a"
+    },
+    {
+      "path": "src/poly_weather/monitoring.py",
+      "size": 6403,
+      "sha256": "98fbe04421668b40be4c54f89e12dd987cd58e9b32c8cf5b212caf1bd8596167"
+    },
+    {
+      "path": "src/poly_weather/nautilus_conformance.py",
+      "size": 76067,
+      "sha256": "a3791e52fb5a925985694516a231fa59e4d7ebda91773b9ce3250ac5c462b43b"
+    },
+    {
+      "path": "src/poly_weather/no_forward.py",
+      "size": 22005,
+      "sha256": "eda746afc01c4755eec5551a68a74baa36976d0f86fbe7ed4d27e7301b75dcc4"
+    },
+    {
+      "path": "src/poly_weather/no_side_analysis.py",
+      "size": 14154,
+      "sha256": "cbf98287dd8cdc88248da158a0cff9bceb98fd47371ddf6a648bfc463cf1123d"
+    },
+    {
+      "path": "src/poly_weather/paper_account.py",
+      "size": 40450,
+      "sha256": "1cfa360aefb95c9723aa235a04bbc42749811587a23a413c9c90dea1e540c936"
+    },
+    {
+      "path": "src/poly_weather/paper_spread_runtime.py",
+      "size": 161048,
+      "sha256": "d6f000bc723ea845ddd2df3655e98e3977e668851872e96648e307cbc0a6bf3f"
+    },
+    {
+      "path": "src/poly_weather/paper.py",
+      "size": 4907,
+      "sha256": "58a204425d508f28a8f2b0b4e0f8977dda5f16b560d288f30a9fe75e616f6c4c"
+    },
+    {
+      "path": "src/poly_weather/polymarket_status.py",
+      "size": 14004,
+      "sha256": "fd3a41812f1de76cfd2e033b0c88b5412c99b32727fe5bf2156f32d14b14d0c0"
+    },
+    {
+      "path": "src/poly_weather/precision_audit.py",
+      "size": 9879,
+      "sha256": "0ad8053468916d2475cd702147c468bb1cd27a4c7b902689f36c756cf4fc94f5"
+    },
+    {
+      "path": "src/poly_weather/price_band_accessibility.py",
+      "size": 39663,
+      "sha256": "61034268b361892ec9ccac5e72ed053d111e88cd93ea2851acc2c9e78214c314"
+    },
+    {
+      "path": "src/poly_weather/price_path_analysis.py",
+      "size": 47849,
+      "sha256": "dd824726e3eca4226e3cad96e1bd47935f241136885f8d1c733ccf0b7f028220"
+    },
+    {
+      "path": "src/poly_weather/public_trade_collection.py",
+      "size": 32233,
+      "sha256": "7fed4dcb0775d65685981dd569c27538fe793c1a100a57f1e06540e28c5c50b4"
+    },
+    {
+      "path": "src/poly_weather/quiet_order_forensics.py",
+      "size": 65611,
+      "sha256": "24f7229e79f13bbc8581ddea1c1be29acc1e99fb9084936329b63ae68ab6a076"
+    },
+    {
+      "path": "src/poly_weather/quiet_state_log.py",
+      "size": 10127,
+      "sha256": "f6ffb70c0da416bc45c01dd92c5d69e0f74034bc22ae7e242592b3cd5a0e0ffb"
+    },
+    {
+      "path": "src/poly_weather/quiet_window_strategy.py",
+      "size": 147933,
+      "sha256": "f534e5182639bdb93d5515e72ff903aba013252122542fefaf042c85eea6a33d"
+    },
+    {
+      "path": "src/poly_weather/real_no_books.py",
+      "size": 43574,
+      "sha256": "5dcd9c27f6ef794e57d44ff64a19e833d57a76b203ee12c8f25ca6bc5cd960bc"
+    },
+    {
+      "path": "src/poly_weather/receipt_journal.py",
+      "size": 9357,
+      "sha256": "2d136074e32ada4aa8419ded6d555d262fe638c9be1dd92a9459f26ad1b0687e"
+    },
+    {
+      "path": "src/poly_weather/research_store.py",
+      "size": 33145,
+      "sha256": "3637650f5315c80a43ea407f94a8807d3c110f3ef414896599b55d9fdbc56ba6"
+    },
+    {
+      "path": "src/poly_weather/retention.py",
+      "size": 13643,
+      "sha256": "23571f3f428c079b13deb15a9d8d9ff3665dea0c6d236740c8fa047ab0b1f117"
+    },
+    {
+      "path": "src/poly_weather/runtime_safety.py",
+      "size": 21666,
+      "sha256": "4f1c42b556ecbbddb73f15d05fb840976dcd53d87a07465abb6bdaf6106899ec"
+    },
+    {
+      "path": "src/poly_weather/settlement.py",
+      "size": 11344,
+      "sha256": "f702078e6dcae010cdd9071d615df5ea8806873f10f3dcbda99c2c9bec33f40f"
+    },
+    {
+      "path": "src/poly_weather/shadow_orders.py",
+      "size": 98838,
+      "sha256": "8be8f339779dffefa6d2c9c14d8bac121e42a091f15d0025fdff7f7a28e88c64"
+    },
+    {
+      "path": "src/poly_weather/shadow_runtime.py",
+      "size": 67689,
+      "sha256": "22d9ba57b3cc7186245c9f73bbda0340ffb4a6822c8ecc4ed2c028b35088f8ad"
+    },
+    {
+      "path": "src/poly_weather/shadow_spread_replay.py",
+      "size": 64943,
+      "sha256": "2c5efdff28b5227bacce037a3538f38781d6dcf16f55cc7b79ac164eb5a9e093"
+    },
+    {
+      "path": "src/poly_weather/shadow_touch_audit.py",
+      "size": 7781,
+      "sha256": "45ac5570e61575a1e8c91fa6a069aea1388c990c3c15da40547fcaabbba4d477"
+    },
+    {
+      "path": "src/poly_weather/signal_engine.py",
+      "size": 67762,
+      "sha256": "44a40dd31ec8edace025d584ff60a89b9035c99a55cd274a75c9b48f3c29aba0"
+    },
+    {
+      "path": "src/poly_weather/signal_migration.py",
+      "size": 41349,
+      "sha256": "0a53f260c9921f49c1a907406b249cb63712edba75fd1891150de5838be3196b"
+    },
+    {
+      "path": "src/poly_weather/signal_schema.py",
+      "size": 23609,
+      "sha256": "eb4a9b580948621728a8fefdc5ab773c9b026197f195cce134a3e049511c125e"
+    },
+    {
+      "path": "src/poly_weather/storage.py",
+      "size": 6762,
+      "sha256": "fcf4f6cd5583a3ba6e53939daec02a510b581877159d92408fc9b06b90f92eab"
+    },
+    {
+      "path": "src/poly_weather/temperature.py",
+      "size": 945,
+      "sha256": "0fc7ce87170146c5b06fabf60c16e586f7157dd637e4f69cf33c0dfa813078bb"
+    },
+    {
+      "path": "src/poly_weather/trade_evidence.py",
+      "size": 1479,
+      "sha256": "eda167bde941c9fb4b43088d40a93556ee338297a63a67395a5a200235977d5b"
+    },
+    {
+      "path": "src/poly_weather/trade_tape_analysis.py",
+      "size": 27193,
+      "sha256": "0b1b233b0c63d3e14915a6d5c10b434b6ab0499ad2181a06d28d7b788dc3e734"
+    },
+    {
+      "path": "src/poly_weather/warming_policy.py",
+      "size": 32603,
+      "sha256": "b6d1f23333782e492cee79b988edbf0ed03842f69c6c19d2243f3e8c739bba33"
+    },
+    {
+      "path": "src/poly_weather/weather_database.py",
+      "size": 15837,
+      "sha256": "f4e03dcd933f023c2686319a1fb66ea70d93be2c334e209cfb1245577b298d6c"
+    },
+    {
+      "path": "src/poly_weather/weather_market_join.py",
+      "size": 14049,
+      "sha256": "17cc7aa940ce3813416818fdd254db4bbc0eff423efe0bcc2399e3a072b6de3a"
+    },
+    {
+      "path": "src/poly_weather/weather_provenance.py",
+      "size": 5848,
+      "sha256": "bfd8b1a603d7232f44e98f05aa1b03c3bf1dac72d90d064f4814aec34954d198"
+    },
+    {
+      "path": "src/poly_weather/weather_stream.py",
+      "size": 54071,
+      "sha256": "930a27e74cc3f7f202635d4e9f5605dd6be94dea75ea8aafc7627767e667adb8"
+    },
+    {
+      "path": "src/poly_weather/wrh_backfill.py",
+      "size": 18779,
+      "sha256": "b86aef015db352b0dd93addc4c7bad92d90d53efe35a4e3fbf8f4bb8e873921e"
+    },
+    {
+      "path": "tests/paper_model_support.py",
+      "size": 411,
+      "sha256": "47163fcb2527582b79b1ac0e50f34a2cea0321ef187777519a43e92d038be851"
+    },
+    {
+      "path": "tests/runtime_health_support.py",
+      "size": 1633,
+      "sha256": "9bb1112c878ee268e68100146c602073e17898c7a5bd77ae7a05d2c419b53cfb"
+    },
+    {
+      "path": "tests/test_adapters.py",
+      "size": 10284,
+      "sha256": "e3a72156796669002e6f83ce42f8384017be747f9ae359c1b7bc8fa36171c619"
+    },
+    {
+      "path": "tests/test_archive_position_closure.py",
+      "size": 4088,
+      "sha256": "d83f6b6d659a589aa2f1762ae80f46046a58bb8e285d6d19e4eb86a7cab9f91e"
+    },
+    {
+      "path": "tests/test_bias_significance_audit.py",
+      "size": 3966,
+      "sha256": "5b96d6676ba56c4e313bb18e40418fd368525bcc49b9ff7702f895b8b31aee6b"
+    },
+    {
+      "path": "tests/test_business_readiness_closure.py",
+      "size": 7426,
+      "sha256": "f63e8205fceec14d6c8ced17da83b3d405b94f5c9347933d2deeef942edfb6fb"
+    },
+    {
+      "path": "tests/test_calibration.py",
+      "size": 2994,
+      "sha256": "6b7f593a723db359fedd20fb275ccef6247904e4d71d348b099b9b5d79ea56e5"
+    },
+    {
+      "path": "tests/test_cli.py",
+      "size": 3053,
+      "sha256": "2c274ac2c1ff2e8e2f748649d0cff57a0186f31abad7586250425feda391ad4d"
+    },
+    {
+      "path": "tests/test_closure_crash_matrix.py",
+      "size": 6499,
+      "sha256": "a879275a63bae09bca5ff89f2d8121840ad4abbe8d6bc12f0334c1068f4be700"
+    },
+    {
+      "path": "tests/test_complement_pair.py",
+      "size": 12450,
+      "sha256": "d80ac5d2b22db3c00af7c12cbf1cd10cd836979a712ef6f1919aef3a2ecc0297"
+    },
+    {
+      "path": "tests/test_config.py",
+      "size": 1490,
+      "sha256": "c37acb23bdd933d0bf99b3e2453dc0c0e6d729a3cdb1d7cdcb8aebde7d99ebf1"
+    },
+    {
+      "path": "tests/test_depth_calibration.py",
+      "size": 1728,
+      "sha256": "4b7854ba6ae0301f573f12ce710f98d97ad84987dabf6786076ff404f2796891"
+    },
+    {
+      "path": "tests/test_domain.py",
+      "size": 1452,
+      "sha256": "5e5c6401eb880b65f919f56db180749790b60125ea48ed32803e239ccba9f5d2"
+    },
+    {
+      "path": "tests/test_entry_accessibility.py",
+      "size": 5577,
+      "sha256": "12f9fb90ae7d3bacbdcc842dbfe6d54e204b30e8f445157d76faf25bd97b2747"
+    },
+    {
+      "path": "tests/test_evidence_closure.py",
+      "size": 9734,
+      "sha256": "490e4ccf181d488e94e77d2e4f1e13f4846d09f27b8d4345ce39173f7bd04752"
+    },
+    {
+      "path": "tests/test_execution_cost.py",
+      "size": 1767,
+      "sha256": "abae161ae9ab3b38314db04cefbd9d48897ac82a442df2c14ccc5e45e4a94afd"
+    },
+    {
+      "path": "tests/test_fees.py",
+      "size": 2920,
+      "sha256": "701a292008731a281143b1ce8d87cdc05b758676c6bee6d16d9bfcc1cc6d838a"
+    },
+    {
+      "path": "tests/test_follower_archive_closure.py",
+      "size": 7435,
+      "sha256": "22836194cf6f39cca2703a8d19a36d67ba77d40ed1fc5723ca3efa97666f5ddb"
+    },
+    {
+      "path": "tests/test_high_frequency_audit.py",
+      "size": 1847,
+      "sha256": "79f0d800e788c5405b0d2a1d39b398c5d5781c22f0ae4a04c438425545cc9303"
+    },
+    {
+      "path": "tests/test_historical_weather.py",
+      "size": 6152,
+      "sha256": "bea5aea51bbf7dbefd4a85f038279c4fbb1100683f41a743c900a3945c7ca868"
+    },
+    {
+      "path": "tests/test_information_clock.py",
+      "size": 5043,
+      "sha256": "c3b1a4e8965878a9265f22bd2698292409b3f522c14166ea51a16d229f2e6f97"
+    },
+    {
+      "path": "tests/test_intraday_reversal.py",
+      "size": 3702,
+      "sha256": "f7ce52cd23be370b903bc2959c58293b4b3178851846b824130906c8280020bf"
+    },
+    {
+      "path": "tests/test_liquidity.py",
+      "size": 3037,
+      "sha256": "3128d992cd3a47091bbeb015eb53d7126e6e3d4bee98380641d9e966b66087d6"
+    },
+    {
+      "path": "tests/test_maintenance_audit.py",
+      "size": 2876,
+      "sha256": "ad8df8577ff631ea5f6b2c1996d9370ea8c441755b057a1561493b906aedc13d"
+    },
+    {
+      "path": "tests/test_market_lag.py",
+      "size": 2037,
+      "sha256": "cda5f22020138ca480c7424279d65322f28e5d99aa0ecf60ec75742518d5a9df"
+    },
+    {
+      "path": "tests/test_market_regime.py",
+      "size": 4002,
+      "sha256": "94e4862edccc9da70b8270774b95f46b34958c562f8a43e59b2630f19b842408"
+    },
+    {
+      "path": "tests/test_market_state_challenger.py",
+      "size": 17043,
+      "sha256": "b1ea328855d31d79a36f14cc17152070521ff00511129a4a576d650708dd5bae"
+    },
+    {
+      "path": "tests/test_market_supervisor.py",
+      "size": 4813,
+      "sha256": "b625e837b50dcc2ff1ff1e6689480598ebb3101c112e7344cb09b1e906acbbf5"
+    },
+    {
+      "path": "tests/test_market_trade_tape.py",
+      "size": 5634,
+      "sha256": "de1edad92859e99af6666160a47dcfd72f2e95e96801f197ac9cdbbf703585c8"
+    },
+    {
+      "path": "tests/test_modeling.py",
+      "size": 2572,
+      "sha256": "63ee0f5603442d64d4b1d9e586497834cc7d01c1c26f6fb07050eb0fd926cda1"
+    },
+    {
+      "path": "tests/test_monitoring.py",
+      "size": 2825,
+      "sha256": "1c8fe0fc11263f39fa211abf4273be9b3b761e8477258306c6d837f5b320846b"
+    },
+    {
+      "path": "tests/test_nautilus_conformance.py",
+      "size": 12742,
+      "sha256": "711de0ee59d63b0e252158729fadc9278d0d55e9432428ba8f2016877205c7c6"
+    },
+    {
+      "path": "tests/test_no_forward.py",
+      "size": 2928,
+      "sha256": "5307fb2dfc642edd5a0aab8e65fc14022aaf9b4d4ef381ba63931e346de03e58"
+    },
+    {
+      "path": "tests/test_no_side_analysis.py",
+      "size": 1628,
+      "sha256": "1e709d9cb228090dcac6671e7578a936e8aa58253e52c9f221db5dd1bad9f72e"
+    },
+    {
+      "path": "tests/test_open_meteo.py",
+      "size": 5128,
+      "sha256": "f19a18f3a3612b562a74c42bc33778c899786823e7f1e303c5da4d67f44fce44"
+    },
+    {
+      "path": "tests/test_paper_account.py",
+      "size": 4634,
+      "sha256": "c7e70d5de84a3f25ed23cdc983ab0991680082ed03349f067cf7af6419f11043"
+    },
+    {
+      "path": "tests/test_paper_cli.py",
+      "size": 1042,
+      "sha256": "6b90499d4de13308cd3186af202dac699a76655d91afed196d0307ebddcb63ae"
+    },
+    {
+      "path": "tests/test_paper_recovery.py",
+      "size": 34898,
+      "sha256": "961c73d54234b8fbdd0c043f4bc28a894d4e9c2b4adf484ee9b78b6f25661039"
+    },
+    {
+      "path": "tests/test_paper_runtime_boundaries.py",
+      "size": 8681,
+      "sha256": "4ab83ec1413735d4f793b72b77dfe6e03811a5feedca936a02be5d4f610b9ca4"
+    },
+    {
+      "path": "tests/test_paper_seal_blockers.py",
+      "size": 45664,
+      "sha256": "f1b4ac2fe23f0ed39f982b0303d07df956ef69c640a87f1a4fd87a407c80b1d9"
+    },
+    {
+      "path": "tests/test_paper_spread_runtime.py",
+      "size": 11389,
+      "sha256": "634e9ad5909f6a3f5c5b293933e93c62950eedb6fec1aca99c95094c28c2f0ff"
+    },
+    {
+      "path": "tests/test_paper_trade_evidence.py",
+      "size": 21281,
+      "sha256": "9c807b420ed9eab16b2eb5c68ecbfd0de13fc3bec1051942e442b579053b57ca"
+    },
+    {
+      "path": "tests/test_paper.py",
+      "size": 3610,
+      "sha256": "83ba13d3d56f6287f69baf4a1b087ec5bc7d575f4a1180a242d190da5f1705f6"
+    },
+    {
+      "path": "tests/test_polymarket_data.py",
+      "size": 4768,
+      "sha256": "b897a7bfb3e06f5571001e897f5bcf7d19dac9bfedce90dfdc524ac17b0e281c"
+    },
+    {
+      "path": "tests/test_polymarket_status.py",
+      "size": 4581,
+      "sha256": "7ea9cb1344d25b74850995ea0ede7f008e108a482720776da0aa6174bfb2fbc2"
+    },
+    {
+      "path": "tests/test_price_band_accessibility.py",
+      "size": 4397,
+      "sha256": "33b4f1884f14a4e8accc261ea5b37f5aedc9aa0bfcb85fac7c2b778bf6a6b3e9"
+    },
+    {
+      "path": "tests/test_price_path_analysis.py",
+      "size": 5602,
+      "sha256": "5f31718a526d5800adb2705af7870c4eae32e090b79ea7813d41a682cb416cd2"
+    },
+    {
+      "path": "tests/test_producer_progress_closure.py",
+      "size": 5282,
+      "sha256": "39351e2bd2c9b8b94ae3f63c7757ce2bbb3cb9c4b1d1d496f6a1c6a225e7a16b"
+    },
+    {
+      "path": "tests/test_public_trade_collection.py",
+      "size": 4388,
+      "sha256": "be7a47df3328fe1cbb5c19dfb39f3753e19b01a6c2581bbf73e97a026c2d6e88"
+    },
+    {
+      "path": "tests/test_quiet_order_forensics.py",
+      "size": 13249,
+      "sha256": "7cd2b43fd3090f6641e391dee328ade3c93b9dde7554480e1420f7cad596a4b1"
+    },
+    {
+      "path": "tests/test_quiet_state_log.py",
+      "size": 1840,
+      "sha256": "dda57c4cc4df454103fff6f94ee14342ba793269b3d738c684ec323660cddc92"
+    },
+    {
+      "path": "tests/test_quiet_v2_semantics.py",
+      "size": 22457,
+      "sha256": "1fba8d777cb781f1ed041b72f53e8c8cca1d36f2b5956e17bd528ae4f6fe7048"
+    },
+    {
+      "path": "tests/test_quiet_window_strategy.py",
+      "size": 9159,
+      "sha256": "93f89fa4662fb7750946819d4b0fc35c2534942c9793d37a90a14ca81a40f6b0"
+    },
+    {
+      "path": "tests/test_real_no_books.py",
+      "size": 8560,
+      "sha256": "8a5bd3fcd802f7efdd60c4ea493dd2ba63341bd2dc764d2a4be7690d452c8feb"
+    },
+    {
+      "path": "tests/test_reliability_consumers.py",
+      "size": 4517,
+      "sha256": "3dd79bc5e2d7c38896345096290ad38b90fd208f56a8eb8fcb466abeeee2fcd6"
+    },
+    {
+      "path": "tests/test_reliability_documents.py",
+      "size": 2963,
+      "sha256": "2623925f247ae077accb11569a8c4b4bb5aff1a428edcad1b7d28a24f5d9dbe7"
+    },
+    {
+      "path": "tests/test_reliability_evidence.py",
+      "size": 11429,
+      "sha256": "de584b78ec6e02ade232fb5d8d0592d06cd522fa71c60ab40159c874d89e657f"
+    },
+    {
+      "path": "tests/test_reliability_group_contract.py",
+      "size": 1367,
+      "sha256": "a6b895e759843527b0c0f7fa401d1cd0ff219add2f203019898de597686bb0ce"
+    },
+    {
+      "path": "tests/test_reliability_health.py",
+      "size": 6836,
+      "sha256": "d51ed63d608a45006c8f9b06ea1f15e2e8bae12554e15f010a1e3ba4872e8d8d"
+    },
+    {
+      "path": "tests/test_reliability_receipts.py",
+      "size": 6866,
+      "sha256": "971a40ffd406d4123c6536d1eacbbc163849018dd0ad07343504449a588963d8"
+    },
+    {
+      "path": "tests/test_reliability_storage.py",
+      "size": 11240,
+      "sha256": "d008449514dfb841282782f9f97889712092b9adb7e09503828c0c228b49f6ad"
+    },
+    {
+      "path": "tests/test_research_store.py",
+      "size": 2667,
+      "sha256": "6e1d0f806bc5d0eddf8abffa52b981808d04231dac30c5c3b7c7d9c27bf03747"
+    },
+    {
+      "path": "tests/test_retention.py",
+      "size": 4667,
+      "sha256": "c4714c605a924bd8096d90d5efe19cd3033fab6214a789c197ffa57bc447a6bd"
+    },
+    {
+      "path": "tests/test_runtime_safety.py",
+      "size": 2893,
+      "sha256": "ef99e4f4a331bf61ec9ae99266367a3515d61d51dc44ac350439576ec7ab4733"
+    },
+    {
+      "path": "tests/test_settlement.py",
+      "size": 4437,
+      "sha256": "6f5307dfb9bf71979a618ec83abcba737956b3302736cd522869b8dc1b4b7065"
+    },
+    {
+      "path": "tests/test_shadow_orders.py",
+      "size": 23286,
+      "sha256": "295fce969ad5ed22114bf93669fbdd3aa09bfa1c5e9231c878b887df1fdc55d7"
+    },
+    {
+      "path": "tests/test_shadow_runtime.py",
+      "size": 19935,
+      "sha256": "4df1c9a0cc66bac8de052776b4f4862c68136d84195f54b0ac6b9ec01e5335f5"
+    },
+    {
+      "path": "tests/test_shadow_spread_replay.py",
+      "size": 8662,
+      "sha256": "889acd63816ee1c1f9ec06a892489f40f05f80127d3e9b2a90053dd3f12652cb"
+    },
+    {
+      "path": "tests/test_signal_archive_closure.py",
+      "size": 916,
+      "sha256": "6c412cb1873e8a9efff0f77828ab0c8ed5ada45457bf1c67dcfa29a4406ce288"
+    },
+    {
+      "path": "tests/test_signal_engine.py",
+      "size": 17457,
+      "sha256": "cff09c0b46eb3b997daca1d7081b0daeecae84a4bb6a3cb5ef7fdf73a93b9f3b"
+    },
+    {
+      "path": "tests/test_signal_retention.py",
+      "size": 13001,
+      "sha256": "c71a71d6902906f490937fee5063703ca4e3ee802e3b5ee72056087a63b2bddd"
+    },
+    {
+      "path": "tests/test_storage.py",
+      "size": 1303,
+      "sha256": "ef9b0b7960e688c67177fe3c7a795f903e548f6bf1bf8ec4e90e6c8f316b48f6"
+    },
+    {
+      "path": "tests/test_stream_daemons.py",
+      "size": 22082,
+      "sha256": "c16237cde6b40c204508d2c9320cc83894c040dcea798b1a85478b29370d4637"
+    },
+    {
+      "path": "tests/test_temperature_precision.py",
+      "size": 2793,
+      "sha256": "3a37c8c57ea42f9effb5237b81fc9beb4850ed473edfa30544b7f16b7a0dff68"
+    },
+    {
+      "path": "tests/test_trade_tape_analysis.py",
+      "size": 2655,
+      "sha256": "d11dc41c9c89cef2665041c7bb86fae392eeb564c136d0a74c45a300fa0b8ddb"
+    },
+    {
+      "path": "tests/test_warming_policy.py",
+      "size": 4485,
+      "sha256": "466b14b19bec70f37e6e63a790c67a269927ac22d3a7dfd8a819cac4bf8c3ab2"
+    },
+    {
+      "path": "tests/test_weather_decision_prefix.py",
+      "size": 5973,
+      "sha256": "06b630e1b353929a08866262a4b6bf8197ad6edf1221bb1314c6dc220898fb20"
+    },
+    {
+      "path": "tests/test_weather_evidence_closure.py",
+      "size": 3342,
+      "sha256": "7e01df50ee373f8a792f524d2701d55d33c4aa7d89493d652a2da7fa35f4f0fd"
+    },
+    {
+      "path": "tests/test_weather_market_join.py",
+      "size": 4680,
+      "sha256": "36d1659ae9e5f071dcec437cf2bfc2c6385d4c0a95312eaa2fab5c59ae4e4d78"
+    },
+    {
+      "path": "tests/test_wrh_backfill.py",
+      "size": 6770,
+      "sha256": "289859d002f9b66fd05474a98d26a97283ab437e8b130b412bb19bac6011bcb1"
+    },
+    {
+      "path": "uv.lock",
+      "size": 102006,
+      "sha256": "664fb14698deb858838074d45267de2b575a61a31b524643fb93d7d2ed6037ed"
+    }
+  ],
+  "state": "LOCAL_DELIVERY_UNDEPLOYED_NOT_SEALED"
+}

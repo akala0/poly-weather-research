@@ -5,6 +5,11 @@
 
 当前研究判断与数据截止统一见 [CURRENT_CONCLUSIONS.md](CURRENT_CONCLUSIONS.md)；历史报告不得越过该入口单独作为当前结论。
 
+**工程阶段（2026-09-09）：本地可靠性整改候选已交付，独立完整回归 741 项通过；尚未封板、未部署、未启动 Paper。**
+公共成交组闭合仍不支持，真实 forecast vintage 来源和旧 cursor 兼容仍有缺口。
+阶段说明与下一步见 [当前工程状态](CURRENT_CONCLUSIONS.md#paper-v1-formal-status)，
+测试证据见 [独立完整复测](docs/reliability_independent_full_validation_20260909.json)。
+
 面向 Polymarket 天气预测市场的研究、回放与纸面决策系统。当前里程碑只做公开数据读取、原始数据留存、市场目录标准化、结算规则校验和不可执行的纸面记录；不读取钱包、不签名、不下单。
 
 ## 安全边界

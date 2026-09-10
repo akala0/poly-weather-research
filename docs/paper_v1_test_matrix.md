@@ -1,5 +1,63 @@
 # Paper V1 seal test matrix
 
+## Current authority — 2026-09-09, local evidence-closure delivery (NOT SEALED)
+
+**Public Paper ingress: accepted_queue_trade_rows=0. Positive public queue
+consumption is UNSUPPORTED pending source-contract proof; NOT SEALED.**
+Formal evidence/startup authority: [single source](../CURRENT_CONCLUSIONS.md#paper-v1-formal-status).
+Current names, parameterized counts, source hashes and diagnostic exclusions are generated
+only in [reliability_test_inventory.json](reliability_test_inventory.json). Collection is not PASS.
+Each collected case has a primary evidence level; unqualified cases are UNVERIFIED,
+including cases whose historical integration label has not been re-audited.
+
+Scoped closure assertions. Results are linked to the current validation artifact;
+temporary production ingress is not a deployment or positive public-fill claim.
+
+| IDs | Actual test name | Layer and boundary | Remaining scope |
+| --- | --- | --- | --- |
+| EC01–EC04 | `test_ec_missing_or_contradictory_members_rejected` | PRODUCTION_INGRESS; actual tape loaders | No source group-closure claim |
+| EC05 | `test_ec_cross_file_commit_recovery` | PRODUCTION_INGRESS; six publications before/after, two recoveries | OS power-loss semantics not certified |
+| EC06 | `test_ec_readers_ignore_corrupt_unclaimed_tail_but_writer_blocks` | PRODUCTION_INGRESS; bounded readers vs recovery writer | Joint rollback of all authorities undetectable |
+| EC07 | `test_ec_reader_cost_measurement` | Diagnostic reads/bytes/time/memory | Large-file latency unqualified |
+| AR01/AR02 | `test_ar_real_follower_plain_gzip_restart_equivalence`; `test_signal_tail_plain_gzip_partial_and_prefix_replacement` | Actual follower/reader, model-prepared nonempty ledger, fixed-clock future append | Legacy nonzero cursor without hash blocked; no migration |
+| WE01 | `test_we_invalid_weather_cannot_become_realtime` | Observation join/information/signal ingress | Unverified legacy sources remain unknown |
+| WE02 | `test_we_signal_information_join_prefix_survives_late_high`; `test_forecast_append_preserves_actual_signal_and_information_prefix`; `test_fixed_forecast_requires_every_model_initialization` | Actual signal/information/join; nonempty fixed-vintage fixture | Real Open-Meteo missing initialization remains UNKNOWN; no all-source OOS claim |
+| HE01 | `test_actual_producer_commits_two_durable_samples`; `test_signal_progress_requires_successful_state_commit`; `test_he_short_polls_accumulate_pending_work_window` | Real synchronous publication; shared status reader with fake OS evidence | No daemon deployment/power-loss/long-run fsync-latency certification |
+| HE02 | `test_he_any_required_gate_unknown_blocks_readiness`; `test_he_input_ready_is_not_public_score_eligibility` | Evidence composition used by follower; signal/shadow business gates integrated | Actual rules evidence missing in a row remains false, not substituted |
+| HE03 | `test_he_rejected_entry_still_expires_and_releases`; `test_he_rejected_entry_preserves_native_risk_exit_gate` | MODEL_KERNEL inventory; actual snapshot/sweep rejection, fresh vs stale native quote | No public ingress fill claim |
+
+Current execution results and explicit limits: [closure report](reliability_evidence_closure_report_20260909.md),
+[machine validation](reliability_evidence_closure_validation_20260909.json).
+
+| Current assertion | Actual test name | Primary evidence level | Scope |
+| --- | --- | --- | --- |
+| Replayed evidence prefix retains zero fills after failed cycle | `test_replayed_evidence_prefix_is_idempotent_after_cycle_failure` | CONTAINMENT_ONLY | Replaces the old claimed successful-fill prefix proof |
+| Evidence append failure prevents cursor acknowledgement | `test_evidence_append_oserror_halts_without_cursor_advance` | CONTAINMENT_ONLY | Not a currently reachable follower account-fill commit proof |
+| Downtime tape is revisited, without queue effects | `test_restart_replays_downtime_public_trade_once` | CONTAINMENT_ONLY | Stable mtime/restart; zero fills, not once-filled |
+| Later API match resolves matching, not group closure | `test_later_public_match_resolves_match_but_not_group_completeness` | CONTAINMENT_ONLY | Matched rows may be nonzero; accepted queue rows stay zero |
+| Public group batch/file/restart invariance | `test_f02_native_follower_batch_file_switch_restart` | CONTAINMENT_ONLY | With/without sequence; zero queue consumption |
+| First receipt survives duplicate materialization | `test_f03_distinct_clocks_and_duplicate_receipt` | PRODUCTION_INGRESS | Collector/row conversion; post-fact-fsync witness, not group closure |
+| Pending quality does not upgrade | `test_f01_native_follower_two_polls_restart_preserves_quality` | CONTAINMENT_ONLY | Bad/missing quality remains unqualified |
+| Synthetic economics is restart-idempotent | `test_restarted_economic_trade_is_consumed_once` | MODEL_KERNEL | Private kernel only; no positive production admission claim |
+| Queue consumption/post-order persistence | `test_partial_fill_and_trade_consumption_are_one_durable_fact` | MODEL_KERNEL | Ordered model inputs, not wire completeness proof |
+| Positive production closure | No admissible source-contract proof yet | UNSUPPORTED | No caller boolean/fixture certificate can authorize it |
+| Receipt crash boundaries | `test_receipt_crash_reconciliation` | PRODUCTION_INGRESS | Fact/witness/tape/cursor/audit; temporary collector files only |
+| Journal corruption | `test_receipt_corruption_preserves_bytes_and_blocks` | PRODUCTION_INGRESS | Tail/interior/checksum/rollback; no automatic truncation |
+| Single health truth table | `test_health_read_status_cli_and_downstream_share_truth` | CONTAINMENT_ONLY | Fake OS providers; no resident daemon observation |
+| Interior quality gap | `test_q03_quality_interval_interior_rejected_by_all_converters` | CONTAINMENT_ONLY | Both endpoints clean, interval still rejected |
+| Fee math | `test_q05_fixed_weather_fee_math_and_shared_wrappers` | MODEL_KERNEL | Fixed local native-token rate; not online fee verification |
+
+Actual execution results and limitations: [next-phase report](reliability_next_phase_report_20260908.md).
+
+The historical sections below are **SUPERSEDED in full as current authority**.
+Their old counts, short test aliases, deleted names, PASS labels and claims of
+positive follower fills are retained solely as an audit trail. Do not merge
+them into this current matrix. Stage 2 changed positive economics tests to
+private model-kernel tests and changed native ingress assertions to zero consumption.
+
+<!-- SUPERSEDED_HISTORY -->
+## SUPERSEDED historical records — not current PASS or capability evidence
+
 ## 2026-09-08 trade evidence repair supplement (T01-T20)
 
 This supplement supersedes the old assumption that price/size/archive sequence

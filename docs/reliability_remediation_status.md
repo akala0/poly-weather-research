@@ -1,5 +1,32 @@
 # 可靠性整改执行记录
 
+## 当前工程入口：E01–E04 局部交付、完整回归通过（2026-09-09，未部署）
+
+公共 Paper 入口 **accepted_queue_trade_rows=0**，属于 CONTAINMENT_ONLY；
+正向成交能力尚无可验证来源语义。正式样本/启动唯一来源为
+[CURRENT_CONCLUSIONS](../CURRENT_CONCLUSIONS.md#paper-v1-formal-status)。
+本轮测试名、参数化总数、日期、源码 hash 和诊断排除项只从生成的
+[reliability_test_inventory.json](reliability_test_inventory.json) 读取。
+下方 Stage 1/2 数字属于对应候选的历史运行结果，不是本轮当前总数。
+新任务 P0 先纠正文档：旧生产 fill 声明被替代，下层 MODEL_KERNEL 不再充当
+PRODUCTION_INGRESS 证据。
+
+本轮实现 receipt fact/witness journal 与恢复、共享健康判定、完整质量区间拒绝、
+等价归档双份去重/冲突阻断；P2 决定为 `UNSUPPORTED_GROUP_COMPLETENESS`。
+之后 E01–E04 已补成员集合、跨文件恢复、归档 cursor、天气前缀与业务进度的局部证据。
+独立完整 pytest **741 passed in 34.44s，exit 0**，无文件排除/跳过；测试前后 220 个候选文件指纹一致。
+当前完整回归阻塞已解除；旧 socket 根因没有被证明已修复。公共成交闭合与真实 forecast vintage
+仍有来源缺口，旧无哈希非零 cursor 仍阻断，大规模性能及 Q05/Q06/Q08 余项继续待验收。
+当前交付见 [E01–E04 报告](reliability_evidence_closure_report_20260909.md)，
+最新验证见 [独立完整复测](reliability_independent_full_validation_20260909.json)。
+前轮 [28 项报告](reliability_next_phase_report_20260908.md) 与其验证文件保留为历史。
+契约依次为 [receipt](reliability_receipt_contract.md)、
+[来源语义](reliability_trade_source_semantics.md)、[健康真值表](reliability_health_contract.md)，
+跨消费方边界见 [consumer audit](reliability_consumer_audit.md)。继续 NOT SEALED。
+
+<!-- SUPERSEDED_HISTORY -->
+## 历史阶段记录（按当时候选解释，不作为新阶段验收）
+
 As-of：2026-09-08。范围：本地未部署候选；依据为
 `CODEX_PROJECT_RELIABILITY_REMEDIATION_TASK.md` 与工程规范 v1.0。
 基线见 `reliability_baseline_20260908.json`；HEAD 不代表脏树候选内容。
@@ -106,3 +133,112 @@ supervisor 现有调用保存完整 retention_result；本轮没有启动 superv
 没有正式 data 写入/压缩/删除、没有 Paper CLI/daemon 操作、没有 commit/push；
 这是本任务实际调用范围声明，不是正式 data 全量字节审计。
 后续仍按阶段 2 的 F03→F01→F02 推进，并保留 F04/F05 正向故障验证债务。
+
+## 阶段 2 检查点（2026-09-08；未部署）
+
+本轮开始读取到 HEAD `35ccb4530f6ec031d4b590e9ef688a49e5e60112`，
+Git 状态仅有既存未跟踪 `.claude/`。这与阶段 1 的脏树基线不同；
+本轮没有执行 commit、reset、stash 或全局 Git 配置变更。
+因沙箱用户归属提示，Git 只读命令使用单次 `-c safe.directory=D:/poly`。
+最终候选绑定 `reliability_stage2_fingerprint_20260908.json`，包含 tracked/untracked
+源码、测试、配置、公开工程文档和脚本，不包括 data、凭据或该清单自身。
+
+### F03：首次 receipt（已修复所列路径，恢复边界仍有局限）
+
+生产链：`collect_depth_event_trades` → `_merge_trades` → row-level tape →
+`load_event_trade_tapes` / `_public_trade_events_from_file` → Paper/v2 消费者。
+collector 新 tape schema 为 3；新增字段为本地规范化元数据，不是上游 wire 字段。
+
+- `clock` 在请求前、同步 client 返回完整结果后、写文件前分别读取，检查 aware UTC
+  和单调性；`now` 只保留报告时间兼容，不再用它伪装 receipt。
+- 新行冻结 `request_started_at`、`response_received_at`、`first_seen_at`、
+  `available_at`、原文 receipt 和 `receipt_provenance=collector_market_trades_return_v1`。
+- `file_written_at` 表示写入开始前的时刻，不声称是 fsync 完成时刻。
+- 已存在行逐字段保留；无请求刷新、重复返回、迟到 sibling、请求失败后重试不改旧 receipt。
+- 旧行缺 receipt 保持 historical-only；两个消费者不再回退文件 fetched_at/mtime。
+  shadow queue 入口拒绝缺失 receipt，而历史诊断仍可读取这类行，不将其作为前向资格。
+
+限制：这里证明的是完整 `market_trades` 返回后的本地可见上界，不是分页 HTTP
+逐页/逐 socket 的最早到达时间。若首次响应尚未有任何 durable 事实就遭遇进程退出或
+首次 tape 写失败，不能恢复已丢失的首次时刻；本轮没有响应 WAL，不能声称此边界关闭。
+没有改写或迁移正式旧 tape。跨质量区间的统一资格审查仍在 Q03。
+
+### F01：pending 质量单调性
+
+`MarketWsTrade` 保留真实归档的 `upstream_incident_id`；解析缺失 upstream_status
+为 unknown。pending evidence schema 2 持久化 quality、incident、run/source、market slug、
+精确 source/receipt 原文；恢复时不再硬编码 normal/run=None。
+普通匹配与恢复继续复用 `build_shadow_trade_events`，没有 mock 合格结果。
+
+degraded/maintenance/unknown/缺失状态 → 原生 follower 两轮 → 重启后两轮，
+均保持零成交及原质量/incident/run。另测新健康 observation 不改写旧坏 pending、
+旧缺字段恢复为 unknown。旧 schema evidence id 不自动迁移；未知旧 pending 可能持续
+阻断，需要明确的另行审计，不以清空旧记录解决。
+
+### F02：组完整性 fail-closed；正向成交能力未恢复
+
+最初仅拒绝无序单条还不充分：新增反例证明两条有 sequence 的交易仍会在缺组结束证明时
+产生 1 股模型成交。最终公开 `process_trade/process_trades` 入口因此不再调用经济内核：
+所有当前 API/WS 证据只持久化观察和 UNKNOWN，不消耗 queue、不产生 fill。
+**这是安全阻断，不是已经找到完整组证据。当前 Paper 原生 tape 成交能力不可用。**
+
+`trade_time_groups` 由既有 append-only identity journal 恢复，以 token + UTC 秒索引，
+在已消费去重前纳入成员；sequence 和完整性分别记录。API/WS 的序号、poll 边界、
+文件边界、等待时间都不作为完整组证明。无排序记录 `UNKNOWN_TRADE_SEQUENCE`，
+组未封闭记录 `UNKNOWN_TRADE_GROUP_COMPLETENESS`，计数单位为 durable group，
+不再随同组批次中行数变化。后来的 sequence 可以补充排序观察，但不能解除完整性 UNKNOWN。
+
+旧已消费组遭遇新证据时追加 `UNKNOWN_TRADE_GROUP_INVALIDATED`；测试比较原 ledger
+字节前缀及完整订单状态，旧经济事实不重写。重启不重复追加同一失效记录。
+status 的 `matched_trade_rows` 与 `accepted_queue_trade_rows=0` 分开；组完整性未证明
+始终阻断 paper_score_eligible。启动只重建组与禁止干净评分，不声称自动修正全部历史账目。
+
+原经济算法保留为私有 `_process_ordered_model_trades` 下层模型内核，当前生产调用点为零。
+测试 `paper_model_support.model_trade` 直接调用该内核验证 queue/account/intent/commit/recovery，
+不 monkeypatch 验证器，不从公开入口传入一个“允许成交”布尔值，也不编造上游 completeness。
+相关旧经济夹具改为显式排序，其通过只代表下层经济一致性，**不再计作生产证据入口合格**。
+原生 follower 测试保留真实调用，期望匹配可解决但组完整性仍未知、零队列消费。
+原 follower account-commit 故障现在不可达，改测实际可达的 decision-append 失败与 cursor/HALT；
+account-commit 的经济故障覆盖保留在下层恢复/故障参数测试中，不宣称原生路径已验收。
+
+未来若恢复正向消费，必须先有真实 producer→完整组证据→verifier 契约及审查，
+不能让公开 JSON 的一个新字段或私有模型内核直接授权。
+
+### 新增矩阵与实际验证
+
+`tests/test_reliability_evidence.py` 为本阶段新增入口/恢复测试：
+
+| 需求 | 测试与断言 | 结果/限制 |
+| --- | --- | --- |
+| R03/R04 | distinct_clocks_and_duplicate_receipt、legacy_missing_receipt、failure_retry_and_late_sibling、backwards_response_clock | 对应路径通过；响应未落 durable 事实的崩溃窗口未关闭 |
+| R01 | pending_restart、native_follower_two_polls_restart、old_pending_missing_quality、new_healthy_observation | 质量与来源不升级；完整质量区间资格仍归 Q03 |
+| R02 | split_unsequenced_group、native_follower_batch_file_switch_restart（有/无 sequence、同/分批、跨文件和重启） | 公开入口始终零消费；不构成正向组完整性证明 |
+| R12/R13 | late_evidence_invalidates_old_consumption_without_rewriting | 旧字节前缀和订单保持、失效幂等；所有历史迁移情形未穷尽 |
+
+Python 3.14.3；pytest 8.4.2；ruff 0.16.4；httpx 0.28.1；duckdb 1.5.5；
+nautilus-trader 2.0.0rc4；未安装/同步依赖。
+所有 pytest 命令均用 `.venv\Scripts\python.exe`，`-p no:cacheprovider`，测试数据 tmp_path。
+
+| 实际命令（Python 前缀省略） | 结果 |
+| --- | --- |
+| 新增 F01/F02 初始反例 | 5 failed / 2 passed；明确重现坏 pending 解锁、无序单条扣 queue |
+| 新增有 sequence 原生反例（修复前） | 2 failed / 2 passed / 14 deselected；同/分批各错误 fill 1 |
+| `-m pytest -q tests/test_reliability_evidence.py -p no:cacheprovider --tb=short` | 最终新增测试 20 passed，2.71s，exit 0 |
+| `-m pytest -q -p no:cacheprovider --tb=short --ignore=tests/test_fees.py --ignore=tests/test_market_supervisor.py --ignore=tests/test_wrh_backfill.py --ignore=tests/test_stream_daemons.py --ignore=tests/test_polymarket_status.py` | 最终诊断子集 501 passed，14.32s，exit 0；不是完整默认回归 |
+| `-m pytest -q tests/test_nautilus_conformance.py -p no:cacheprovider --tb=short` | 10 passed，0.66s，exit 0，无 skip |
+| `-m pytest -q -p no:cacheprovider -o faulthandler_timeout=15 --tb=short`，外层 60s | 无完整结果；test_fees.py:59→asyncio→socket._fallback_socketpair→accept 挂起；60s 超时，wrapper marker=TIMEOUT_60S，工具 exit 1；只终止持有的 pytest PID 38700 子树 |
+| `uv lock --check --offline` | 权限提升后 exit 0，32 packages；最初沙箱 uv cache WinError 5，不算锁文件失败 |
+
+完整套件的有界尝试发生在最后 F02 安全阻断补丁之前；因已知同一挂起不再无限重跑。
+最终版本仍没有完整默认 suite result。沙箱首次 pytest 为 49 个 setup 错误，
+原因是临时目录 WinError 5，非业务失败；申请限定测试命令权限后恢复运行。
+本轮曾创建的空 `D:\poly\.pytest-stage2-f03-a01` 已确认空目录后非递归删除，
+未删除任何测试证据文件。末轮 497 项历史检查点的一个会话句柄丢失，未将其计为新结果；
+最终明确取得上述 501 项结果。
+
+S01/S02/S03/S04/S05/S07/S10/S11/S12 的本阶段适用边界如上落实或具名保留，
+不是全规范符合声明。F03 首次未落盘窗口、F02 正向完整组协议、F04/F05 残留，
+F06/F08、Q01–Q08 全面审查、完整默认回归及独立复核仍待办。
+没有操作正式 data、Paper CLI、daemon/Task Scheduler，没有外部 probe、凭据读取、
+真实执行、commit/push；仅有本任务明确持有的超时测试进程终止。
+未部署，未封板；正式 N=0/PnL=N/A 不变。
