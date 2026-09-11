@@ -80,6 +80,11 @@ def read_positioned_rows(
             raise ArchiveRepresentationError("INVALID_COMPLETE_ARCHIVE_ROW") from exc
         if not isinstance(value, dict):
             raise ArchiveRepresentationError("INVALID_ARCHIVE_ROW_TYPE")
+        # Shared signal/Paper/v2 ingress must not acknowledge isolated capture
+        # envelopes, even when explicitly supplied under an ordinary filename.
+        # The dedicated capture verifier does not use this legacy reader.
+        if "capture_domain" in value:
+            raise ArchiveRepresentationError("ISOLATED_CAPTURE_INPUT_FORBIDDEN")
         if visible is not None and not committed_only and not visible(value):
             break  # Do not acknowledge a row before its receipt is visible.
         rows.append(value)

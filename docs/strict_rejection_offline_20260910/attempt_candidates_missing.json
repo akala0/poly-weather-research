@@ -1,0 +1,302 @@
+[
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "KLGA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "KORD",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "KLAX",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "KMIA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "KATL",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "KDAL",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "KHOU",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "KSEA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "ZUCK",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "station_id": "ZUUU",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "KLGA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "KORD",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "KLAX",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "KMIA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "KATL",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "KDAL",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "KHOU",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "KSEA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "ZUCK",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12",
+    "station_id": "ZUUU",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "KLGA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "KORD",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "KLAX",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "KMIA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "KATL",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "KDAL",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "KHOU",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "KSEA",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "ZUCK",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  },
+  {
+    "attempt_id": "20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127",
+    "station_id": "ZUUU",
+    "local_date": "2026-09-10",
+    "identity_basis": "registry iteration and attempt timestamp; not retained response",
+    "event_id": null,
+    "parse_stage": "UNKNOWN",
+    "verification_reasons": null,
+    "response_saved": false
+  }
+]

@@ -114,6 +114,44 @@ def test_he_weather_raw_collection_has_no_market_dependency(tmp_path, monkeypatc
     assert '"weather-stream"' in branch and "return $true" in branch
 
 
+def test_he_recovery_status_blocks_existing_downstream_runner_gate(tmp_path, monkeypatch):
+    now = datetime.now(UTC)
+    seed_test_chain(tmp_path, monkeypatch, now=now)
+    for filename in ("polymarket_ws_status.json", "market_supervisor_status.json"):
+        path = tmp_path / "runtime" / filename
+        payload = read_json_with_fallback(path)[0]
+        payload.update(
+            collection_mode="raw_market_recovery",
+            downstream_start_blocked=True,
+        )
+        atomic_json_write(path, payload)
+
+    chain = read_chain_status(tmp_path, now=now)
+
+    assert chain["market"]["health_ready"] is False
+    assert chain["supervisor"]["health_ready"] is False
+    assert "downstream_start_blocked" in chain["market"]["reasons"]
+    assert "downstream_start_blocked" in chain["supervisor"]["reasons"]
+    assert chain["signal"]["dependency_state"] == "unhealthy"
+    assert chain["signal"]["health_ready"] is False
+
+
+def test_he_market_runner_recovery_is_attempt_scoped_and_opt_in_static():
+    runner = (
+        Path(__file__).resolve().parents[1]
+        / "scripts/windows/poly-weather-daemon-runner.ps1"
+    ).read_text()
+
+    assert "[switch]$RawMarketRecovery" in runner
+    assert '"--raw-collection-recovery"' in runner
+    assert '"--startup-attempt-id"' in runner
+    assert 'if ($DaemonName -eq "market-supervisor" -and -not $RawMarketRecovery)' in runner
+    assert "market-supervisor runner requires explicit -RawMarketRecovery" in runner
+    assert 'Join-Path $attemptDir "attempt-result.json"' in runner
+    assert "$processHandle = $child.Handle" in runner
+    assert "exit_code = $actualExitCode" in runner
+
+
 def test_he_supervisor_persistence_failure_keeps_mutation_boundary(tmp_path, monkeypatch):
     paper = make_processor(tmp_path)
 

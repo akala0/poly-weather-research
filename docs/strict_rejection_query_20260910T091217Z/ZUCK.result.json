@@ -1,0 +1,205 @@
+{
+  "station_id": "ZUCK",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Chongqing on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:27.891349+00:00",
+  "registry_expected": {
+    "key": "chongqing-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-chongqing-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "ZUCK",
+    "station_name": "Chongqing Jiangbei International Airport",
+    "latitude": 29.718,
+    "longitude": 106.639,
+    "timezone": "Asia/Shanghai",
+    "metric": "daily_high_temperature",
+    "unit": "celsius",
+    "bucket_width_degrees": 1,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=zuck",
+    "ncei_station_id": null,
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": false,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against 2026-08-24 evidence SHA-256 5e065a919ac0a7a9988ecc97917b9e2f2e4920b4fab8fd8fe78813a6a2c5b9ae. NOAA AWC station metadata gives 29.718, 106.639. WRH/Synoptic period begins 2018-10-26 and returns hourly observations."
+  },
+  "received_at": "2026-09-10T09:12:28.841171+00:00",
+  "status_code": 200,
+  "wire_sha256": "23b9a349ae85c81eb7716397d1bfd3a2bd8cffe03fa01414501a4aeea4cfa5e8",
+  "wire_bytes": 53513,
+  "saved_response_sha256": "c782201f7bb4b7c1273c1ec7befe7fab820fad2ec837f6a802f37b3c1c34f086",
+  "diagnosis": {
+    "candidate_count": 1,
+    "ambiguous": false,
+    "candidates": [
+      {
+        "event_id": "986731",
+        "event_slug": "highest-temperature-in-chongqing-on-september-10-2026",
+        "stage": "verification",
+        "parsed": {
+          "parser_version": "2",
+          "evidence_sha256": "56a4a4ced79e9c252088958290f5ef608312a67cb8374bb80de70dec259afbc4",
+          "event_id": "986731",
+          "event_slug": "highest-temperature-in-chongqing-on-september-10-2026",
+          "title": "Highest temperature in Chongqing on September 10?",
+          "city": "Chongqing",
+          "target_date": "2026-09-10",
+          "station_id": "ZUCK",
+          "station_name": "Chongqing Jiangbei International Airport",
+          "timezone": "Asia/Shanghai",
+          "official_source_name": "NOAA Timeseries",
+          "official_source_url": "https://www.weather.gov/wrh/timeseries?site=zuck",
+          "unit": "celsius",
+          "precision_degrees": "1",
+          "bucket_width_degrees": 1,
+          "observation_table": "Daily Observations",
+          "finalization_rule": "unknown",
+          "ignores_late_revisions": true,
+          "buckets": [
+            {
+              "market_id": "4356404",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-23corbelow",
+              "label": "Will the highest temperature in Chongqing be 23°C or below on September 10?",
+              "lower_f": null,
+              "upper_f": 23,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356405",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-24c",
+              "label": "Will the highest temperature in Chongqing be 24°C on September 10?",
+              "lower_f": 24,
+              "upper_f": 24,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356406",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-25c",
+              "label": "Will the highest temperature in Chongqing be 25°C on September 10?",
+              "lower_f": 25,
+              "upper_f": 25,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356407",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-26c",
+              "label": "Will the highest temperature in Chongqing be 26°C on September 10?",
+              "lower_f": 26,
+              "upper_f": 26,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356408",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-27c",
+              "label": "Will the highest temperature in Chongqing be 27°C on September 10?",
+              "lower_f": 27,
+              "upper_f": 27,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356409",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-28c",
+              "label": "Will the highest temperature in Chongqing be 28°C on September 10?",
+              "lower_f": 28,
+              "upper_f": 28,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356410",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-29c",
+              "label": "Will the highest temperature in Chongqing be 29°C on September 10?",
+              "lower_f": 29,
+              "upper_f": 29,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356411",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-30c",
+              "label": "Will the highest temperature in Chongqing be 30°C on September 10?",
+              "lower_f": 30,
+              "upper_f": 30,
+              "unit": "celsius",
+              "market_probability": "0.9975"
+            },
+            {
+              "market_id": "4356412",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-31c",
+              "label": "Will the highest temperature in Chongqing be 31°C on September 10?",
+              "lower_f": 31,
+              "upper_f": 31,
+              "unit": "celsius",
+              "market_probability": "0.0025"
+            },
+            {
+              "market_id": "4356413",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-32c",
+              "label": "Will the highest temperature in Chongqing be 32°C on September 10?",
+              "lower_f": 32,
+              "upper_f": 32,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356414",
+              "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-33corhigher",
+              "label": "Will the highest temperature in Chongqing be 33°C or higher on September 10?",
+              "lower_f": 33,
+              "upper_f": null,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            }
+          ],
+          "parse_status": "complete",
+          "missing_fields": []
+        },
+        "verification": {
+          "settlement_key": "chongqing-daily-high-research-seed",
+          "evidence_sha256": "56a4a4ced79e9c252088958290f5ef608312a67cb8374bb80de70dec259afbc4",
+          "passed": false,
+          "checks": {
+            "parse_complete": true,
+            "registry_verified": true,
+            "slug_exact": true,
+            "station_exact": true,
+            "station_name_exact": true,
+            "timezone_exact": true,
+            "source_exact": true,
+            "whole_degree_precision": true,
+            "unit_exact": true,
+            "bucket_width_exact": true,
+            "finalization_known": false,
+            "finalization_exact": false,
+            "late_revision_cutoff": true,
+            "late_revision_exact": true
+          },
+          "failures": [
+            "finalization_known",
+            "finalization_exact"
+          ],
+          "tradeable": false,
+          "reason": "failed: finalization_known, finalization_exact"
+        }
+      }
+    ]
+  },
+  "saved_replay_matches_original": true
+}

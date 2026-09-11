@@ -1,0 +1,38 @@
+{
+  "station_id": "KSEA",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Seattle on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:27.323200+00:00",
+  "registry_expected": {
+    "key": "seattle-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-seattle-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KSEA",
+    "station_name": "Seattle-Tacoma International Airport",
+    "latitude": 47.4447,
+    "longitude": -122.3136,
+    "timezone": "America/Los_Angeles",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=ksea",
+    "ncei_station_id": "USW00024233",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 d7d5604a906fdf1ab18aaad68cf55d1ee314826f79f1e39efa31bf6d3d8374de: KSEA and NOAA Hourly Data Temp with the standard US template."
+  }
+}

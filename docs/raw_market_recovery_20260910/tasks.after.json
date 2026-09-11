@@ -1,0 +1,62 @@
+[
+  {
+    "TaskName": "PolyWeather-market-supervisor",
+    "TaskPath": "\\",
+    "State": "Disabled",
+    "Enabled": false,
+    "Actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName market-supervisor -ProjectRoot D:\\poly -RawMarketRecovery",
+        "WorkingDirectory": "D:\\poly"
+      }
+    ],
+    "LastRunTime": "2026-09-10T16:55:55+08:00",
+    "LastTaskResult": 267014
+  },
+  {
+    "TaskName": "PolyWeather-signal-engine",
+    "TaskPath": "\\",
+    "State": "Disabled",
+    "Enabled": false,
+    "Actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName signal-engine -ProjectRoot D:\\poly",
+        "WorkingDirectory": "D:\\poly"
+      }
+    ],
+    "LastRunTime": "2026-09-09T18:04:04+08:00",
+    "LastTaskResult": 267014
+  },
+  {
+    "TaskName": "PolyWeather-shadow-spread-engine",
+    "TaskPath": "\\",
+    "State": "Disabled",
+    "Enabled": false,
+    "Actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName shadow-spread-engine -ProjectRoot D:\\poly",
+        "WorkingDirectory": "D:\\poly"
+      }
+    ],
+    "LastRunTime": "2026-09-09T18:04:04+08:00",
+    "LastTaskResult": 267014
+  },
+  {
+    "TaskName": "PolyWeather-weather-stream",
+    "TaskPath": "\\",
+    "State": "Running",
+    "Enabled": true,
+    "Actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName weather-stream -ProjectRoot D:\\poly",
+        "WorkingDirectory": "D:\\poly"
+      }
+    ],
+    "LastRunTime": "2026-09-09T18:04:04+08:00",
+    "LastTaskResult": 267009
+  }
+]

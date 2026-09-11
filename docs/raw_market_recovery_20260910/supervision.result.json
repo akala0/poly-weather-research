@@ -1,0 +1,12 @@
+{
+    "remaining":  {
+
+                  },
+    "result":  "FAILED",
+    "child_ownership_confirmed":  true,
+    "failed_attempts":  3,
+    "reason":  "three_failed_child_attempts",
+    "at":  "2026-09-10T08:56:13.6365124Z",
+    "marker_exists":  false,
+    "runner_identity_confirmed":  true
+}

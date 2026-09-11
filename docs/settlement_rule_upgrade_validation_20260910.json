@@ -1,0 +1,2090 @@
+{
+  "schema_version": 1,
+  "document_kind": "settlement_rule_contract_upgrade_validation",
+  "as_of": "2026-09-10T10:21:00.321597+00:00",
+  "result": "PARTIAL_COMPLETE_PENDING_HUMAN_REVIEW",
+  "project_status": "NOT SEALED; Paper N=0; PnL=N/A; public group completeness UNSUPPORTED",
+  "task": {
+    "authorized_file": "CODEX_SETTLEMENT_RULE_CONTRACT_UPGRADE_TASK.md",
+    "authorized_scope": [
+      "versioned settlement rule contract",
+      "strict parser/verifier upgrade",
+      "durable per-event rejection diagnostics",
+      "offline saved-projection reproduction",
+      "non-loadable registry candidate and human review package"
+    ],
+    "network_in_this_task": false,
+    "saved_query_only": true
+  },
+  "git_and_content_identity": {
+    "head": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+    "status_before_path": "docs/settlement_rule_upgrade_20260910/status.before.txt",
+    "status_after_path": "docs/settlement_rule_upgrade_20260910/status.after.txt",
+    "status_before_sha256": "97706ea732f94d251ac59c36fc6cd4749a370ff615bed8748487b1b03087f49a",
+    "status_after_sha256": "2503264096ab1f18f44a21e4f2b924f0f4573bde4e8c72fa00a1a905de642d74",
+    "before_hash_manifest": "docs/settlement_rule_upgrade_20260910/before_hashes.json",
+    "full_regression_source_manifest": "docs/settlement_rule_upgrade_20260910/full_regression.json",
+    "relevant_source_bindings": {
+      "src/poly_weather/settlement_contract.py": {
+        "actual_sha256": "508974647993fa5e5c05938b27459fdebcba442fb43c009e00d32a5eaa5b59a4",
+        "full_regression_expected_sha256": "508974647993fa5e5c05938b27459fdebcba442fb43c009e00d32a5eaa5b59a4",
+        "matches_full_regression": true
+      },
+      "src/poly_weather/settlement_diagnostics.py": {
+        "actual_sha256": "7f6e4a13ba4e4072314a3a877218b5d83241457f4f25f4902ceee2224442a85f",
+        "full_regression_expected_sha256": "7f6e4a13ba4e4072314a3a877218b5d83241457f4f25f4902ceee2224442a85f",
+        "matches_full_regression": true
+      },
+      "src/poly_weather/domain.py": {
+        "actual_sha256": "02ec080d4f68778c35bde384dedf0a7d555a69946680e724df99a073cfb8a428",
+        "full_regression_expected_sha256": "02ec080d4f68778c35bde384dedf0a7d555a69946680e724df99a073cfb8a428",
+        "matches_full_regression": true
+      },
+      "src/poly_weather/settlement.py": {
+        "actual_sha256": "80cd694bfefc867a7dee3f089ae97c6d24d957701ba780ca796dd5c94bcad64b",
+        "full_regression_expected_sha256": "80cd694bfefc867a7dee3f089ae97c6d24d957701ba780ca796dd5c94bcad64b",
+        "matches_full_regression": true
+      },
+      "src/poly_weather/adapters/polymarket.py": {
+        "actual_sha256": "60fe96b4c6d48bc164006e810a4032b04796a2a71a9e0c1c7d7af91a5379ca9a",
+        "full_regression_expected_sha256": "60fe96b4c6d48bc164006e810a4032b04796a2a71a9e0c1c7d7af91a5379ca9a",
+        "matches_full_regression": true
+      },
+      "src/poly_weather/market_supervisor.py": {
+        "actual_sha256": "fe292e79893d94578147f85cb401bfc872453dbb0414b2bcfa7a43596bb0c401",
+        "full_regression_expected_sha256": "fe292e79893d94578147f85cb401bfc872453dbb0414b2bcfa7a43596bb0c401",
+        "matches_full_regression": true
+      },
+      "src/poly_weather/cli.py": {
+        "actual_sha256": "332a5f521fe4fc8dd86582632d87a1405ec896d9d8563c092d895d5bcc81cd53",
+        "full_regression_expected_sha256": "332a5f521fe4fc8dd86582632d87a1405ec896d9d8563c092d895d5bcc81cd53",
+        "matches_full_regression": true
+      },
+      "tests/test_settlement_contract_v2.py": {
+        "actual_sha256": "058f8ae00ad55f5e4bc17ba48db2a9435d24548c18b44e9cfe01a7f08b3be608",
+        "full_regression_expected_sha256": "058f8ae00ad55f5e4bc17ba48db2a9435d24548c18b44e9cfe01a7f08b3be608",
+        "matches_full_regression": true
+      },
+      "tests/test_cli.py": {
+        "actual_sha256": "8dd9f1f5ae8f4ea4afa7f0883273dbab7a5ca31aa02ec8382e2e36b3cf552b8f",
+        "full_regression_expected_sha256": "8dd9f1f5ae8f4ea4afa7f0883273dbab7a5ca31aa02ec8382e2e36b3cf552b8f",
+        "matches_full_regression": true
+      },
+      "tests/test_market_supervisor.py": {
+        "actual_sha256": "280fa2fc49d6c328474c4d228e047842ac0cd24b5ca36e37f420b528f88d9d8b",
+        "full_regression_expected_sha256": "280fa2fc49d6c328474c4d228e047842ac0cd24b5ca36e37f420b528f88d9d8b",
+        "matches_full_regression": true
+      }
+    },
+    "effective_registry": {
+      "path": "configs/settlements.json",
+      "before_sha256": "c22d8ab8e0ce05f65ef4c5a526c698b14bf2e4421c8c6d8d9f962472e19f70dd",
+      "after_sha256": "c22d8ab8e0ce05f65ef4c5a526c698b14bf2e4421c8c6d8d9f962472e19f70dd",
+      "unchanged": true
+    },
+    "candidate": {
+      "path": "docs/settlement_registry_candidate_20260910.json",
+      "sha256": "9fbd948400c20f3a4bce268e24136dcb90998e8f01e65ca92f7fc2afd242e4c2",
+      "registry_sha256_inside_candidate": "c22d8ab8e0ce05f65ef4c5a526c698b14bf2e4421c8c6d8d9f962472e19f70dd",
+      "review_status": "pending_human_review",
+      "production_loadable": false,
+      "entry_count": 10
+    }
+  },
+  "contract_implementation": {
+    "schema_version": 2,
+    "semantic_version": "deadline-fallback-v2",
+    "paths": [
+      "src/poly_weather/settlement_contract.py",
+      "src/poly_weather/domain.py",
+      "src/poly_weather/settlement.py",
+      "src/poly_weather/adapters/polymarket.py",
+      "src/poly_weather/market_supervisor.py",
+      "src/poly_weather/cli.py"
+    ],
+    "semantics": {
+      "observation_identity": "event, station, local target date, timezone, unit, precision, bucket boundaries",
+      "primary_source": "name/url/station/table scoped to the NOAA primary clause",
+      "fallback_source": "Weather Underground name/table and explicit missing URL/station remain unresolved",
+      "settlement_trigger": "first following-date publication or deadline, whichever comes first",
+      "deadline": "observation calendar date + one day, 23:59 America/New_York, minute precision, boundary unresolved",
+      "no_data": "primary/fallback availability states are distinct; lowest bucket is the event's open lower-bound bucket ID",
+      "revision": "first following-date publication is modeled independently; deadline conflict remains unresolved",
+      "identity_hash": "parser/schema/contract/raw description/market bucket contracts are content bound"
+    },
+    "strictness": [
+      "new incomplete or unresolved contracts remain rejected",
+      "SAME_STATION_NOAA cannot bypass a v2 contract",
+      "legacy schema remains readable but does not receive v2 admission",
+      "pending candidate is outside the loader schema"
+    ]
+  },
+  "offline_query": {
+    "summary_path": "docs/strict_rejection_query_20260910T091217Z/summary.json",
+    "report_path": "docs/strict_rejection_query_20260910T091217Z/report.md",
+    "query_window": "2026-09-10T09:12:17Z–2026-09-10T09:12:29Z",
+    "network_get_count": 10,
+    "query_elapsed_seconds": 11.694552899993141,
+    "all_status_code_200": true,
+    "source_unchanged": true,
+    "current_task_network_requests": 0,
+    "candidate_count_total": 10,
+    "station_count": 10,
+    "old_failure_counts": {
+      "finalization_known": 10,
+      "finalization_exact": 10
+    },
+    "events": [
+      {
+        "station_id": "KLGA",
+        "local_date": "2026-09-10",
+        "event_id": "987074",
+        "event_slug": "highest-temperature-in-nyc-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/KLGA.response.json",
+        "source_projection_sha256": "ec8eea754f50a75b2cab010bb60b9833a8cc990b044304aaf48efadad359f999",
+        "wire_sha256": "95a2c574f65972278549c6acf2b8f6a49ad93a3a1602e21079208c171ae97adf",
+        "received_at": "2026-09-10T09:12:20.658784+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4358646"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=klga",
+              "station_id": "KLGA",
+              "table": "Hourly Data / Temp"
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "KORD",
+        "local_date": "2026-09-10",
+        "event_id": "987248",
+        "event_slug": "highest-temperature-in-chicago-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/KORD.response.json",
+        "source_projection_sha256": "cbd38493c8160a4e1d1f0ca64ef0b2be756106cde77ae5a72f58fe5fd4621105",
+        "wire_sha256": "4c371d16d6c3e05f29c2c090d64895b3e1328a72867f607aca17e8210d0e0e0c",
+        "received_at": "2026-09-10T09:12:23.488493+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4359144"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=kord",
+              "station_id": "KORD",
+              "table": "Hourly Data / Temp"
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "KLAX",
+        "local_date": "2026-09-10",
+        "event_id": "987929",
+        "event_slug": "highest-temperature-in-los-angeles-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/KLAX.response.json",
+        "source_projection_sha256": "ac1dade45f31b9a0448e83f498a0b652a4a2362bfd568227357a58528864d35b",
+        "wire_sha256": "5da3082cbe901a5e2f4b8e5e2eaab58a9b16167e10cd3dd0484f4487f849d3b6",
+        "received_at": "2026-09-10T09:12:24.036181+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4362169"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=klax",
+              "station_id": "KLAX",
+              "table": "Hourly Data / Temp"
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "KMIA",
+        "local_date": "2026-09-10",
+        "event_id": "987247",
+        "event_slug": "highest-temperature-in-miami-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/KMIA.response.json",
+        "source_projection_sha256": "c8bdbeb92f7ddf1103eb6b547b826b4b3d49bb3ecde06fdc40d956d135c49d0d",
+        "wire_sha256": "492d1c00420ae47aee4823f543120b3f24fdf07dfa08baaa4ebc9fcc5e301392",
+        "received_at": "2026-09-10T09:12:25.146821+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4359133"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=kmia",
+              "station_id": "KMIA",
+              "table": "Hourly Data / Temp"
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "KATL",
+        "local_date": "2026-09-10",
+        "event_id": "987076",
+        "event_slug": "highest-temperature-in-atlanta-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/KATL.response.json",
+        "source_projection_sha256": "f8ff4b1816d7bc8ffdc9e2c906f90dfb761e2c0652965fddcfdf1affc622493d",
+        "wire_sha256": "5fb5cab5bdb91023ac3f0d990092dc058ce959be0ea64fb6dba1bff0bc2ab770",
+        "received_at": "2026-09-10T09:12:25.838012+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4358668"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=katl",
+              "station_id": "KATL",
+              "table": "Hourly Data / Temp"
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "KDAL",
+        "local_date": "2026-09-10",
+        "event_id": "987075",
+        "event_slug": "highest-temperature-in-dallas-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/KDAL.response.json",
+        "source_projection_sha256": "fac2c6a7b4479281af83c08d9cc1e217aa7647d760ac7a910d3c4a481d688449",
+        "wire_sha256": "384e4210e35ad043748d3ee4bcc5615df33e83e316427956d703dddbc7b8ee6b",
+        "received_at": "2026-09-10T09:12:26.767390+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4358657"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=kdal",
+              "station_id": "KDAL",
+              "table": "Hourly Data / Temp"
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "KHOU",
+        "local_date": "2026-09-10",
+        "event_id": "987250",
+        "event_slug": "highest-temperature-in-houston-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/KHOU.response.json",
+        "source_projection_sha256": "417cf726f4c580d8fb47f3b9291b366b46e48824c96aff1383aad92acc74c738",
+        "wire_sha256": "99def5575caa69e5a3be8f5277adcdb0968809977059d037f3efb2d8a36e6c99",
+        "received_at": "2026-09-10T09:12:27.314915+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4359166"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=khou",
+              "station_id": "KHOU",
+              "table": "Hourly Data / Temp"
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "KSEA",
+        "local_date": "2026-09-10",
+        "event_id": "987928",
+        "event_slug": "highest-temperature-in-seattle-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/KSEA.response.json",
+        "source_projection_sha256": "298399f4ec39a4ac43b31fc8e992aee9065b85c6eef0e4ad8a0852b28d10a003",
+        "wire_sha256": "f252281e06a27dd8a33c2d12fbebf7639da65bc1641d78deac97f47f6c9f2f3e",
+        "received_at": "2026-09-10T09:12:27.883198+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4362155"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=ksea",
+              "station_id": "KSEA",
+              "table": "Hourly Data / Temp"
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "ZUCK",
+        "local_date": "2026-09-10",
+        "event_id": "986731",
+        "event_slug": "highest-temperature-in-chongqing-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/ZUCK.response.json",
+        "source_projection_sha256": "c782201f7bb4b7c1273c1ec7befe7fab820fad2ec837f6a802f37b3c1c34f086",
+        "wire_sha256": "23b9a349ae85c81eb7716397d1bfd3a2bd8cffe03fa01414501a4aeea4cfa5e8",
+        "received_at": "2026-09-10T09:12:28.841171+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "observation_table",
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "primary_table_missing",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "primary_table_missing"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4356404"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=zuck",
+              "station_id": "ZUCK",
+              "table": null
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "primary_table_missing"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "primary_table_missing",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      },
+      {
+        "station_id": "ZUUU",
+        "local_date": "2026-09-10",
+        "event_id": "986734",
+        "event_slug": "highest-temperature-in-chengdu-on-september-10-2026",
+        "candidate_count": 1,
+        "source_projection": "docs/strict_rejection_query_20260910T091217Z/ZUUU.response.json",
+        "source_projection_sha256": "6370d65f92d6f9c43dbc6cf96d43eab2e191f0694bf33032e05bfe5dd9787a49",
+        "wire_sha256": "0fe2401f17e18012fc63a7eaa2f5da2e8699171fa92ac3fd9facbb7fa59a778c",
+        "received_at": "2026-09-10T09:12:29.339452+00:00",
+        "old_parser_stage": "verification",
+        "old_parser_version": "2",
+        "old_parse_status": "complete",
+        "old_verification_failures": [
+          "finalization_known",
+          "finalization_exact"
+        ],
+        "new_parser_version": "3",
+        "new_rule_schema_version": 2,
+        "new_parse_status": "incomplete",
+        "new_missing_fields": [
+          "observation_table",
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "primary_table_missing",
+          "fallback_station_id_missing",
+          "deadline_boundary_unresolved"
+        ],
+        "new_contract_unresolved": [
+          "deadline_second_boundary",
+          "deadline_date_basis_review",
+          "fallback_url_missing",
+          "fallback_station_missing",
+          "unavailable_vs_absent",
+          "no_data_source_scope",
+          "revision_after_settlement_deadline",
+          "primary_table_missing"
+        ],
+        "new_verification_failures": [
+          "parse_complete",
+          "finalization_exact",
+          "rule_reviewed",
+          "rule_resolved",
+          "rule_deadline_exact",
+          "rule_fallback_exact",
+          "rule_fallback_condition_exact",
+          "rule_lowest_bucket_market_id_exact",
+          "rule_no_data_action_exact",
+          "rule_no_data_condition_exact",
+          "rule_primary_exact",
+          "rule_publication_date_offset_days_exact",
+          "rule_publication_source_exact",
+          "rule_revision_source_exact",
+          "rule_revision_trigger_exact",
+          "rule_schema_version_exact",
+          "rule_semantic_version_exact",
+          "rule_settlement_trigger_exact",
+          "rule_unresolved_exact"
+        ],
+        "new_verification_differences": {
+          "parse_complete": {
+            "expected": "complete",
+            "actual": "incomplete"
+          },
+          "finalization_exact": {
+            "expected": "first_next_day_observation",
+            "actual": "publication_or_deadline"
+          },
+          "rule_deadline_exact": {
+            "expected": null,
+            "actual": {
+              "date_basis": "observation_calendar_date",
+              "offset_days": 1,
+              "clock": "23:59",
+              "timezone": "America/New_York",
+              "precision": "minute",
+              "boundary": "unresolved"
+            }
+          },
+          "rule_fallback_exact": {
+            "expected": null,
+            "actual": {
+              "name": "Weather Underground",
+              "url": null,
+              "station_id": null,
+              "table": "Daily Observations"
+            }
+          },
+          "rule_fallback_condition_exact": {
+            "expected": null,
+            "actual": "primary_observation_date_unavailable_at_deadline"
+          },
+          "rule_lowest_bucket_market_id_exact": {
+            "expected": null,
+            "actual": "4356437"
+          },
+          "rule_no_data_action_exact": {
+            "expected": null,
+            "actual": "lowest_temperature_bucket"
+          },
+          "rule_no_data_condition_exact": {
+            "expected": null,
+            "actual": "observation_date_no_data_at_deadline_source_scope_unresolved"
+          },
+          "rule_primary_exact": {
+            "expected": null,
+            "actual": {
+              "name": "NOAA Timeseries",
+              "url": "https://www.weather.gov/wrh/timeseries?site=zuuu",
+              "station_id": "ZUUU",
+              "table": null
+            }
+          },
+          "rule_publication_date_offset_days_exact": {
+            "expected": null,
+            "actual": 1
+          },
+          "rule_publication_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_source_exact": {
+            "expected": null,
+            "actual": "resolution_source"
+          },
+          "rule_revision_trigger_exact": {
+            "expected": null,
+            "actual": "first_next_date_publication"
+          },
+          "rule_schema_version_exact": {
+            "expected": null,
+            "actual": 2
+          },
+          "rule_semantic_version_exact": {
+            "expected": null,
+            "actual": "deadline-fallback-v2"
+          },
+          "rule_settlement_trigger_exact": {
+            "expected": null,
+            "actual": "earlier_of_first_next_date_publication_and_deadline"
+          },
+          "rule_unresolved_exact": {
+            "expected": null,
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "primary_table_missing"
+            ]
+          },
+          "rule_reviewed": {
+            "expected": "reviewed",
+            "actual": "unreviewed"
+          },
+          "rule_resolved": {
+            "expected": [],
+            "actual": [
+              "deadline_second_boundary",
+              "deadline_date_basis_review",
+              "fallback_url_missing",
+              "fallback_station_missing",
+              "unavailable_vs_absent",
+              "no_data_source_scope",
+              "revision_after_settlement_deadline",
+              "primary_table_missing",
+              "fallback_station_id_missing",
+              "deadline_boundary_unresolved"
+            ]
+          }
+        }
+      }
+    ],
+    "interpretation": "The saved query is a current-query reproduction, not retrospective proof of the three earlier unsaved response bodies."
+  },
+  "diagnostics": {
+    "implementation_path": "src/poly_weather/settlement_diagnostics.py",
+    "record_root": "data/logs/daemons/attempts/market-supervisor/<attempt_id>/settlement/",
+    "stages": [
+      "input",
+      "conversion",
+      "parse",
+      "verification",
+      "discovery"
+    ],
+    "required_fields": [
+      "attempt_id",
+      "station_id",
+      "local_target_date",
+      "event_id",
+      "event_slug",
+      "receipt_at",
+      "projection_sha256",
+      "parser_version",
+      "projection_version",
+      "stage",
+      "outcome",
+      "verification.differences"
+    ],
+    "outcomes": [
+      "no_candidate",
+      "ambiguous",
+      "conversion",
+      "parse_failed",
+      "rule_incomplete",
+      "registry_mismatch",
+      "passed"
+    ],
+    "durability": [
+      "public projection is written before conversion/parser/verifier",
+      "each record uses a unique immutable file and fsync",
+      "diagnostic write failure raises and blocks collector/subscription startup",
+      "exception text is bounded and credential-bearing material is redacted"
+    ],
+    "test_evidence": "tests/test_settlement_contract_v2.py"
+  },
+  "candidate_review": {
+    "candidate_path": "docs/settlement_registry_candidate_20260910.json",
+    "review_path": "docs/settlement_registry_review_20260910.md",
+    "review_status": "pending_human_review",
+    "production_loadable": false,
+    "effective_config_modified": false,
+    "unresolved_approval_items": [
+      "deadline second boundary and date basis",
+      "fallback URL/station binding",
+      "unavailable versus confirmed absent",
+      "no-data source scope and lowest-bucket condition",
+      "revision behavior when deadline precedes publication",
+      "station-specific primary product and effective event scope"
+    ]
+  },
+  "tests": {
+    "inventory": {
+      "path": "docs/reliability_test_inventory.json",
+      "exit_code": 0,
+      "collected_count": 801,
+      "diagnostic_selected_count": 764
+    },
+    "targeted_contract_and_diagnostics": {
+      "path": "docs/settlement_rule_upgrade_20260910/targeted.final.stdout",
+      "command": "D:/poly/.venv/Scripts/python.exe -m pytest tests/test_settlement_contract_v2.py -q -p no:cacheprovider -p user_tmp_plugin --tb=short",
+      "exit_code": 0,
+      "summary": "48 passed in 0.81s",
+      "passed": 48,
+      "seconds": 0.81,
+      "deselected": 0
+    },
+    "full_default_selection": {
+      "path": "docs/settlement_rule_upgrade_20260910/full_regression.json",
+      "command": [
+        "D:\\poly\\.venv\\Scripts\\python.exe",
+        "-c",
+        "import faulthandler,pytest; faulthandler.dump_traceback_later(30,repeat=True); raise SystemExit(pytest.main([\"-q\",\"-p\",\"no:cacheprovider\",\"--tb=short\",\"-p\",\"user_tmp_plugin\"]))"
+      ],
+      "environment": "PYTHONPATH=docs/settlement_rule_upgrade_20260910; user_tmp_plugin is an evidence-only tmp_path fixture",
+      "exit_code": 0,
+      "timeout": false,
+      "timeout_seconds": 180,
+      "elapsed_seconds": 57.269688700005645,
+      "summary": "801 passed in 56.57s",
+      "passed": 801,
+      "seconds": 56.57,
+      "deselected": 0,
+      "source_hash_count": 168,
+      "source_unchanged_during_run": true
+    },
+    "optional_nautilus": {
+      "path": "docs/settlement_rule_upgrade_20260910/optional.final.json",
+      "command": "python -m pytest -m nautilus_eval -q -p no:cacheprovider -p user_tmp_plugin --tb=short",
+      "environment": "PYTHONPATH=docs/settlement_rule_upgrade_20260910",
+      "exit_code": 0,
+      "summary": "6 passed, 795 deselected in 0.80s",
+      "passed": 6,
+      "seconds": 0.8,
+      "deselected": 795
+    },
+    "ruff": {
+      "path": "docs/settlement_rule_upgrade_20260910/ruff.log",
+      "scope": "src tests scripts",
+      "exit_code": 0,
+      "summary": "All checks passed!"
+    },
+    "git_diff_check": {
+      "path": "docs/settlement_rule_upgrade_20260910/diff-check.log",
+      "exit_code": 0,
+      "line_ending_warnings_present": true
+    },
+    "untracked_text_check": {
+      "paths": [
+        "src/poly_weather/settlement_contract.py",
+        "src/poly_weather/settlement_diagnostics.py",
+        "tests/test_settlement_contract_v2.py",
+        "docs/settlement_rule_contract_v2.md",
+        "docs/settlement_registry_candidate_20260910.json",
+        "docs/settlement_registry_review_20260910.md",
+        "docs/settlement_rule_upgrade_report_20260910.md",
+        "docs/settlement_rule_upgrade_validation_20260910.json"
+      ],
+      "trailing_whitespace": [],
+      "passed": true,
+      "method": "UTF-8 line scan because git diff --check does not inspect untracked files"
+    }
+  },
+  "runtime_isolation": {
+    "evidence": "docs/raw_market_recovery_validation_20260910.json",
+    "market_running": false,
+    "market_enabled": false,
+    "unconfirmed_market_children": 0,
+    "downstream_stopped_disabled": true,
+    "weather_same_process_chain": true,
+    "weather_task_config_unchanged": true,
+    "paper_started": false,
+    "old_v2_and_protected_files_sha256_equal": true,
+    "market_status_bytes_equal": {
+      "polymarket_ws_status.json": true,
+      "market_supervisor_status.json": true
+    },
+    "retention_called": false,
+    "signal_publication_called": false,
+    "explicit_db_maintenance_called": false,
+    "new_market_raw_files": false,
+    "raw_acceptance": {
+      "passed": false,
+      "new_run_id": null,
+      "subscribed_tokens": 0,
+      "full_books": 0,
+      "supervisor_cycles": 0,
+      "continuous_collection_seconds": 0,
+      "new_published_positions": 0,
+      "queue_metrics": null,
+      "reason": "All attempts exited before constructing MarketWebSocketBot/MarketEventSupervisor; historical status files are not current run evidence."
+    },
+    "status_note": "This is preserved evidence from the prior limited recovery task; this task performed no runtime operation."
+  },
+  "prohibitions_observed": [
+    "no daemon or Task Scheduler operation in this task",
+    "no market/signal/shadow/weather start or stop",
+    "no Paper start, no execution client, no credentials",
+    "no effective registry, formal data, old v2 cursor/inventory/ledger, retention, backfill, or DB maintenance mutation",
+    "no network query in this task; saved projections and in-memory fake transport only",
+    "no commit, push, reset, clean, stash, dependency installation, or upgrade"
+  ],
+  "limitations": [
+    "The original three rejected recovery attempts have no saved response bodies; their current-query rule diagnosis cannot be claimed retrospectively.",
+    "The saved responses are sanitized public projections plus wire hashes, not full wire bytes.",
+    "No real collection, order-book coverage, or settlement outcome was created by this task.",
+    "The v2 contract intentionally remains incomplete until a human resolves the listed semantic questions; no automatic settlement or registry activation is provided.",
+    "The full regression used an evidence-only tmp_path plugin because the default Windows temp location is ACL-restricted; product code and test selection were unchanged."
+  ],
+  "evidence_index": [
+    "docs/settlement_rule_contract_v2.md",
+    "docs/settlement_registry_candidate_20260910.json",
+    "docs/settlement_registry_review_20260910.md",
+    "docs/strict_rejection_query_20260910T091217Z/summary.json",
+    "docs/strict_rejection_query_20260910T091217Z/report.md",
+    "docs/raw_market_recovery_validation_20260910.json",
+    "docs/raw_market_recovery_report_20260910.md",
+    "docs/settlement_rule_upgrade_20260910/full_regression.json",
+    "docs/settlement_rule_upgrade_20260910/targeted.final.stdout",
+    "docs/settlement_rule_upgrade_20260910/optional.final.json",
+    "docs/settlement_rule_upgrade_20260910/ruff.log",
+    "docs/settlement_rule_upgrade_20260910/diff-check.log",
+    "docs/reliability_test_inventory.json"
+  ]
+}

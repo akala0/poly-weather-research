@@ -1,0 +1,38 @@
+{
+  "station_id": "ZUCK",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Chongqing on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:27.891349+00:00",
+  "registry_expected": {
+    "key": "chongqing-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-chongqing-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "ZUCK",
+    "station_name": "Chongqing Jiangbei International Airport",
+    "latitude": 29.718,
+    "longitude": 106.639,
+    "timezone": "Asia/Shanghai",
+    "metric": "daily_high_temperature",
+    "unit": "celsius",
+    "bucket_width_degrees": 1,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=zuck",
+    "ncei_station_id": null,
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": false,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against 2026-08-24 evidence SHA-256 5e065a919ac0a7a9988ecc97917b9e2f2e4920b4fab8fd8fe78813a6a2c5b9ae. NOAA AWC station metadata gives 29.718, 106.639. WRH/Synoptic period begins 2018-10-26 and returns hourly observations."
+  }
+}

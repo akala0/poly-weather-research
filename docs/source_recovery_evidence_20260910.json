@@ -1,0 +1,2201 @@
+{
+  "schema_version": 1,
+  "report_date": "2026-09-10",
+  "scope": "Read-only R01/S01/S02 and R02 design; only three designated deliverables",
+  "first_timestamped_observation": "2026-09-10T02:55:27.754691+00:00",
+  "final_runtime_as_of": "2026-09-10T03:07:45.443204+00:00",
+  "timezone": "Asia/Shanghai",
+  "head": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+  "begin_git_status": [
+    "?? .claude/",
+    "?? CODEX_SOURCE_CAPABILITY_AND_COLLECTION_RECOVERY_TASK.md"
+  ],
+  "evidence": [
+    {
+      "id": "G01",
+      "kind": "git",
+      "command": "git -c safe.directory=D:/poly status --short; git -c safe.directory=D:/poly rev-parse HEAD",
+      "exit_code": 0,
+      "initial_failed_commands": {
+        "commands": [
+          "git status --short",
+          "git rev-parse HEAD"
+        ],
+        "reason": "dubious ownership",
+        "exit_code": 128
+      },
+      "scope": "Per-command safe.directory only; global config unchanged"
+    },
+    {
+      "id": "H01",
+      "kind": "historical",
+      "path": "docs/reliability_independent_full_validation_20260909.json",
+      "result": "741 passed in 34.44s",
+      "not_run_this_turn": true,
+      "limits": "Historical tested candidate, not live deployment"
+    },
+    {
+      "id": "H02",
+      "kind": "historical",
+      "paths": [
+        "THIRD_PARTY_NOTICES.md",
+        "docs/strategy_reference_survey.md"
+      ],
+      "scope": "Reference and licence history; no current upstream guarantees inferred"
+    },
+    {
+      "id": "R01",
+      "kind": "runtime",
+      "tool_chunk": "af7bfc",
+      "at": "2026-09-10T02:55:27.754691+00:00",
+      "interpreter": "D:\\poly\\.venv\\Scripts\\python.exe",
+      "command": [
+        "D:\\poly\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "poly_weather",
+        "stream-status"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "timeout": false,
+      "status": {
+        "market": {
+          "reported_state": "reconnecting",
+          "effective_state": "stopped",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-04T11:45:44.670529+00:00",
+          "updated_at": "2026-09-04T11:45:44.670519+00:00",
+          "status_heartbeat_age_seconds": 486583.46519,
+          "pid": 23304,
+          "pid_state": "dead",
+          "run_id": "8c77ab19-7283-4868-a6de-386770e7f5fd",
+          "dependency_state": "not_required",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": "ConnectionClosedError: no close frame received or sent",
+          "state": "stopped",
+          "status_path": "D:\\poly\\data\\runtime\\polymarket_ws_status.json",
+          "last_event_at": "2026-09-04T11:45:20.811798+00:00"
+        },
+        "supervisor": {
+          "reported_state": "running",
+          "effective_state": "stopped",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-04T11:45:29.148221+00:00",
+          "updated_at": "2026-09-04T11:45:29.148210+00:00",
+          "status_heartbeat_age_seconds": 486598.987966,
+          "pid": 23304,
+          "pid_state": "dead",
+          "dependency_state": "not_required",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": null,
+          "state": "stopped",
+          "execution_enabled": false,
+          "status_path": "D:\\poly\\data\\runtime\\market_supervisor_status.json"
+        },
+        "weather": {
+          "reported_state": "running",
+          "effective_state": "unknown",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-10T02:55:27.993812+00:00",
+          "updated_at": "2026-09-10T02:55:27.993803+00:00",
+          "status_heartbeat_age_seconds": 1.128931,
+          "pid": 17944,
+          "pid_state": "unknown",
+          "run_id": "dce60e51-02f7-493c-834d-df3ced93a0fc",
+          "dependency_state": "not_required",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": null,
+          "state": "unknown",
+          "status_path": "D:\\poly\\data\\runtime\\weather_daemon_status.json",
+          "last_event_at": "2026-09-10T02:55:03.382949+00:00"
+        },
+        "signal": {
+          "reported_state": "running",
+          "effective_state": "stale",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-04T11:45:45.189532+00:00",
+          "updated_at": "2026-09-04T11:45:45.189519+00:00",
+          "status_heartbeat_age_seconds": 486583.933668,
+          "pid": 6220,
+          "pid_state": "unknown",
+          "run_id": "798fb58c-8d0c-4760-b65b-cb83eb96254d",
+          "dependency_state": "unhealthy",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": null,
+          "state": "stale",
+          "execution_enabled": false,
+          "status_path": "D:\\poly\\data\\runtime\\signal_engine_status.json"
+        },
+        "shadow": {
+          "reported_state": "running",
+          "effective_state": "stopped",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-04T11:45:27.999428+00:00",
+          "updated_at": "2026-09-04T11:45:27.999431+00:00",
+          "status_heartbeat_age_seconds": 486601.125402,
+          "pid": 8344,
+          "pid_state": "dead",
+          "dependency_state": "unhealthy",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": null,
+          "state": "stopped",
+          "halted": false,
+          "halt_reason": null,
+          "execution_enabled": false,
+          "status_path": "D:\\poly\\data\\runtime\\shadow_spread_status_v2_token_scoped.json",
+          "active_orders": 3
+        }
+      }
+    },
+    {
+      "id": "R02",
+      "kind": "os_readonly",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "commands": [
+        "Get-ScheduledTask -TaskName 'PolyWeather-*' | Get-ScheduledTaskInfo (selected task fields)",
+        "Get-CimInstance Win32_Process -Filter 'ProcessId = <target>' for 23304,17944,6220,8344; emit name/creation/command-match booleans only"
+      ],
+      "exit_code": 0,
+      "ordinary_query": {
+        "exit_code": 1,
+        "stderr": "Access denied"
+      },
+      "escalation": "Read-only allowed by task; approved, no task/process operations",
+      "task_names": [
+        "PolyWeather-market-supervisor",
+        "PolyWeather-weather-stream",
+        "PolyWeather-signal-engine",
+        "PolyWeather-shadow-spread-engine"
+      ],
+      "task_configuration": {
+        "state": "Running",
+        "enabled": true,
+        "last_run": "2026-09-09T18:04:04+08:00",
+        "last_result": 267009,
+        "restart_count": 5,
+        "restart_interval": "PT1M",
+        "triggers": [
+          "MSFT_TaskBootTrigger",
+          "MSFT_TaskLogonTrigger"
+        ],
+        "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "arguments_pattern": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName <matching task component> -ProjectRoot D:\\poly",
+        "working_directory": "D:\\poly"
+      },
+      "pids": [
+        {
+          "pid": 23304,
+          "state": "absent"
+        },
+        {
+          "pid": 8344,
+          "state": "absent"
+        },
+        {
+          "pid": 17944,
+          "name": "python.exe",
+          "created": "2026-09-09T10:04:13.498518Z",
+          "weather_command_matches": true
+        },
+        {
+          "pid": 6220,
+          "name": "InstallHelper.exe",
+          "created": "2026-09-09T10:04:02.105535Z",
+          "signal_command_matches": false
+        }
+      ],
+      "tool_chunks": [
+        "44b8ee",
+        "fde934"
+      ]
+    },
+    {
+      "id": "R03",
+      "kind": "runtime",
+      "tool_chunk": "93a71a",
+      "at": "2026-09-10T03:07:45.443204+00:00",
+      "interpreter": "D:\\poly\\.venv\\Scripts\\python.exe",
+      "command": [
+        "D:\\poly\\.venv\\Scripts\\python.exe",
+        "-B",
+        "-m",
+        "poly_weather",
+        "stream-status"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "timeout": false,
+      "status": {
+        "market": {
+          "reported_state": "reconnecting",
+          "effective_state": "stopped",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-04T11:45:44.670529+00:00",
+          "status_heartbeat_age_seconds": 487321.141107,
+          "pid": 23304,
+          "pid_state": "dead",
+          "run_id": "8c77ab19-7283-4868-a6de-386770e7f5fd",
+          "dependency_state": "not_required",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": "ConnectionClosedError: no close frame received or sent",
+          "state": "stopped",
+          "last_event_at": "2026-09-04T11:45:20.811798+00:00",
+          "rows_written": 28194,
+          "events": 305671
+        },
+        "supervisor": {
+          "reported_state": "running",
+          "effective_state": "stopped",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-04T11:45:29.148221+00:00",
+          "status_heartbeat_age_seconds": 487336.663823,
+          "pid": 23304,
+          "pid_state": "dead",
+          "dependency_state": "not_required",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": null,
+          "state": "stopped",
+          "execution_enabled": false
+        },
+        "weather": {
+          "reported_state": "running",
+          "effective_state": "running",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-10T03:07:45.566700+00:00",
+          "status_heartbeat_age_seconds": 1.136031,
+          "pid": 17944,
+          "pid_state": "alive",
+          "run_id": "dce60e51-02f7-493c-834d-df3ced93a0fc",
+          "dependency_state": "not_required",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": "KSEA:nws: ConnectError: ",
+          "state": "running",
+          "last_event_at": "2026-09-10T03:07:05.870604+00:00",
+          "rows_written": 5257,
+          "requests": 9116,
+          "events": 5257,
+          "writer": {
+            "configured_batch_size": 16,
+            "database": {
+              "config": {
+                "max_temp_directory_size": "4GB",
+                "memory_limit": "256MB",
+                "temp_directory": "D:\\poly\\data\\tmp\\duckdb-weather",
+                "threads": "1"
+              },
+              "database": {
+                "exists": true,
+                "mtime_at": "2026-09-09T23:28:47.543494+00:00",
+                "size_bytes": 1420570624
+              },
+              "last_database_error": null,
+              "last_successful_commit_at": "2026-09-10T03:07:05.887197+00:00",
+              "last_successful_commit_rows": 1,
+              "last_successful_write_at": "2026-09-10T03:07:05.887197+00:00",
+              "last_successful_write_rows": 1,
+              "path": "D:\\poly\\data\\weather_stream.duckdb",
+              "wal": {
+                "exists": true,
+                "mtime_at": "2026-09-10T03:07:05.884486+00:00",
+                "size_bytes": 13385588
+              },
+              "wal_path": "D:\\poly\\data\\weather_stream.duckdb.wal",
+              "write_count": 5211
+            },
+            "process_memory": {
+              "reason": "GetProcessMemoryInfo unavailable",
+              "supported": false
+            },
+            "raw_batch_bytes": 2966,
+            "raw_batch_rows": 1
+          }
+        },
+        "signal": {
+          "reported_state": "running",
+          "effective_state": "ownership_mismatch",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-04T11:45:45.189532+00:00",
+          "status_heartbeat_age_seconds": 487322.347628,
+          "pid": 6220,
+          "pid_state": "reused",
+          "run_id": "798fb58c-8d0c-4760-b65b-cb83eb96254d",
+          "dependency_state": "unhealthy",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": null,
+          "state": "ownership_mismatch",
+          "execution_enabled": false,
+          "writer": {
+            "configured_batch_size": 1,
+            "database": {
+              "config": {
+                "max_temp_directory_size": "10GB",
+                "memory_limit": "1GB",
+                "temp_directory": "D:\\poly\\data\\tmp\\duckdb-signal",
+                "threads": "1"
+              },
+              "database": {
+                "exists": true,
+                "mtime_at": "2026-09-04T09:59:54.843669+00:00",
+                "size_bytes": 1765289984
+              },
+              "last_database_error": null,
+              "last_successful_commit_at": "2026-09-04T11:45:44.223533+00:00",
+              "last_successful_commit_rows": 1,
+              "last_successful_write_at": "2026-09-04T11:45:44.223533+00:00",
+              "last_successful_write_rows": 1,
+              "path": "D:\\poly\\data\\signal_stream.duckdb",
+              "wal": {
+                "exists": true,
+                "mtime_at": "2026-09-04T11:45:44.220905+00:00",
+                "size_bytes": 8514197
+              },
+              "wal_path": "D:\\poly\\data\\signal_stream.duckdb.wal",
+              "write_count": 103222
+            },
+            "process_memory": {
+              "reason": "GetProcessMemoryInfo unavailable",
+              "supported": false
+            }
+          }
+        },
+        "shadow": {
+          "reported_state": "running",
+          "effective_state": "stopped",
+          "status_integrity": "verified",
+          "heartbeat": "2026-09-04T11:45:27.999428+00:00",
+          "status_heartbeat_age_seconds": 487339.539619,
+          "pid": 8344,
+          "pid_state": "dead",
+          "dependency_state": "unhealthy",
+          "business_progress": {
+            "state": "unknown",
+            "reason": "UNVERIFIED_OR_STALE_PROGRESS_SAMPLE",
+            "ready": false
+          },
+          "business_ready": false,
+          "last_error": null,
+          "state": "stopped",
+          "halted": false,
+          "execution_enabled": false
+        }
+      }
+    },
+    {
+      "id": "R04",
+      "kind": "bounded_runtime_log_followup",
+      "at": "2026-09-10T03:17:54.6549686+00:00",
+      "command": "PowerShell Get-Item/Get-FileHash plus bounded Get-Content tails",
+      "exit_code": 0,
+      "files": [
+        {
+          "path": "data\\logs\\daemons\\market-supervisor.stderr.log",
+          "bytes": 19643,
+          "mtime_utc": "2026-09-10T03:06:20.9167672+00:00",
+          "sha256": "a1ed00540e3790df074358e40c299f274a32f3838dbea2dbc80a8c9539d47f85",
+          "read_window": "tail 100 text lines; whole-file digest",
+          "stable_during_digest_check": true,
+          "last_exception": "ConnectError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1081)"
+        },
+        {
+          "path": "data\\logs\\daemons\\market-supervisor.runner.log",
+          "bytes": 481857,
+          "mtime_utc": "2026-09-10T03:06:21.0117220+00:00",
+          "sha256": "dd6608251025bb95b99661ff964781ccf014e2fb95b81e7cd62599dc9eb1b0ed",
+          "read_window": "tail 80 text lines; whole-file digest",
+          "stable_during_digest_check": true,
+          "latest_attempt_window_utc": "2026-09-10T03:03:05.3186958+00:00/2026-09-10T03:06:21.0107215+00:00",
+          "latest_attempts": 6,
+          "latest_outcome": "crash-loop guard engaged; sleeping 900s"
+        }
+      ],
+      "cross_time_comparison": {
+        "prior_evidence": "SAMPLE01",
+        "prior_stderr_bytes": 58,
+        "prior_stderr_sha256": "50dbe3e5a7c411641539ddaa8e75e1da90fb20260798650473ccd75a7092c4fe",
+        "prior_message": "No current events passed strict settlement verification.",
+        "same_file_identity_claimed": false,
+        "interpretation": "runner rotation/overwrite changed the stderr artifact; both are bounded observations at different attempts"
+      },
+      "limits": "The follow-up proves a later HTTP/SSL transport failure and repeated pre-collection exits. It does not identify a single root cause for every attempt, authorize a network/config change, or prove the child exit code was 9008."
+    },
+    {
+      "id": "L01",
+      "kind": "local_source",
+      "path": "src/poly_weather/adapters/polymarket_data.py",
+      "locators": [
+        "PublicTrade:18",
+        "parse_public_trade:47",
+        "PolymarketDataClient._range:215",
+        "PolymarketDataClient._page:263"
+      ],
+      "meaning": "Exact local normalization; raw page, page receipt and source closure absent",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "4a06a56986d2c9428be78534a2f40be156301c2eafae58598696ae2b432755a7",
+      "line_count": 296
+    },
+    {
+      "id": "L02",
+      "kind": "local_source",
+      "path": "src/poly_weather/public_trade_collection.py",
+      "locators": [
+        "verify_materialized_receipts:358",
+        "_collect_depth_event_trades_locked:447"
+      ],
+      "meaning": "Local set materialization, whole-client receipt, local watermark only",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "7fed4dcb0775d65685981dd569c27538fe793c1a100a57f1e06540e28c5c50b4",
+      "line_count": 713
+    },
+    {
+      "id": "L03",
+      "kind": "local_source",
+      "path": "src/poly_weather/receipt_journal.py",
+      "locators": [
+        "ReceiptJournal:67"
+      ],
+      "meaning": "Fact, witness and manifest authority; not upstream closure",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "2d136074e32ada4aa8419ded6d555d262fe638c9be1dd92a9459f26ad1b0687e",
+      "line_count": 196
+    },
+    {
+      "id": "L04",
+      "kind": "local_source",
+      "path": "src/poly_weather/market_trade_tape.py",
+      "locators": [
+        "parse_market_ws_trade:146",
+        "match_ws_trade:400"
+      ],
+      "meaning": "Conditional exact row corroboration; sibling ambiguity rejected",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "278117b5139af7918f78a2b77cdaa98338d0492ef1118be278434cd6637c48bf",
+      "line_count": 574
+    },
+    {
+      "id": "L05",
+      "kind": "local_source",
+      "path": "src/poly_weather/paper_spread_runtime.py",
+      "locators": [
+        "process_trades:1772",
+        "_record_pending_ws_trade:993"
+      ],
+      "meaning": "Public zero queue consumption; pending persistence; private model kernel excluded",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "d6f000bc723ea845ddd2df3655e98e3977e668851872e96648e307cbc0a6bf3f",
+      "line_count": 3430
+    },
+    {
+      "id": "L06",
+      "kind": "local_source",
+      "path": "src/poly_weather/weather_stream.py",
+      "locators": [
+        "WeatherStreamSink:224",
+        "_fetch_multi_model:929",
+        "_event:1009"
+      ],
+      "meaning": "Raw payload and normalized per-model values, receipt after parse, no real fixed initialization",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "930a27e74cc3f7f202635d4e9f5605dd6be94dea75ea8aafc7627767e667adb8",
+      "line_count": 1243
+    },
+    {
+      "id": "L07",
+      "kind": "local_source",
+      "path": "src/poly_weather/weather_provenance.py",
+      "locators": [
+        "forecast_initialization:90",
+        "forecast_vintage:110"
+      ],
+      "meaning": "Explicit per-model vintage, invalid lead and receipt checks",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "bfd8b1a603d7232f44e98f05aa1b03c3bf1dac72d90d064f4814aec34954d198",
+      "line_count": 137
+    },
+    {
+      "id": "L08",
+      "kind": "local_source",
+      "path": "src/poly_weather/market_stream.py",
+      "locators": [
+        "_record:790"
+      ],
+      "meaning": "Local run sequence is collector-owned, raw wire retained",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "78da756f61d04fcad2d20be7e9707b6b5a53e50a55faa2cc39c582e106fd5ac8",
+      "line_count": 1055
+    },
+    {
+      "id": "L09",
+      "kind": "local_source",
+      "path": "src/poly_weather/adapters/historical_weather.py",
+      "locators": [
+        "OpenMeteoPreviousRunsClient:12"
+      ],
+      "meaning": "Lead-offset historical aggregation is not a single-run lineage",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "b45a952fc4582a73aa712d2e5891261cdd6a2b2cc725d1be1a8027444e153ee9",
+      "line_count": 251
+    },
+    {
+      "id": "L10",
+      "kind": "local_source",
+      "path": "src/poly_weather/market_supervisor.py",
+      "locators": [
+        "discover_event:71",
+        "run:269"
+      ],
+      "meaning": "Discovery filters; default retention before periodic discovery",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "3a1fab4dd7ac537b566dbffc38e8c7ad18740d20bee8b944322f6c3596f7c207",
+      "line_count": 313
+    },
+    {
+      "id": "L11",
+      "kind": "local_source",
+      "path": "scripts/windows/poly-weather-daemon-runner.ps1",
+      "locators": [
+        "Test-Dependencies:117",
+        "Get-ArgumentList:162",
+        "Rotate-Log:46"
+      ],
+      "meaning": "Raw roots independent; waiting downstream can start; explicit Paper branch; log rotation",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "6b9bb34e2504e38aa38ea4f4a7910a312e0ac35b281c9b7658e0bccd7864f876",
+      "line_count": 278
+    },
+    {
+      "id": "L12",
+      "kind": "local_source",
+      "path": "src/poly_weather/archive_position.py",
+      "locators": [
+        "read_positioned_rows:24"
+      ],
+      "meaning": "Nonzero unbound prefix rejects before file IO; decompressed offsets; whole-tail memory/per-prefix read cost",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "ad15f03a06b52e1b33f571a00943cebcd1786da8ae27cc18621787ad2cf4d09a",
+      "line_count": 96
+    },
+    {
+      "id": "L13",
+      "kind": "local_source",
+      "path": "src/poly_weather/weather_database.py",
+      "locators": [
+        "ensure_weather_database:327"
+      ],
+      "meaning": "Startup report writes and automatic versioned rebuild are side effects",
+      "revision": "2c8d9b9d91504d579912985aad33ffd01bc5011a",
+      "limitations": "Source inspection only, not new regression/deployment",
+      "sha256_at_final_review": "f4e03dcd933f023c2686319a1fb66ea70d93be2c334e209cfb1245577b298d6c",
+      "line_count": 424
+    },
+    {
+      "id": "W01",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets",
+      "meaning": "limit/offset/start/end and schema; no claimed snapshot/closure guarantee",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W02",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://docs.polymarket.com/market-data/realtime-data",
+      "meaning": "wire last_trade_price and raw transaction_hash; local sequence not an exchange guarantee",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W03",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://open-meteo.com/en/docs/single-runs-api",
+      "meaning": "run is UTC initialization, separately archived; initialization differs from publication",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W04",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://open-meteo.com/en/docs/previous-runs-api",
+      "meaning": "fixed lead offset, not a whole single run",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W05",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://open-meteo.com/en/docs",
+      "meaning": "seamless model selection and response metadata",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W06",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://open-meteo.com/en/docs/model-updates",
+      "meaning": "initialisation/modification/availability differ; multi-server eventual consistency",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W07",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://open-meteo.com/en/docs/historical-forecast-api",
+      "meaning": "historical forecast archive; not historical local receipt",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W08",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://raw.githubusercontent.com/warproxxx/poly-maker/main/src/polymaker/marketdata/parse.py",
+      "meaning": "TradePrint float fields, no closure; service.py and MIT LICENSE also inspected",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W09",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://raw.githubusercontent.com/spencerfletcher/market-maker/68f6c44730dab0772a3601072b0e00ee190f3a4c/bot/kalshi/queue_tracker.py",
+      "meaning": "fetch failed cache miss; GitHub blob retry failed; historical notice only",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "68f6c44730dab0772a3601072b0e00ee190f3a4c (requested, fetch unsuccessful)",
+      "result": "fetch_failed",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W10",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://raw.githubusercontent.com/Polymarket/ctf-exchange/refs/heads/main/src/exchange/interfaces/ITrading.sol",
+      "meaning": "OrderFilled/OrdersMatched; SPDX MIT, old archived repo, deployment identity unverified",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W11",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://aviationweather.gov/data/api/",
+      "meaning": "AWC product documentation; no fixed numerical-model run claim for TAF",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W12",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://www.weather.gov/documentation/services-web-api",
+      "meaning": "NWS observation API documentation",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "W13",
+      "kind": "official_documentation_or_upstream_source",
+      "url": "https://open-meteo.com/en/licence",
+      "meaning": "CC BY data terms separate from hosted API terms",
+      "accessed_during": [
+        "2026-09-10T02:55:27.754691+00:00",
+        "2026-09-10T03:07:45.443204+00:00"
+      ],
+      "access_time_precision": "bounded investigation interval; per-request timestamp not separately logged",
+      "revision": "unknown",
+      "result": "read",
+      "limitations": "No business endpoint probe; schema presence is not completeness proof"
+    },
+    {
+      "id": "SAMPLE01",
+      "kind": "bounded_local_sample",
+      "command": ".venv\\Scripts\\python.exe -B - (in-memory JSON diagnostic, stdin script)",
+      "tool_chunk": "f75021",
+      "exit_code": 0,
+      "at": "2026-09-10T02:57:29.777270+00:00",
+      "files": [
+        {
+          "path": "data\\logs\\daemons\\market-supervisor.runner.log",
+          "offset": 471670,
+          "bytes": 8192,
+          "size": 479862,
+          "mtime_ns": 1789008485243804400,
+          "inode": 1023724490296660900,
+          "sha256_range": "b0c06466545b8fd871b56e9a2e63be6b02cebbea9dd884cda904b4f878138a5f",
+          "stable": true,
+          "tail": [
+            "2026-09-10T02:45:31.2171893Z [market-supervisor] child started; pid=26404",
+            "2026-09-10T02:45:34.8143866Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008",
+            "2026-09-10T02:45:34.8153869Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3",
+            "2026-09-10T02:45:54.8685087Z [market-supervisor] child started; pid=21248",
+            "2026-09-10T02:45:57.9144046Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008",
+            "2026-09-10T02:45:57.9157197Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4",
+            "2026-09-10T02:46:37.9528367Z [market-supervisor] child started; pid=11012",
+            "2026-09-10T02:46:40.0824950Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008",
+            "2026-09-10T02:46:40.0834951Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5",
+            "2026-09-10T02:48:00.1172063Z [market-supervisor] child started; pid=28468",
+            "2026-09-10T02:48:05.2428044Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008",
+            "2026-09-10T02:48:05.2438043Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s"
+          ]
+        },
+        {
+          "path": "data\\logs\\daemons\\market-supervisor.stderr.log",
+          "offset": 0,
+          "bytes": 58,
+          "size": 58,
+          "mtime_ns": 1789008485150804700,
+          "inode": 4387350461988998700,
+          "sha256_range": "50dbe3e5a7c411641539ddaa8e75e1da90fb20260798650473ccd75a7092c4fe",
+          "stable": true,
+          "tail": [
+            "No current events passed strict settlement verification."
+          ]
+        },
+        {
+          "path": "data\\logs\\daemons\\weather-stream.runner.log",
+          "offset": 0,
+          "bytes": 1928,
+          "size": 1928,
+          "mtime_ns": 1788948253478507300,
+          "inode": 287385951221929120,
+          "sha256_range": "00acc8d9c29500a702558b8c91729bbd028e90aa467adfc610536f544fb4af97",
+          "stable": true,
+          "tail": [
+            "2026-09-03T00:08:06.1477094Z [weather-stream] child exited code=; exponential backoff 20s; failures_in_window=1",
+            "2026-09-03T00:08:28.2330128Z [weather-stream] child started; pid=26364",
+            "2026-09-03T03:28:19.2628451Z [weather-stream] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-03T03:28:22.2186440Z [weather-stream] dependency gate closed; waiting without starting child",
+            "2026-09-03T03:28:53.6674511Z [weather-stream] dependency gate passed",
+            "2026-09-03T03:28:53.7361868Z [weather-stream] child started; pid=2228",
+            "2026-09-07T02:32:23.3932578Z [weather-stream] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-07T02:32:26.1461594Z [weather-stream] dependency gate closed; waiting without starting child",
+            "2026-09-09T08:04:25.2652759Z [weather-stream] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-09T08:04:25.4752768Z [weather-stream] child started; pid=18676",
+            "2026-09-09T10:04:13.2185090Z [weather-stream] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-09T10:04:13.4585079Z [weather-stream] child started; pid=17784"
+          ]
+        },
+        {
+          "path": "data\\logs\\daemons\\weather-stream.stderr.log",
+          "offset": 0,
+          "bytes": 0,
+          "size": 0,
+          "mtime_ns": 1788948253428507400,
+          "inode": 534239505796832700,
+          "sha256_range": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stable": true,
+          "tail": []
+        },
+        {
+          "path": "data\\logs\\daemons\\signal-engine.runner.log",
+          "offset": 0,
+          "bytes": 3313,
+          "size": 3313,
+          "mtime_ns": 1788948256548603600,
+          "inode": 488359084593337540,
+          "sha256_range": "27b049221d8a2c8fb459b37719eac80117658485e56dd8e531bfca67c159072a",
+          "stable": true,
+          "tail": [
+            "2026-09-03T03:20:20.3496870Z [signal-engine] child started; pid=53928",
+            "2026-09-03T03:25:18.4727621Z [signal-engine] child exited code=; exponential backoff 300s; failures_in_window=2",
+            "2026-09-03T03:28:19.2628451Z [signal-engine] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-03T03:28:22.2186440Z [signal-engine] dependency gate closed; waiting without starting child",
+            "2026-09-03T03:29:24.5949599Z [signal-engine] dependency gate passed",
+            "2026-09-03T03:29:24.6808333Z [signal-engine] child started; pid=5056",
+            "2026-09-07T02:32:23.3932578Z [signal-engine] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-07T02:32:26.1461594Z [signal-engine] dependency gate closed; waiting without starting child",
+            "2026-09-09T08:04:25.2652759Z [signal-engine] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-09T08:04:27.2746307Z [signal-engine] dependency gate closed; waiting without starting child",
+            "2026-09-09T10:04:13.2085055Z [signal-engine] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-09T10:04:16.5486037Z [signal-engine] dependency gate closed; waiting without starting child"
+          ]
+        },
+        {
+          "path": "data\\logs\\daemons\\signal-engine.stderr.log",
+          "offset": 0,
+          "bytes": 0,
+          "size": 0,
+          "mtime_ns": 1788406164666819800,
+          "inode": 1076360310941552100,
+          "sha256_range": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stable": true,
+          "tail": []
+        },
+        {
+          "path": "data\\logs\\daemons\\shadow-spread-engine.runner.log",
+          "offset": 0,
+          "bytes": 2781,
+          "size": 2781,
+          "mtime_ns": 1788948256548603600,
+          "inode": 1449314655083172600,
+          "sha256_range": "0b4464c82c205d31054a4ffe09fd4cd9240cd257b6cf495479fa6f80564e5cc4",
+          "stable": true,
+          "tail": [
+            "2026-09-03T03:21:49.7145474Z [shadow-spread-engine] child started; pid=33216",
+            "2026-09-03T03:27:24.1343876Z [shadow-spread-engine] child exited code=; exponential backoff 80s; failures_in_window=2",
+            "2026-09-03T03:28:19.2628451Z [shadow-spread-engine] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-03T03:28:22.2498552Z [shadow-spread-engine] dependency gate closed; waiting without starting child",
+            "2026-09-03T03:29:55.4901089Z [shadow-spread-engine] dependency gate passed",
+            "2026-09-03T03:29:55.5709421Z [shadow-spread-engine] child started; pid=19656",
+            "2026-09-07T02:32:23.3932578Z [shadow-spread-engine] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-07T02:32:26.1461594Z [shadow-spread-engine] dependency gate closed; waiting without starting child",
+            "2026-09-09T08:04:25.2652759Z [shadow-spread-engine] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-09T08:04:27.2746307Z [shadow-spread-engine] dependency gate closed; waiting without starting child",
+            "2026-09-09T10:04:13.2185090Z [shadow-spread-engine] runner started; exe=D:\\poly\\.venv\\Scripts\\poly-weather.exe; proxy variable names present=; execution_enabled=false",
+            "2026-09-09T10:04:16.5486037Z [shadow-spread-engine] dependency gate closed; waiting without starting child"
+          ]
+        },
+        {
+          "path": "data\\logs\\daemons\\shadow-spread-engine.stderr.log",
+          "offset": 0,
+          "bytes": 0,
+          "size": 0,
+          "mtime_ns": 1788406195554974700,
+          "inode": 1165024928605408800,
+          "sha256_range": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stable": true,
+          "tail": []
+        },
+        {
+          "path": "data\\raw\\polymarket_clob_websocket\\2026-09-04\\events.jsonl",
+          "offset": 33350754,
+          "bytes": 262144,
+          "size": 33612898,
+          "mtime_ns": 1788522320811769000,
+          "inode": 999236167322831900,
+          "sha256_range": "cae0fd312221fd89542a5019cf3696b00d43c7ad1eaa205deb05413dc195caac",
+          "stable": true,
+          "complete_rows_parsed": 74,
+          "last_record": {
+            "run_id": "8c77ab19-7283-4868-a6de-386770e7f5fd",
+            "sequence": 305671,
+            "received_at": "2026-09-04T11:45:20.811769+00:00",
+            "received_at_ns": 1788522320811768800,
+            "source_timestamp_ms": 1788522319613,
+            "event_type": "new_market",
+            "asset_id": null,
+            "market_id": "0x766fd1c7636c8c7e08fd601e58a1cb6fa85bf822accc112cba82ea20fce48156",
+            "market_slug": null,
+            "best_bid": null,
+            "best_ask": null,
+            "last_trade_price": null,
+            "book_complete": false,
+            "upstream_status": "normal",
+            "upstream_incident_id": null
+          },
+          "keys": [
+            "run_id",
+            "sequence",
+            "received_at",
+            "received_at_ns",
+            "source_timestamp_ms",
+            "event_type",
+            "asset_id",
+            "market_id",
+            "market_slug",
+            "best_bid",
+            "best_ask",
+            "last_trade_price",
+            "bids",
+            "asks",
+            "book_complete",
+            "upstream_status",
+            "upstream_incident_id",
+            "raw"
+          ],
+          "products": [
+            "None"
+          ]
+        },
+        {
+          "path": "data\\raw\\polymarket_book_checkpoints\\2026-09-04\\events.jsonl",
+          "missing": true
+        },
+        {
+          "path": "data\\raw\\weather_daemon\\2026-09-10\\events.jsonl",
+          "offset": 10806323,
+          "bytes": 262144,
+          "size": 11068467,
+          "mtime_ns": 1789009031527894000,
+          "inode": 2109092000492953000,
+          "sha256_range": "1244c621d82edb7ceaab9a2931efc57c4d1a2c9244fbf2ef1d8ca2e73c06bf5c",
+          "stable": true,
+          "complete_rows_parsed": 22,
+          "last_record": {
+            "run_id": "dce60e51-02f7-493c-834d-df3ced93a0fc",
+            "sequence": 8911,
+            "received_at_ns": 1789009031527513600,
+            "source_timestamp_ms": 1789007700000,
+            "provider": "NOAA/NWS",
+            "product": "latest_observation",
+            "station_id": "KSEA",
+            "temperature_c": 22,
+            "latency_ms": 1331527,
+            "collection_mode": "realtime",
+            "received_at": "2026-09-10T02:57:11.527514+00:00"
+          },
+          "keys": [
+            "run_id",
+            "sequence",
+            "received_at_ns",
+            "source_timestamp_ms",
+            "provider",
+            "product",
+            "station_id",
+            "temperature_c",
+            "latency_ms",
+            "raw",
+            "collection_mode",
+            "received_at"
+          ],
+          "products": [
+            "latest_observation",
+            "wrh_timeseries_observation"
+          ]
+        }
+      ],
+      "limitations": "Only specified byte ranges; diagnostic loops may discard boundary fragments, not a production ingestion behavior or whole-archive audit"
+    },
+    {
+      "id": "SAMPLE02",
+      "kind": "bounded_local_sample",
+      "command": ".venv\\Scripts\\python.exe -B - (in-memory JSON diagnostic, stdin script)",
+      "tool_chunk": "52737c",
+      "exit_code": 0,
+      "at": "2026-09-10T02:59:29.689224+00:00",
+      "samples": [
+        {
+          "path": "data/raw/weather_daemon/2026-09-10/events.jsonl",
+          "offset": 0,
+          "bytes": 4194304,
+          "size": 11068467,
+          "inode": 2109092000492953000,
+          "mtime_ns": 1789009031527894000,
+          "sha256_range": "d445d967ca99e0e4501d46ff9d42a93def92ab6f69c1065fe16e035a241a8c86",
+          "stable": true,
+          "observations": [
+            {
+              "type": "forecast",
+              "run_id": "dce60e51-02f7-493c-834d-df3ced93a0fc",
+              "sequence": 7904,
+              "receipt": "2026-09-10T01:04:21.693453+00:00",
+              "source_ms": null,
+              "raw_keys": [
+                "latitude",
+                "longitude",
+                "timezone",
+                "models",
+                "blended",
+                "source_payload"
+              ],
+              "source_payload_keys": [
+                "latitude",
+                "longitude",
+                "generationtime_ms",
+                "utc_offset_seconds",
+                "timezone",
+                "timezone_abbreviation",
+                "elevation",
+                "hourly_units",
+                "hourly"
+              ],
+              "models": {
+                "gfs": {
+                  "model": "gfs_seamless",
+                  "keys": [
+                    "model",
+                    "latitude",
+                    "longitude",
+                    "timezone",
+                    "temperature_unit",
+                    "time",
+                    "temperature_2m"
+                  ],
+                  "valid_first": "2026-09-09T00:00",
+                  "valid_last": "2026-09-10T23:00"
+                },
+                "icon": {
+                  "model": "icon_seamless",
+                  "keys": [
+                    "model",
+                    "latitude",
+                    "longitude",
+                    "timezone",
+                    "temperature_unit",
+                    "time",
+                    "temperature_2m"
+                  ],
+                  "valid_first": "2026-09-09T00:00",
+                  "valid_last": "2026-09-10T23:00"
+                },
+                "gem": {
+                  "model": "gem_seamless",
+                  "keys": [
+                    "model",
+                    "latitude",
+                    "longitude",
+                    "timezone",
+                    "temperature_unit",
+                    "time",
+                    "temperature_2m"
+                  ],
+                  "valid_first": "2026-09-09T00:00",
+                  "valid_last": "2026-09-10T23:00"
+                }
+              },
+              "vintage_diagnostic": "UNKNOWN_FIXED_FORECAST_VINTAGE"
+            }
+          ],
+          "parsed_rows": 359,
+          "products": [
+            "latest_observation",
+            "metar",
+            "multi_model_deterministic_forecast",
+            "taf",
+            "wrh_timeseries_observation"
+          ]
+        },
+        {
+          "path": "data/raw/weather_daemon/2026-09-09/events.jsonl",
+          "offset": 0,
+          "bytes": 4194304,
+          "size": 53041004,
+          "inode": 2905947659560820000,
+          "mtime_ns": 1788998381923222800,
+          "sha256_range": "9313811590375ca0bd58b780efd931185c2b08433cb283a7c6a98597931caad9",
+          "stable": true,
+          "observations": [
+            {
+              "type": "forecast",
+              "run_id": "dce60e51-02f7-493c-834d-df3ced93a0fc",
+              "sequence": 2,
+              "receipt": "2026-09-09T10:04:17.437579+00:00",
+              "source_ms": null,
+              "raw_keys": [
+                "latitude",
+                "longitude",
+                "timezone",
+                "models",
+                "blended",
+                "source_payload"
+              ],
+              "source_payload_keys": [
+                "latitude",
+                "longitude",
+                "generationtime_ms",
+                "utc_offset_seconds",
+                "timezone",
+                "timezone_abbreviation",
+                "elevation",
+                "hourly_units",
+                "hourly"
+              ],
+              "models": {
+                "gfs": {
+                  "model": "gfs_seamless",
+                  "keys": [
+                    "model",
+                    "latitude",
+                    "longitude",
+                    "timezone",
+                    "temperature_unit",
+                    "time",
+                    "temperature_2m"
+                  ],
+                  "valid_first": "2026-09-09T00:00",
+                  "valid_last": "2026-09-10T23:00"
+                },
+                "icon": {
+                  "model": "icon_seamless",
+                  "keys": [
+                    "model",
+                    "latitude",
+                    "longitude",
+                    "timezone",
+                    "temperature_unit",
+                    "time",
+                    "temperature_2m"
+                  ],
+                  "valid_first": "2026-09-09T00:00",
+                  "valid_last": "2026-09-10T23:00"
+                },
+                "gem": {
+                  "model": "gem_seamless",
+                  "keys": [
+                    "model",
+                    "latitude",
+                    "longitude",
+                    "timezone",
+                    "temperature_unit",
+                    "time",
+                    "temperature_2m"
+                  ],
+                  "valid_first": "2026-09-09T00:00",
+                  "valid_last": "2026-09-10T23:00"
+                }
+              },
+              "vintage_diagnostic": "UNKNOWN_FIXED_FORECAST_VINTAGE"
+            }
+          ],
+          "parsed_rows": 340,
+          "products": [
+            "latest_observation",
+            "metar",
+            "multi_model_deterministic_forecast",
+            "taf",
+            "wrh_timeseries_observation"
+          ]
+        },
+        {
+          "path": "data/raw/polymarket_clob_websocket/2026-09-04/events.jsonl",
+          "offset": 0,
+          "bytes": 4194304,
+          "size": 33612898,
+          "inode": 999236167322831900,
+          "mtime_ns": 1788522320811769000,
+          "sha256_range": "8076020d7787e4c74371ae199d7614277ff1383a52474d5223333fa274632b95",
+          "stable": true,
+          "observations": [],
+          "parsed_rows": 1082,
+          "products": [
+            "new_market"
+          ]
+        },
+        {
+          "path": "data\\public_trades\\highest-temperature-in-atlanta-on-august-24-2026.json",
+          "offset": 0,
+          "bytes": 634705,
+          "size": 634705,
+          "inode": 828662331436178400,
+          "mtime_ns": 1787816694945985300,
+          "sha256_range": "e45f411fa637f42998786c26a1d3bc4e9510085458a0deecec0b00567d91bce6",
+          "stable": true,
+          "keys": [
+            "schema_version",
+            "fetched_at",
+            "source",
+            "event_slug",
+            "condition_ids",
+            "snapshot_asset_ids",
+            "snapshot_token_count",
+            "depth_coverage",
+            "start",
+            "end",
+            "taker_only",
+            "tape_semantics",
+            "collection_status",
+            "trade_count",
+            "fetched_trade_count",
+            "trade_asset_intersection_count",
+            "trade_asset_intersection",
+            "unmatched_snapshot_assets",
+            "trades",
+            "fetched_ranges"
+          ],
+          "rows": 925,
+          "first_row_keys": [
+            "proxy_wallet",
+            "asset_id",
+            "condition_id",
+            "event_slug",
+            "market_slug",
+            "outcome",
+            "side",
+            "size",
+            "price",
+            "timestamp",
+            "transaction_hash"
+          ],
+          "first_time": "2026-08-24T10:36:51+00:00",
+          "last_time": "2026-08-25T04:48:28+00:00",
+          "receipt_contract": null,
+          "journal_exists": false,
+          "receipt_rows": 0
+        },
+        {
+          "path": "data\\public_trades\\highest-temperature-in-atlanta-on-august-25-2026.json",
+          "offset": 0,
+          "bytes": 536454,
+          "size": 536454,
+          "inode": 461618961805483100,
+          "mtime_ns": 1787816698957352700,
+          "sha256_range": "3923a7a84de8db5b05685d2177fc4a80491f95738c4d79094d45e8c3421fc892",
+          "stable": true,
+          "keys": [
+            "schema_version",
+            "fetched_at",
+            "source",
+            "event_slug",
+            "condition_ids",
+            "snapshot_asset_ids",
+            "snapshot_token_count",
+            "depth_coverage",
+            "start",
+            "end",
+            "taker_only",
+            "tape_semantics",
+            "collection_status",
+            "trade_count",
+            "fetched_trade_count",
+            "trade_asset_intersection_count",
+            "trade_asset_intersection",
+            "unmatched_snapshot_assets",
+            "trades",
+            "fetched_ranges"
+          ],
+          "rows": 778,
+          "first_row_keys": [
+            "proxy_wallet",
+            "asset_id",
+            "condition_id",
+            "event_slug",
+            "market_slug",
+            "outcome",
+            "side",
+            "size",
+            "price",
+            "timestamp",
+            "transaction_hash"
+          ],
+          "first_time": "2026-08-24T13:45:03+00:00",
+          "last_time": "2026-08-26T03:07:06+00:00",
+          "receipt_contract": null,
+          "journal_exists": false,
+          "receipt_rows": 0
+        },
+        {
+          "path": "data\\public_trades\\highest-temperature-in-atlanta-on-august-26-2026.json",
+          "offset": 0,
+          "bytes": 847505,
+          "size": 847505,
+          "inode": 373798769071758400,
+          "mtime_ns": 1787816708020151000,
+          "sha256_range": "355e3fb38efb60885f5714a10c2015a7ef55eb0257ab59b398a077f2288a5bd5",
+          "stable": true,
+          "keys": [
+            "schema_version",
+            "fetched_at",
+            "source",
+            "event_slug",
+            "condition_ids",
+            "snapshot_asset_ids",
+            "snapshot_token_count",
+            "depth_coverage",
+            "start",
+            "end",
+            "taker_only",
+            "tape_semantics",
+            "collection_status",
+            "trade_count",
+            "fetched_trade_count",
+            "trade_asset_intersection_count",
+            "trade_asset_intersection",
+            "unmatched_snapshot_assets",
+            "trades",
+            "fetched_ranges"
+          ],
+          "rows": 1242,
+          "first_row_keys": [
+            "proxy_wallet",
+            "asset_id",
+            "condition_id",
+            "event_slug",
+            "market_slug",
+            "outcome",
+            "side",
+            "size",
+            "price",
+            "timestamp",
+            "transaction_hash"
+          ],
+          "first_time": "2026-08-25T04:01:04+00:00",
+          "last_time": "2026-08-27T04:22:54+00:00",
+          "receipt_contract": null,
+          "journal_exists": false,
+          "receipt_rows": 0
+        }
+      ],
+      "limitations": "Only specified byte ranges; diagnostic loops may discard boundary fragments, not a production ingestion behavior or whole-archive audit"
+    },
+    {
+      "id": "SAMPLE03",
+      "kind": "bounded_local_sample",
+      "command": ".venv\\Scripts\\python.exe -B - (in-memory JSON diagnostic, stdin script)",
+      "tool_chunk": "d32223",
+      "exit_code": 0,
+      "at": "2026-09-10T03:00:34.647018+00:00",
+      "files": [
+        {
+          "path": "data/runtime/shadow_spread_cursor_v2_token_scoped.json",
+          "offset": 0,
+          "bytes": 3076370,
+          "size": 3076370,
+          "inode": 7640919717787471000,
+          "mtime_ns": 1788522328585957400,
+          "sha256_range": "c8b6023c647878936639f88568a972bb2626857777799f8a223912719a6c05fd",
+          "stable": true,
+          "keys": [
+            "execution_enabled",
+            "generation",
+            "pair_last_emitted",
+            "pair_latest",
+            "restart_count",
+            "runtime_status_schema_version",
+            "schema_version",
+            "sources",
+            "status_checksum_sha256",
+            "status_sequence",
+            "updated_at"
+          ],
+          "schema_version": 1,
+          "sources_count": 58,
+          "missing_prefix": 58,
+          "nonzero": 58,
+          "position_example": [
+            "D:\\poly\\data\\raw\\polymarket_book_checkpoints\\2026-08-24\\events.jsonl.gz",
+            {
+              "line": 0,
+              "offset": 85049894,
+              "skip_existing_gzip": true
+            }
+          ],
+          "existing_reader_result": "UNKNOWN_ARCHIVE_PREFIX"
+        },
+        {
+          "path": "data/runtime/shadow_spread_status_v2_token_scoped.json",
+          "offset": 0,
+          "bytes": 152760,
+          "size": 152760,
+          "inode": 2397885326598082000,
+          "mtime_ns": 1788522328347595000,
+          "sha256_range": "35daa6cd3e10d30525c665a652fc40546c88b9b412068be5e647b1dbe529d82c",
+          "stable": true,
+          "keys": [
+            "active_order_ids",
+            "active_orders",
+            "checked_at",
+            "cumulative_buy_cost_usd",
+            "cursor",
+            "cursor_path",
+            "cursor_sources",
+            "cycle_count",
+            "data_coverage",
+            "discrepancies",
+            "discrepancy_count",
+            "emergency_taker_exit_pnl_usd",
+            "execution_dependency_scan",
+            "execution_enabled",
+            "fees_usd",
+            "fill_count",
+            "halt_reason",
+            "halted",
+            "heartbeat",
+            "inventory_cost_usd",
+            "inventory_shares",
+            "last_error",
+            "last_market_event",
+            "last_signal_event",
+            "last_trade_event",
+            "last_upstream_status",
+            "last_weather_event",
+            "ledger_order_count",
+            "ledger_schema_version",
+            "legacy_invalid_order_count",
+            "legacy_ledger_read_only",
+            "limitations",
+            "pid",
+            "pnl_status",
+            "portfolio_count",
+            "realized_pnl_usd",
+            "rebuild_count",
+            "round_trip_count",
+            "runtime_mode",
+            "runtime_status_schema_version",
+            "schema_version",
+            "started_at",
+            "state",
+            "station_day_budget_mode",
+            "station_day_budgets",
+            "status_checksum_sha256",
+            "status_sequence",
+            "strategy_version",
+            "supervised",
+            "token_portfolios",
+            "updated_at",
+            "upstream_maintenance"
+          ],
+          "summary": {
+            "heartbeat": "2026-09-04T11:45:27.999428+00:00",
+            "pid": 8344,
+            "active_orders": 3,
+            "inventory_shares": "21.35",
+            "discrepancy_count": 0
+          }
+        },
+        {
+          "path": "data/runtime/weather_daemon_status.json",
+          "offset": 0,
+          "bytes": 19988,
+          "size": 19988,
+          "inode": 329607197728185900,
+          "mtime_ns": 1789009234477848600,
+          "sha256_range": "eba6ec679a53786bcc0f1499767f398f80875ea97635bcf0b427ef4c47d8d4a4",
+          "stable": true,
+          "keys": [
+            "base_state",
+            "errors",
+            "events",
+            "heartbeat",
+            "http_pool_accounting_gap_degraded_threshold",
+            "http_pool_health",
+            "intervals_seconds",
+            "last_error",
+            "last_event_at",
+            "last_new_observation_age_seconds",
+            "last_new_observation_at",
+            "last_success_age_seconds",
+            "last_successful_request_at",
+            "model_weights_by_station",
+            "new_observation_stall_threshold_seconds",
+            "pid",
+            "products",
+            "queue_depth",
+            "queue_high_water",
+            "read_only",
+            "recent_error_count_5m",
+            "recent_error_rate_5m",
+            "recent_request_count_5m",
+            "requests",
+            "rows_written",
+            "run_id",
+            "runtime_status_schema_version",
+            "started_at",
+            "state",
+            "station_id",
+            "station_ids",
+            "stations",
+            "status_checksum_sha256",
+            "status_sequence",
+            "updated_at",
+            "writer"
+          ],
+          "summary": {
+            "heartbeat": "2026-09-10T03:00:34.475191+00:00",
+            "pid": 17944,
+            "run_id": "dce60e51-02f7-493c-834d-df3ced93a0fc",
+            "writer": {
+              "configured_batch_size": 16,
+              "database": {
+                "config": {
+                  "max_temp_directory_size": "4GB",
+                  "memory_limit": "256MB",
+                  "temp_directory": "D:\\poly\\data\\tmp\\duckdb-weather",
+                  "threads": "1"
+                },
+                "database": {
+                  "exists": true,
+                  "mtime_at": "2026-09-09T23:28:47.543494+00:00",
+                  "size_bytes": 1420570624
+                },
+                "last_database_error": null,
+                "last_successful_commit_at": "2026-09-10T02:59:49.151935+00:00",
+                "last_successful_commit_rows": 1,
+                "last_successful_write_at": "2026-09-10T02:59:49.151935+00:00",
+                "last_successful_write_rows": 1,
+                "path": "D:\\poly\\data\\weather_stream.duckdb",
+                "wal": {
+                  "exists": true,
+                  "mtime_at": "2026-09-10T02:59:49.148989+00:00",
+                  "size_bytes": 13074136
+                },
+                "wal_path": "D:\\poly\\data\\weather_stream.duckdb.wal",
+                "write_count": 5166
+              },
+              "process_memory": {
+                "reason": "GetProcessMemoryInfo unavailable",
+                "supported": false
+              },
+              "raw_batch_bytes": 12889,
+              "raw_batch_rows": 1
+            }
+          }
+        },
+        {
+          "path": "data/raw/polymarket_book_checkpoints/2026-09-03/events.jsonl",
+          "offset": 2872251,
+          "bytes": 1048576,
+          "size": 3920827,
+          "inode": 844424930487939,
+          "mtime_ns": 1788436844414214100,
+          "sha256_range": "7502ce515d320f9376a85c8a6e5e81d02b356fc9714bc249edbc11e21e13b311",
+          "stable": true,
+          "rows": 416,
+          "last": {
+            "run_id": "8c77ab19-7283-4868-a6de-386770e7f5fd",
+            "sequence": 285096,
+            "received_at": "2026-09-03T12:00:44.414182+00:00",
+            "source_timestamp_ms": 1788436764506,
+            "event_type": "book",
+            "book_complete": true,
+            "upstream_status": "normal"
+          }
+        },
+        {
+          "path": "data/raw/polymarket_clob_websocket/2026-09-03/events.jsonl",
+          "offset": 76750556,
+          "bytes": 1048576,
+          "size": 77799132,
+          "inode": 18295873486548610,
+          "mtime_ns": 1788479886672928500,
+          "sha256_range": "45eddf6585fef05684679802282da88953e3090e0c75bf14767427ad18b5fe20",
+          "stable": true,
+          "rows": 297,
+          "last": {
+            "run_id": "8c77ab19-7283-4868-a6de-386770e7f5fd",
+            "sequence": 296672,
+            "received_at": "2026-09-03T23:58:06.672916+00:00",
+            "source_timestamp_ms": 1788479886185,
+            "event_type": "new_market",
+            "book_complete": false,
+            "upstream_status": "normal"
+          }
+        }
+      ],
+      "limitations": "Only specified byte ranges; diagnostic loops may discard boundary fragments, not a production ingestion behavior or whole-archive audit"
+    },
+    {
+      "id": "SAMPLE04",
+      "kind": "bounded_local_sample",
+      "command": ".venv\\Scripts\\python.exe -B - (in-memory JSON diagnostic, stdin script)",
+      "tool_chunk": "ae1ef5",
+      "exit_code": 0,
+      "at": "2026-09-10T03:01:37.441972+00:00",
+      "files": [
+        {
+          "path": "data/raw/polymarket_clob_websocket/2026-09-03/events.jsonl",
+          "offset": 0,
+          "bytes": 4194304,
+          "size": 77799132,
+          "mtime_ns": 1788479886672928500,
+          "inode": 18295873486548610,
+          "sha256_range": "3f6811a92ef75ba070ab497d6b70a2741d435925663b8d9629dea4bac0a1deaa",
+          "stable": true,
+          "parsed_rows": 2609,
+          "last_selected": {
+            "run_id": "b5ac0361-10ac-400e-994f-5f5060f9799e",
+            "sequence": 37801168,
+            "received_at": "2026-09-03T00:09:58.061835+00:00",
+            "source_timestamp_ms": 1788394197948,
+            "event_type": "price_change"
+          },
+          "row_keys": [
+            "run_id",
+            "sequence",
+            "received_at",
+            "received_at_ns",
+            "source_timestamp_ms",
+            "event_type",
+            "asset_id",
+            "market_id",
+            "market_slug",
+            "best_bid",
+            "best_ask",
+            "last_trade_price",
+            "bids",
+            "asks",
+            "book_complete",
+            "upstream_status",
+            "upstream_incident_id",
+            "raw"
+          ],
+          "ws_sample": {
+            "receipt": "2026-09-03T00:00:05.877170+00:00",
+            "source_ms": 1788393605579,
+            "run_id": "b5ac0361-10ac-400e-994f-5f5060f9799e",
+            "sequence": 37778785,
+            "raw_keys": [
+              "market",
+              "asset_id",
+              "price",
+              "size",
+              "fee_rate_bps",
+              "side",
+              "timestamp",
+              "event_type",
+              "transaction_hash"
+            ]
+          }
+        },
+        {
+          "path": "data/raw/weather_daemon/2026-09-10/events.jsonl",
+          "offset": 10935238,
+          "bytes": 262144,
+          "size": 11197382,
+          "mtime_ns": 1789009268422301400,
+          "inode": 2109092000492953000,
+          "sha256_range": "5f65834d1dff8848cc5ee454d06f4c378bcc7353643e1b9e9be1159b7557b195",
+          "stable": true,
+          "parsed_rows": 24,
+          "last_selected": {
+            "run_id": "dce60e51-02f7-493c-834d-df3ced93a0fc",
+            "sequence": 8929,
+            "source_timestamp_ms": 1789008660000,
+            "product": "wrh_timeseries_observation",
+            "received_at": "2026-09-10T03:01:05.981130+00:00"
+          },
+          "row_keys": [
+            "run_id",
+            "sequence",
+            "received_at_ns",
+            "source_timestamp_ms",
+            "provider",
+            "product",
+            "station_id",
+            "temperature_c",
+            "latency_ms",
+            "raw",
+            "collection_mode",
+            "received_at"
+          ]
+        },
+        {
+          "path": "data/raw/shadow_orders/shadow_orders_v2_token_scoped.jsonl",
+          "offset": 5751139,
+          "bytes": 262144,
+          "size": 6013283,
+          "mtime_ns": 1788378918173173500,
+          "inode": 591660401045806300,
+          "sha256_range": "1cfa8e142e0739d2aee4624fcc2b773a145639edf4ae788a3cc3454bda893f3c",
+          "stable": true,
+          "parsed_rows": 91,
+          "last_selected": {},
+          "row_keys": [
+            "schema_version",
+            "record_type",
+            "recorded_at",
+            "event_key",
+            "portfolio_key",
+            "order"
+          ]
+        }
+      ],
+      "v2_summary": {
+        "inventory_shares": "21.35",
+        "inventory_cost_usd": "9.6075",
+        "fill_count": 3,
+        "active_orders": 3,
+        "round_trip_count": 0,
+        "pnl_status": "diagnostic_token_scoped_shadow_ledger",
+        "realized_pnl_usd": "0",
+        "ledger_order_count": 548,
+        "discrepancy_count": 0
+      },
+      "limitations": "Only specified byte ranges; diagnostic loops may discard boundary fragments, not a production ingestion behavior or whole-archive audit"
+    },
+    {
+      "id": "LIMIT01",
+      "kind": "limitations",
+      "items": [
+        "No business API probes or subscriptions",
+        "No database opened; WAL metadata from status only",
+        "No full ledger/account reconstruction",
+        "No large gzip decompression or full raw scan",
+        "No paired WS/API match experiment",
+        "Spencer upstream fetch failed twice; no current source qualification",
+        "Nautilus adapter source search returned no files; installed directory exists, source availability unverified",
+        "No exact historical source revision inferred from local HEAD",
+        "Runtime memory API unavailable is UNKNOWN not zero",
+        "Initial guessed source filenames were absent; resolved definitions through rg before relying on them",
+        "Source web paths for Polymarket resources/subgraph and old LICENSE failed; failures are retrieval limitations, not absence of all alternative capability"
+      ]
+    },
+    {
+      "id": "G02",
+      "kind": "delivery_validation",
+      "at": "2026-09-10T03:23:06.6108802+00:00",
+      "commands": [
+        {
+          "command": [
+            "git",
+            "-c",
+            "safe.directory=D:/poly",
+            "status",
+            "--short"
+          ],
+          "exit_code": 0,
+          "stdout": "?? .claude/\n?? CODEX_SOURCE_CAPABILITY_AND_COLLECTION_RECOVERY_TASK.md\n?? docs/collection_recovery_plan_20260910.md\n?? docs/source_capability_audit_20260910.md\n?? docs/source_recovery_evidence_20260910.json\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "git",
+            "-c",
+            "safe.directory=D:/poly",
+            "diff",
+            "--check"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "git",
+            "-c",
+            "safe.directory=D:/poly",
+            "status",
+            "--short",
+            "--",
+            "data"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "git",
+            "-c",
+            "safe.directory=D:/poly",
+            "diff",
+            "--stat",
+            "--",
+            "data"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "git",
+            "-c",
+            "safe.directory=D:/poly",
+            "rev-parse",
+            "HEAD"
+          ],
+          "exit_code": 0,
+          "stdout": "2c8d9b9d91504d579912985aad33ffd01bc5011a\n",
+          "stderr": ""
+        }
+      ],
+      "untracked_document_checks": {
+        "json_parse": true,
+        "format_local_links_evidence_ids_errors": []
+      },
+      "post_followup_validation": {
+        "json_parse": true,
+        "evidence_count": 39,
+        "evidence_ids_unique": true,
+        "markdown_trailing_whitespace_errors": [],
+        "local_link_errors": [],
+        "unknown_evidence_id_errors": []
+      },
+      "selected_input_comparisons": [
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\logs\\daemons\\market-supervisor.runner.log",
+          "offset": 471670,
+          "bytes": 8192,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\logs\\daemons\\market-supervisor.stderr.log",
+          "offset": 0,
+          "bytes": 58,
+          "stable_during_final_read": true,
+          "same_range_hash": false,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\logs\\daemons\\weather-stream.runner.log",
+          "offset": 0,
+          "bytes": 1928,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\logs\\daemons\\weather-stream.stderr.log",
+          "offset": 0,
+          "bytes": 0,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\logs\\daemons\\signal-engine.runner.log",
+          "offset": 0,
+          "bytes": 3313,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\logs\\daemons\\signal-engine.stderr.log",
+          "offset": 0,
+          "bytes": 0,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\logs\\daemons\\shadow-spread-engine.runner.log",
+          "offset": 0,
+          "bytes": 2781,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\logs\\daemons\\shadow-spread-engine.stderr.log",
+          "offset": 0,
+          "bytes": 0,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\raw\\polymarket_clob_websocket\\2026-09-04\\events.jsonl",
+          "offset": 33350754,
+          "bytes": 262144,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE01",
+          "path": "data\\raw\\weather_daemon\\2026-09-10\\events.jsonl",
+          "offset": 10806323,
+          "bytes": 262144,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE02",
+          "path": "data/raw/weather_daemon/2026-09-10/events.jsonl",
+          "offset": 0,
+          "bytes": 4194304,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE02",
+          "path": "data/raw/weather_daemon/2026-09-09/events.jsonl",
+          "offset": 0,
+          "bytes": 4194304,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE02",
+          "path": "data/raw/polymarket_clob_websocket/2026-09-04/events.jsonl",
+          "offset": 0,
+          "bytes": 4194304,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE02",
+          "path": "data\\public_trades\\highest-temperature-in-atlanta-on-august-24-2026.json",
+          "offset": 0,
+          "bytes": 634705,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE02",
+          "path": "data\\public_trades\\highest-temperature-in-atlanta-on-august-25-2026.json",
+          "offset": 0,
+          "bytes": 536454,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE02",
+          "path": "data\\public_trades\\highest-temperature-in-atlanta-on-august-26-2026.json",
+          "offset": 0,
+          "bytes": 847505,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE03",
+          "path": "data/runtime/shadow_spread_cursor_v2_token_scoped.json",
+          "offset": 0,
+          "bytes": 3076370,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE03",
+          "path": "data/runtime/shadow_spread_status_v2_token_scoped.json",
+          "offset": 0,
+          "bytes": 152760,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE03",
+          "path": "data/runtime/weather_daemon_status.json",
+          "offset": 0,
+          "bytes": 19988,
+          "stable_during_final_read": true,
+          "same_range_hash": false,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE03",
+          "path": "data/raw/polymarket_book_checkpoints/2026-09-03/events.jsonl",
+          "offset": 2872251,
+          "bytes": 1048576,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE03",
+          "path": "data/raw/polymarket_clob_websocket/2026-09-03/events.jsonl",
+          "offset": 76750556,
+          "bytes": 1048576,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE04",
+          "path": "data/raw/polymarket_clob_websocket/2026-09-03/events.jsonl",
+          "offset": 0,
+          "bytes": 4194304,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE04",
+          "path": "data/raw/weather_daemon/2026-09-10/events.jsonl",
+          "offset": 10935238,
+          "bytes": 262144,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        },
+        {
+          "evidence": "SAMPLE04",
+          "path": "data/raw/shadow_orders/shadow_orders_v2_token_scoped.jsonl",
+          "offset": 5751139,
+          "bytes": 262144,
+          "stable_during_final_read": true,
+          "same_range_hash": true,
+          "same_whole_file_metadata": false
+        }
+      ],
+      "selected_input_comparison_interpretation": {
+        "market_stderr": "The original 58-byte range changed because the runner rotated or overwrote the log; SAMPLE01 remains only an as-of sample and R04 records the later artifact.",
+        "weather_status": "The status body changed under the live weather writer; each bounded read was stable during that read, but no cross-time immutable identity is claimed."
+      },
+      "limitations": "Empty Git data output is not an ignored-data audit. Metadata drift can be external writers. Same bounded-range hash does not prove whole file immutability. No pytest executed."
+    }
+  ],
+  "companion_source_paths": [
+    "src/poly_weather/cli.py",
+    "src/poly_weather/runtime_safety.py",
+    "src/poly_weather/business_readiness.py",
+    "src/poly_weather/trade_tape_analysis.py",
+    "src/poly_weather/shadow_runtime.py",
+    "src/poly_weather/signal_engine.py",
+    "src/poly_weather/information_clock.py",
+    "src/poly_weather/weather_market_join.py",
+    "src/poly_weather/adapters/open_meteo.py"
+  ],
+  "boundaries": {
+    "product_code_changed": false,
+    "tests_added": false,
+    "formal_data_written": false,
+    "daemon_operated": false,
+    "scheduler_operated": false,
+    "retention_run": false,
+    "paper_started": false,
+    "business_api_requests": 0,
+    "credentials_read": false,
+    "network_config_changed": false,
+    "dependencies_changed": false,
+    "commit": false,
+    "push": false
+  },
+  "formal_status": {
+    "state": "NOT_SEALED",
+    "N": 0,
+    "PnL": null,
+    "basis": "existing CURRENT_CONCLUSIONS.md; no new whole-formal-artifact audit"
+  },
+  "conclusions": {
+    "public_group_completeness": "UNSUPPORTED_GROUP_COMPLETENESS",
+    "old_tape_local_receipt": "unverified historical in three sampled files",
+    "sampled_forecast_vintage": "UNKNOWN_FIXED_FORECAST_VINTAGE",
+    "single_runs": "documented_pending_real_sample_validation",
+    "legacy_cursor": "58 nonzero / 58 missing prefix; first current-reader diagnostic UNKNOWN_ARCHIVE_PREFIX",
+    "recovery": "design only; attempt-scoped market startup diagnostics and retention/downstream isolation needed; weather left running"
+  },
+  "deliverable_fingerprints": {
+    "docs\\source_capability_audit_20260910.md": {
+      "sha256": "6570c68ff3f03a5bd96b58d286c23e8c1e5e5b30287ba6a33e2421156ae633d5",
+      "bytes": 19197
+    },
+    "docs\\collection_recovery_plan_20260910.md": {
+      "sha256": "73bf96885ac6ca0107563957ca9cb574a896957ae4f929f7a915d3ac17fc359c",
+      "bytes": 20841
+    }
+  },
+  "final_git_status": [
+    "?? .claude/",
+    "?? CODEX_SOURCE_CAPABILITY_AND_COLLECTION_RECOVERY_TASK.md",
+    "?? docs/collection_recovery_plan_20260910.md",
+    "?? docs/source_capability_audit_20260910.md",
+    "?? docs/source_recovery_evidence_20260910.json"
+  ],
+  "final_review_at": "2026-09-10T03:23:06.6108802+00:00"
+}

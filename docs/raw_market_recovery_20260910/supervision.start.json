@@ -1,0 +1,6 @@
+{
+    "minimum_continuous_seconds":  600,
+    "failure_limit":  3,
+    "deadline":  "2026-09-10T09:25:31.7004155Z",
+    "started_at":  "2026-09-10T08:55:31.7004155Z"
+}

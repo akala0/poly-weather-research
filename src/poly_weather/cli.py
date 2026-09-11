@@ -268,6 +268,43 @@ def _emit(payload: object) -> None:
     typer.echo(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
 
 
+MARKET_STARTUP_DIAGNOSTIC_PREFIX = "POLY_WEATHER_STARTUP_DIAGNOSTIC "
+
+
+def _emit_market_startup_diagnostic(
+    *,
+    attempt_id: str,
+    stage: str,
+    outcome: str,
+    exit_code: int | None,
+    raw_collection_recovery: bool,
+    terminal: bool,
+    details: Mapping[str, Any] | None = None,
+) -> None:
+    payload = {
+        "schema_version": 1,
+        "attempt_id": attempt_id,
+        "emitted_at": datetime.now(UTC).isoformat(),
+        "stage": stage,
+        "outcome": outcome,
+        "exit_code": exit_code,
+        "terminal": terminal,
+        "raw_collection_recovery": raw_collection_recovery,
+        "execution_enabled": False,
+        "details": dict(details or {}),
+    }
+    typer.echo(
+        MARKET_STARTUP_DIAGNOSTIC_PREFIX
+        + json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
+        err=True,
+    )
+
+
+def _market_startup_error_text(exc: Exception) -> str:
+    text = " ".join(str(exc).split())
+    return re.sub(r"https?://\S+", "<redacted-url>", text)[:500]
+
+
 def _read_json_with_retry(path: Path, *, attempts: int = 5) -> dict[str, Any]:
     for attempt in range(attempts):
         try:
@@ -1567,6 +1604,39 @@ def monitor(
         )
 
 
+@app.command("market-capture")
+def market_capture(
+    plan: Annotated[Path, typer.Option("--plan", help="Explicit bounded capture plan JSON.")],
+    capture_root: Annotated[
+        Path, typer.Option("--capture-root", help="Isolated root outside formal data.")
+    ],
+    enable_capture: Annotated[bool, typer.Option("--enable-capture")] = False,
+    config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
+) -> None:
+    """Opt-in finite raw capture; no DB, strategy admission or daemon recovery."""
+    # Check before reading files, constructing clients, locks or output directories.
+    if not enable_capture:
+        raise typer.BadParameter("capture disabled; explicit --enable-capture required")
+    from poly_weather.collection_capture import CapturePlan, run_capture
+
+    try:
+        if plan.stat().st_size > 65536:
+            raise ValueError("capture plan exceeds 64 KiB")
+        selected = CapturePlan.model_validate_json(plan.read_bytes())
+        result = asyncio.run(
+            run_capture(enabled=True, root=capture_root, plan=selected, registry_path=config)
+        )
+    except (ValueError, OSError) as exc:
+        typer.echo(f"Isolated capture rejected/failed: {type(exc).__name__}: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    except Exception as exc:
+        # Network/connector failures must be a bounded nonzero command result,
+        # without leaking URLs, payloads, or turning a failed capture into success.
+        typer.echo(f"Isolated capture failed: {type(exc).__name__}", err=True)
+        raise typer.Exit(code=2) from exc
+    _emit(result)
+
+
 @app.command("market-stream")
 def market_stream(
     event_slugs: Annotated[
@@ -1667,27 +1737,187 @@ def market_supervisor(
     ] = 300,
     config: Annotated[Path, typer.Option("--config")] = DEFAULT_CONFIG,
     data_dir: Annotated[Path, typer.Option()] = DEFAULT_DATA_DIR,
+    raw_collection_recovery: Annotated[
+        bool,
+        typer.Option(
+            "--raw-collection-recovery",
+            help=(
+                "Collect raw market data while automatic retention, database "
+                "CHECKPOINT/VACUUM, downstream publication, and downstream readiness "
+                "are disabled."
+            ),
+        ),
+    ] = False,
+    startup_attempt_id: Annotated[
+        str | None,
+        typer.Option(
+            "--startup-attempt-id",
+            help="Runner-owned identifier recorded in startup diagnostics and status.",
+        ),
+    ] = None,
 ) -> None:
     """Run fail-closed daily discovery plus hot WebSocket event rotation."""
-    registry = load_settlement_registry(config)
+    attempt_id = startup_attempt_id or "unmanaged"
+    if startup_attempt_id is not None and re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", startup_attempt_id
+    ) is None:
+        _emit_market_startup_diagnostic(
+            attempt_id="invalid",
+            stage="configuration",
+            outcome="rejected",
+            exit_code=2,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={"reason": "INVALID_STARTUP_ATTEMPT_ID"},
+        )
+        typer.echo("Invalid startup attempt identifier.", err=True)
+        raise typer.Exit(code=2)
+    if startup_attempt_id is None:
+        _emit_market_startup_diagnostic(
+            attempt_id=attempt_id,
+            stage="configuration",
+            outcome="rejected",
+            exit_code=2,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={"reason": "STARTUP_ATTEMPT_ID_REQUIRED"},
+        )
+        typer.echo("Market supervisor requires --startup-attempt-id.", err=True)
+        raise typer.Exit(code=2)
+    try:
+        registry = load_settlement_registry(config)
+    except Exception as exc:
+        _emit_market_startup_diagnostic(
+            attempt_id=attempt_id,
+            stage="configuration",
+            outcome="failed",
+            exit_code=2,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={
+                "error_type": type(exc).__name__,
+                "error": _market_startup_error_text(exc),
+            },
+        )
+        typer.echo(f"Market supervisor configuration failed: {type(exc).__name__}", err=True)
+        raise typer.Exit(code=2) from exc
     specs = tuple(spec for spec in registry.specs if spec.status is VerificationStatus.VERIFIED)
     if not specs:
+        _emit_market_startup_diagnostic(
+            attempt_id=attempt_id,
+            stage="configuration",
+            outcome="rejected",
+            exit_code=2,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={"reason": "NO_VERIFIED_SETTLEMENT_TEMPLATES"},
+        )
         typer.echo("No verified settlement templates are configured.", err=True)
         raise typer.Exit(code=2)
+    from poly_weather.settlement_diagnostics import SettlementDiagnostics
+
+    diagnostics = SettlementDiagnostics(data_dir, attempt_id)
     initial: dict[str, Any] = {}
-    with GammaClient() as gamma:
-        for spec in specs:
-            target = datetime.now(ZoneInfo(spec.timezone or "UTC")).date()
-            event = discover_event(gamma, spec, target)
-            if event is None:
-                continue
-            evidence = parse_settlement_evidence(event, registry_spec=spec)
-            verification = verify_settlement_evidence(evidence, spec)
-            if verification.passed:
-                initial[spec.key] = event
+    candidate_count = 0
+    no_candidate_count = 0
+    rejected_count = 0
+    try:
+        with GammaClient() as gamma:
+            for spec in specs:
+                target = datetime.now(ZoneInfo(spec.timezone or "UTC")).date()
+                diagnostics.begin(spec, target)
+                gamma.event_observer = diagnostics.observe
+                gamma.settlement_diagnostics = diagnostics
+                event = discover_event(gamma, spec, target)
+                if event is None:
+                    no_candidate_count += 1
+                    continue
+                candidate_count += 1
+                evidence, verification = diagnostics.evaluate(event, spec)
+                if verification is None:
+                    rejected_count += 1
+                    continue
+                if verification.passed:
+                    initial[spec.key] = event
+                else:
+                    rejected_count += 1
+    except httpx.TransportError as exc:
+        _emit_market_startup_diagnostic(
+            attempt_id=attempt_id,
+            stage="discovery_transport",
+            outcome="network_failed",
+            exit_code=3,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={
+                "error_type": type(exc).__name__,
+                "error": _market_startup_error_text(exc),
+            },
+        )
+        typer.echo(f"Market discovery transport failed: {type(exc).__name__}", err=True)
+        raise typer.Exit(code=3) from exc
+    except httpx.HTTPStatusError as exc:
+        _emit_market_startup_diagnostic(
+            attempt_id=attempt_id,
+            stage="discovery_http",
+            outcome="upstream_http_failed",
+            exit_code=3,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={
+                "error_type": type(exc).__name__,
+                "status_code": exc.response.status_code,
+            },
+        )
+        typer.echo(f"Market discovery HTTP failed: {exc.response.status_code}", err=True)
+        raise typer.Exit(code=3) from exc
+    except Exception as exc:
+        _emit_market_startup_diagnostic(
+            attempt_id=attempt_id,
+            stage="discovery_validation",
+            outcome="failed",
+            exit_code=4,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={
+                "error_type": type(exc).__name__,
+                "error": _market_startup_error_text(exc),
+            },
+        )
+        typer.echo(f"Market discovery validation failed: {type(exc).__name__}", err=True)
+        raise typer.Exit(code=4) from exc
     if not initial:
+        _emit_market_startup_diagnostic(
+            attempt_id=attempt_id,
+            stage="strict_verification",
+            outcome="rejected",
+            exit_code=2,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={
+                "verified_template_count": len(specs),
+                "candidate_count": candidate_count,
+                "no_candidate_count": no_candidate_count,
+                "rejected_count": rejected_count,
+                "verified_event_count": 0,
+            },
+        )
         typer.echo("No current events passed strict settlement verification.", err=True)
         raise typer.Exit(code=2)
+    _emit_market_startup_diagnostic(
+        attempt_id=attempt_id,
+        stage="strict_verification",
+        outcome="passed",
+        exit_code=None,
+        raw_collection_recovery=raw_collection_recovery,
+        terminal=False,
+        details={
+            "verified_template_count": len(specs),
+            "candidate_count": candidate_count,
+            "rejected_count": rejected_count,
+            "verified_event_count": len(initial),
+        },
+    )
     asset_slugs: dict[str, str] = {}
     asset_events: dict[str, str] = {}
     initial_policies: dict[str, EventArchivePolicy] = {}
@@ -1708,12 +1938,16 @@ def market_supervisor(
         asset_events=asset_events,
         event_policies=initial_policies,
         data_dir=data_dir,
+        raw_collection_recovery=raw_collection_recovery,
+        startup_attempt_id=startup_attempt_id,
     )
     supervisor = MarketEventSupervisor(
         specs=specs,
         bot=bot,
         data_dir=data_dir,
         discovery_interval_seconds=discovery_interval_seconds,
+        raw_collection_recovery=raw_collection_recovery,
+        startup_attempt_id=startup_attempt_id,
     )
 
     async def run_both() -> None:
@@ -1742,12 +1976,32 @@ def market_supervisor(
     except KeyboardInterrupt:
         typer.echo("Market supervisor interrupted by user.", err=True)
         return
+    except Exception as exc:
+        _emit_market_startup_diagnostic(
+            attempt_id=attempt_id,
+            stage="market_runtime",
+            outcome="failed",
+            exit_code=4,
+            raw_collection_recovery=raw_collection_recovery,
+            terminal=True,
+            details={
+                "error_type": type(exc).__name__,
+                "error": _market_startup_error_text(exc),
+            },
+        )
+        typer.echo(f"Market supervisor runtime failed: {type(exc).__name__}", err=True)
+        raise typer.Exit(code=4) from exc
     _emit(
         {
             "supervisor": asdict(supervisor.metrics),
             "market": asdict(bot.metrics),
             "active_events": [asdict(item) for item in supervisor.active.values()],
             "status_path": str(supervisor.status_path.resolve()),
+            "collection_mode": (
+                "raw_market_recovery" if raw_collection_recovery else "standard"
+            ),
+            "startup_attempt_id": startup_attempt_id,
+            "downstream_start_blocked": raw_collection_recovery,
             "execution_enabled": False,
         }
     )

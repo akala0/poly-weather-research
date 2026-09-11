@@ -1,0 +1,205 @@
+{
+  "station_id": "ZUUU",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Chengdu on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:28.848445+00:00",
+  "registry_expected": {
+    "key": "chengdu-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-chengdu-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "ZUUU",
+    "station_name": "Chengdu Shuangliu International Airport",
+    "latitude": 30.576,
+    "longitude": 103.95,
+    "timezone": "Asia/Shanghai",
+    "metric": "daily_high_temperature",
+    "unit": "celsius",
+    "bucket_width_degrees": 1,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=zuuu",
+    "ncei_station_id": null,
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": false,
+    "open_meteo_enabled": false,
+    "status": "verified",
+    "notes": "Verified against 2026-08-24 evidence SHA-256 c9aedb2cb947cce1daceffbd5bc5196cb7413b38fc30b4b49a1b282d4924ad79. NOAA AWC station metadata gives 30.576, 103.950. Open-Meteo returns a grid 6.53 km away, so forecast and calibration paths remain fail-closed until a suitable data source is configured."
+  },
+  "received_at": "2026-09-10T09:12:29.339452+00:00",
+  "status_code": 200,
+  "wire_sha256": "0fe2401f17e18012fc63a7eaa2f5da2e8699171fa92ac3fd9facbb7fa59a778c",
+  "wire_bytes": 53351,
+  "saved_response_sha256": "6370d65f92d6f9c43dbc6cf96d43eab2e191f0694bf33032e05bfe5dd9787a49",
+  "diagnosis": {
+    "candidate_count": 1,
+    "ambiguous": false,
+    "candidates": [
+      {
+        "event_id": "986734",
+        "event_slug": "highest-temperature-in-chengdu-on-september-10-2026",
+        "stage": "verification",
+        "parsed": {
+          "parser_version": "2",
+          "evidence_sha256": "999a9989e77acebbd5b046d355aa931a73df468b5043c87c143ac4493b0cb778",
+          "event_id": "986734",
+          "event_slug": "highest-temperature-in-chengdu-on-september-10-2026",
+          "title": "Highest temperature in Chengdu on September 10?",
+          "city": "Chengdu",
+          "target_date": "2026-09-10",
+          "station_id": "ZUUU",
+          "station_name": "Chengdu Shuangliu International Airport",
+          "timezone": "Asia/Shanghai",
+          "official_source_name": "NOAA Timeseries",
+          "official_source_url": "https://www.weather.gov/wrh/timeseries?site=zuuu",
+          "unit": "celsius",
+          "precision_degrees": "1",
+          "bucket_width_degrees": 1,
+          "observation_table": "Daily Observations",
+          "finalization_rule": "unknown",
+          "ignores_late_revisions": true,
+          "buckets": [
+            {
+              "market_id": "4356437",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-18corbelow",
+              "label": "Will the highest temperature in Chengdu be 18°C or below on September 10?",
+              "lower_f": null,
+              "upper_f": 18,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356438",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-19c",
+              "label": "Will the highest temperature in Chengdu be 19°C on September 10?",
+              "lower_f": 19,
+              "upper_f": 19,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356439",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-20c",
+              "label": "Will the highest temperature in Chengdu be 20°C on September 10?",
+              "lower_f": 20,
+              "upper_f": 20,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356440",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-21c",
+              "label": "Will the highest temperature in Chengdu be 21°C on September 10?",
+              "lower_f": 21,
+              "upper_f": 21,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356441",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-22c",
+              "label": "Will the highest temperature in Chengdu be 22°C on September 10?",
+              "lower_f": 22,
+              "upper_f": 22,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356442",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-23c",
+              "label": "Will the highest temperature in Chengdu be 23°C on September 10?",
+              "lower_f": 23,
+              "upper_f": 23,
+              "unit": "celsius",
+              "market_probability": "0.955"
+            },
+            {
+              "market_id": "4356443",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-24c",
+              "label": "Will the highest temperature in Chengdu be 24°C on September 10?",
+              "lower_f": 24,
+              "upper_f": 24,
+              "unit": "celsius",
+              "market_probability": "0.045"
+            },
+            {
+              "market_id": "4356444",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-25c",
+              "label": "Will the highest temperature in Chengdu be 25°C on September 10?",
+              "lower_f": 25,
+              "upper_f": 25,
+              "unit": "celsius",
+              "market_probability": "0.004"
+            },
+            {
+              "market_id": "4356445",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-26c",
+              "label": "Will the highest temperature in Chengdu be 26°C on September 10?",
+              "lower_f": 26,
+              "upper_f": 26,
+              "unit": "celsius",
+              "market_probability": "0.001"
+            },
+            {
+              "market_id": "4356446",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-27c",
+              "label": "Will the highest temperature in Chengdu be 27°C on September 10?",
+              "lower_f": 27,
+              "upper_f": 27,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4356447",
+              "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-28corhigher",
+              "label": "Will the highest temperature in Chengdu be 28°C or higher on September 10?",
+              "lower_f": 28,
+              "upper_f": null,
+              "unit": "celsius",
+              "market_probability": "0.0005"
+            }
+          ],
+          "parse_status": "complete",
+          "missing_fields": []
+        },
+        "verification": {
+          "settlement_key": "chengdu-daily-high-research-seed",
+          "evidence_sha256": "999a9989e77acebbd5b046d355aa931a73df468b5043c87c143ac4493b0cb778",
+          "passed": false,
+          "checks": {
+            "parse_complete": true,
+            "registry_verified": true,
+            "slug_exact": true,
+            "station_exact": true,
+            "station_name_exact": true,
+            "timezone_exact": true,
+            "source_exact": true,
+            "whole_degree_precision": true,
+            "unit_exact": true,
+            "bucket_width_exact": true,
+            "finalization_known": false,
+            "finalization_exact": false,
+            "late_revision_cutoff": true,
+            "late_revision_exact": true
+          },
+          "failures": [
+            "finalization_known",
+            "finalization_exact"
+          ],
+          "tradeable": false,
+          "reason": "failed: finalization_known, finalization_exact"
+        }
+      }
+    ]
+  },
+  "saved_replay_matches_original": true
+}

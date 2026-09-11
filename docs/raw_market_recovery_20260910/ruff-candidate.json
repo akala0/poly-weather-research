@@ -1,0 +1,5 @@
+{
+  "excluded": "Existing unrelated .claude worktree and evidence helpers",
+  "exit_code": 0,
+  "command": ".venv/Scripts/ruff.exe check src tests scripts --output-format concise"
+}

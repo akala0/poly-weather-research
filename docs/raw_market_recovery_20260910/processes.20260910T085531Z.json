@@ -1,0 +1,37 @@
+[
+    {
+        "ProcessId":  4524,
+        "ParentProcessId":  2112,
+        "CreationDate":  "\/Date(1788948243927)\/",
+        "ExecutablePath":  "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "CommandLine":  "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName weather-stream -ProjectRoot D:\\poly"
+    },
+    {
+        "ProcessId":  17784,
+        "ParentProcessId":  4524,
+        "CreationDate":  "\/Date(1788948253430)\/",
+        "ExecutablePath":  "D:\\poly\\.venv\\Scripts\\poly-weather.exe",
+        "CommandLine":  "\"D:\\poly\\.venv\\Scripts\\poly-weather.exe\" weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed chicago-daily-high-research-seed miami-daily-high-research-seed atlanta-daily-high-research-seed dallas-daily-high-research-seed houston-daily-high-research-seed seattle-daily-high-research-seed chongqing-daily-high-research-seed chengdu-daily-high-research-seed --runtime 0 --config D:\\poly\\configs\\settlements.json --data-dir D:\\poly\\data "
+    },
+    {
+        "ProcessId":  17912,
+        "ParentProcessId":  17784,
+        "CreationDate":  "\/Date(1788948253490)\/",
+        "ExecutablePath":  "D:\\poly\\.venv\\Scripts\\python.exe",
+        "CommandLine":  "\"D:\\poly\\.venv\\Scripts\\python.exe\" \"D:\\poly\\.venv\\Scripts\\poly-weather.exe\" weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed chicago-daily-high-research-seed miami-daily-high-research-seed atlanta-daily-high-research-seed dallas-daily-high-research-seed houston-daily-high-research-seed seattle-daily-high-research-seed chongqing-daily-high-research-seed chengdu-daily-high-research-seed --runtime 0 --config D:\\poly\\configs\\settlements.json --data-dir D:\\poly\\data "
+    },
+    {
+        "ProcessId":  17944,
+        "ParentProcessId":  17912,
+        "CreationDate":  "\/Date(1788948253498)\/",
+        "ExecutablePath":  "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "CommandLine":  "\"D:\\poly\\.venv\\Scripts\\python.exe\" \"D:\\poly\\.venv\\Scripts\\poly-weather.exe\" weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed chicago-daily-high-research-seed miami-daily-high-research-seed atlanta-daily-high-research-seed dallas-daily-high-research-seed houston-daily-high-research-seed seattle-daily-high-research-seed chongqing-daily-high-research-seed chengdu-daily-high-research-seed --runtime 0 --config D:\\poly\\configs\\settlements.json --data-dir D:\\poly\\data "
+    },
+    {
+        "ProcessId":  16944,
+        "ParentProcessId":  2112,
+        "CreationDate":  "\/Date(1789030531753)\/",
+        "ExecutablePath":  "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "CommandLine":  "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName market-supervisor -ProjectRoot D:\\poly -RawMarketRecovery"
+    }
+]

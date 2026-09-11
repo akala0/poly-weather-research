@@ -1,0 +1,205 @@
+{
+  "station_id": "KATL",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Atlanta on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:25.152022+00:00",
+  "registry_expected": {
+    "key": "atlanta-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-atlanta-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KATL",
+    "station_name": "Hartsfield-Jackson International Airport",
+    "latitude": 33.6367,
+    "longitude": -84.4281,
+    "timezone": "America/New_York",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=katl",
+    "ncei_station_id": "USW00013874",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 cc1a42635ed2bee099576c31e5bf9f2e217f14c6585b1c31ef84c5d9c077e0a7: KATL and NOAA Hourly Data Temp with the standard US template."
+  },
+  "received_at": "2026-09-10T09:12:25.838012+00:00",
+  "status_code": 200,
+  "wire_sha256": "5fb5cab5bdb91023ac3f0d990092dc058ce959be0ea64fb6dba1bff0bc2ab770",
+  "wire_bytes": 56082,
+  "saved_response_sha256": "f8ff4b1816d7bc8ffdc9e2c906f90dfb761e2c0652965fddcfdf1affc622493d",
+  "diagnosis": {
+    "candidate_count": 1,
+    "ambiguous": false,
+    "candidates": [
+      {
+        "event_id": "987076",
+        "event_slug": "highest-temperature-in-atlanta-on-september-10-2026",
+        "stage": "verification",
+        "parsed": {
+          "parser_version": "2",
+          "evidence_sha256": "03407933f8df708d9ef32889875ac22222e4ff6feee536db70d3653b34fcfd3d",
+          "event_id": "987076",
+          "event_slug": "highest-temperature-in-atlanta-on-september-10-2026",
+          "title": "Highest temperature in Atlanta on September 10?",
+          "city": "Atlanta",
+          "target_date": "2026-09-10",
+          "station_id": "KATL",
+          "station_name": "Hartsfield-Jackson International Airport",
+          "timezone": "America/New_York",
+          "official_source_name": "NOAA Timeseries",
+          "official_source_url": "https://www.weather.gov/wrh/timeseries?site=katl",
+          "unit": "fahrenheit",
+          "precision_degrees": "1",
+          "bucket_width_degrees": 2,
+          "observation_table": "Daily Observations",
+          "finalization_rule": "unknown",
+          "ignores_late_revisions": true,
+          "buckets": [
+            {
+              "market_id": "4358668",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-81forbelow",
+              "label": "Will the highest temperature in Atlanta be 81°F or below on September 10?",
+              "lower_f": null,
+              "upper_f": 81,
+              "unit": "fahrenheit",
+              "market_probability": "0.002"
+            },
+            {
+              "market_id": "4358669",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-82-83f",
+              "label": "Will the highest temperature in Atlanta be between 82-83°F on September 10?",
+              "lower_f": 82,
+              "upper_f": 83,
+              "unit": "fahrenheit",
+              "market_probability": "0.002"
+            },
+            {
+              "market_id": "4358670",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-84-85f",
+              "label": "Will the highest temperature in Atlanta be between 84-85°F on September 10?",
+              "lower_f": 84,
+              "upper_f": 85,
+              "unit": "fahrenheit",
+              "market_probability": "0.006"
+            },
+            {
+              "market_id": "4358671",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-86-87f",
+              "label": "Will the highest temperature in Atlanta be between 86-87°F on September 10?",
+              "lower_f": 86,
+              "upper_f": 87,
+              "unit": "fahrenheit",
+              "market_probability": "0.015"
+            },
+            {
+              "market_id": "4358672",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-88-89f",
+              "label": "Will the highest temperature in Atlanta be between 88-89°F on September 10?",
+              "lower_f": 88,
+              "upper_f": 89,
+              "unit": "fahrenheit",
+              "market_probability": "0.025"
+            },
+            {
+              "market_id": "4358673",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-90-91f",
+              "label": "Will the highest temperature in Atlanta be between 90-91°F on September 10?",
+              "lower_f": 90,
+              "upper_f": 91,
+              "unit": "fahrenheit",
+              "market_probability": "0.475"
+            },
+            {
+              "market_id": "4358674",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-92-93f",
+              "label": "Will the highest temperature in Atlanta be between 92-93°F on September 10?",
+              "lower_f": 92,
+              "upper_f": 93,
+              "unit": "fahrenheit",
+              "market_probability": "0.47"
+            },
+            {
+              "market_id": "4358675",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-94-95f",
+              "label": "Will the highest temperature in Atlanta be between 94-95°F on September 10?",
+              "lower_f": 94,
+              "upper_f": 95,
+              "unit": "fahrenheit",
+              "market_probability": "0.035"
+            },
+            {
+              "market_id": "4358676",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-96-97f",
+              "label": "Will the highest temperature in Atlanta be between 96-97°F on September 10?",
+              "lower_f": 96,
+              "upper_f": 97,
+              "unit": "fahrenheit",
+              "market_probability": "0.0055"
+            },
+            {
+              "market_id": "4358677",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-98-99f",
+              "label": "Will the highest temperature in Atlanta be between 98-99°F on September 10?",
+              "lower_f": 98,
+              "upper_f": 99,
+              "unit": "fahrenheit",
+              "market_probability": "0.0045"
+            },
+            {
+              "market_id": "4358678",
+              "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-100forhigher",
+              "label": "Will the highest temperature in Atlanta be 100°F or higher on September 10?",
+              "lower_f": 100,
+              "upper_f": null,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            }
+          ],
+          "parse_status": "complete",
+          "missing_fields": []
+        },
+        "verification": {
+          "settlement_key": "atlanta-daily-high-research-seed",
+          "evidence_sha256": "03407933f8df708d9ef32889875ac22222e4ff6feee536db70d3653b34fcfd3d",
+          "passed": false,
+          "checks": {
+            "parse_complete": true,
+            "registry_verified": true,
+            "slug_exact": true,
+            "station_exact": true,
+            "station_name_exact": true,
+            "timezone_exact": true,
+            "source_exact": true,
+            "whole_degree_precision": true,
+            "unit_exact": true,
+            "bucket_width_exact": true,
+            "finalization_known": false,
+            "finalization_exact": false,
+            "late_revision_cutoff": true,
+            "late_revision_exact": true
+          },
+          "failures": [
+            "finalization_known",
+            "finalization_exact"
+          ],
+          "tradeable": false,
+          "reason": "failed: finalization_known, finalization_exact"
+        }
+      }
+    ]
+  },
+  "saved_replay_matches_original": true
+}

@@ -1,0 +1,205 @@
+{
+  "station_id": "KORD",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Chicago on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:20.682049+00:00",
+  "registry_expected": {
+    "key": "chicago-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-chicago-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KORD",
+    "station_name": "Chicago O'Hare Intl Airport",
+    "latitude": 41.9742,
+    "longitude": -87.9073,
+    "timezone": "America/Chicago",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=kord",
+    "ncei_station_id": "USW00094846",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 d097c0b4699aaff29c84a213d119b6383d94af84ab6016b4119a243516a4e3ba: KORD and NOAA Hourly Data Temp with the standard US 2F bucket and finalization template."
+  },
+  "received_at": "2026-09-10T09:12:23.488493+00:00",
+  "status_code": 200,
+  "wire_sha256": "4c371d16d6c3e05f29c2c090d64895b3e1328a72867f607aca17e8210d0e0e0c",
+  "wire_bytes": 55646,
+  "saved_response_sha256": "cbd38493c8160a4e1d1f0ca64ef0b2be756106cde77ae5a72f58fe5fd4621105",
+  "diagnosis": {
+    "candidate_count": 1,
+    "ambiguous": false,
+    "candidates": [
+      {
+        "event_id": "987248",
+        "event_slug": "highest-temperature-in-chicago-on-september-10-2026",
+        "stage": "verification",
+        "parsed": {
+          "parser_version": "2",
+          "evidence_sha256": "4464b74d7cb846cbaf4a1af2a671767c57bf2592f7ef726fd6c89a1bb6765e76",
+          "event_id": "987248",
+          "event_slug": "highest-temperature-in-chicago-on-september-10-2026",
+          "title": "Highest temperature in Chicago on September 10?",
+          "city": "Chicago",
+          "target_date": "2026-09-10",
+          "station_id": "KORD",
+          "station_name": "Chicago O'Hare Intl Airport",
+          "timezone": "America/Chicago",
+          "official_source_name": "NOAA Timeseries",
+          "official_source_url": "https://www.weather.gov/wrh/timeseries?site=kord",
+          "unit": "fahrenheit",
+          "precision_degrees": "1",
+          "bucket_width_degrees": 2,
+          "observation_table": "Daily Observations",
+          "finalization_rule": "unknown",
+          "ignores_late_revisions": true,
+          "buckets": [
+            {
+              "market_id": "4359144",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-69forbelow",
+              "label": "Will the highest temperature in Chicago be 69°F or below on September 10?",
+              "lower_f": null,
+              "upper_f": 69,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4359145",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-70-71f",
+              "label": "Will the highest temperature in Chicago be between 70-71°F on September 10?",
+              "lower_f": 70,
+              "upper_f": 71,
+              "unit": "fahrenheit",
+              "market_probability": "0.002"
+            },
+            {
+              "market_id": "4359146",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-72-73f",
+              "label": "Will the highest temperature in Chicago be between 72-73°F on September 10?",
+              "lower_f": 72,
+              "upper_f": 73,
+              "unit": "fahrenheit",
+              "market_probability": "0.004"
+            },
+            {
+              "market_id": "4359147",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-74-75f",
+              "label": "Will the highest temperature in Chicago be between 74-75°F on September 10?",
+              "lower_f": 74,
+              "upper_f": 75,
+              "unit": "fahrenheit",
+              "market_probability": "0.015"
+            },
+            {
+              "market_id": "4359148",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-76-77f",
+              "label": "Will the highest temperature in Chicago be between 76-77°F on September 10?",
+              "lower_f": 76,
+              "upper_f": 77,
+              "unit": "fahrenheit",
+              "market_probability": "0.025"
+            },
+            {
+              "market_id": "4359149",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-78-79f",
+              "label": "Will the highest temperature in Chicago be between 78-79°F on September 10?",
+              "lower_f": 78,
+              "upper_f": 79,
+              "unit": "fahrenheit",
+              "market_probability": "0.705"
+            },
+            {
+              "market_id": "4359150",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-80-81f",
+              "label": "Will the highest temperature in Chicago be between 80-81°F on September 10?",
+              "lower_f": 80,
+              "upper_f": 81,
+              "unit": "fahrenheit",
+              "market_probability": "0.255"
+            },
+            {
+              "market_id": "4359151",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-82-83f",
+              "label": "Will the highest temperature in Chicago be between 82-83°F on September 10?",
+              "lower_f": 82,
+              "upper_f": 83,
+              "unit": "fahrenheit",
+              "market_probability": "0.025"
+            },
+            {
+              "market_id": "4359152",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-84-85f",
+              "label": "Will the highest temperature in Chicago be between 84-85°F on September 10?",
+              "lower_f": 84,
+              "upper_f": 85,
+              "unit": "fahrenheit",
+              "market_probability": "0.0015"
+            },
+            {
+              "market_id": "4359153",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-86-87f",
+              "label": "Will the highest temperature in Chicago be between 86-87°F on September 10?",
+              "lower_f": 86,
+              "upper_f": 87,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4359154",
+              "market_slug": "highest-temperature-in-chicago-on-september-10-2026-88forhigher",
+              "label": "Will the highest temperature in Chicago be 88°F or higher on September 10?",
+              "lower_f": 88,
+              "upper_f": null,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            }
+          ],
+          "parse_status": "complete",
+          "missing_fields": []
+        },
+        "verification": {
+          "settlement_key": "chicago-daily-high-research-seed",
+          "evidence_sha256": "4464b74d7cb846cbaf4a1af2a671767c57bf2592f7ef726fd6c89a1bb6765e76",
+          "passed": false,
+          "checks": {
+            "parse_complete": true,
+            "registry_verified": true,
+            "slug_exact": true,
+            "station_exact": true,
+            "station_name_exact": true,
+            "timezone_exact": true,
+            "source_exact": true,
+            "whole_degree_precision": true,
+            "unit_exact": true,
+            "bucket_width_exact": true,
+            "finalization_known": false,
+            "finalization_exact": false,
+            "late_revision_cutoff": true,
+            "late_revision_exact": true
+          },
+          "failures": [
+            "finalization_known",
+            "finalization_exact"
+          ],
+          "tradeable": false,
+          "reason": "failed: finalization_known, finalization_exact"
+        }
+      }
+    ]
+  },
+  "saved_replay_matches_original": true
+}

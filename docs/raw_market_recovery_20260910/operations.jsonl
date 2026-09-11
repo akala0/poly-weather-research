@@ -1,0 +1,4 @@
+{"old_pid":4516,"daemon":"signal-engine","old_creation":"\/Date(1788948243927)\/","action":"disabled_and_stopped_waiting_runner","at":"2026-09-10T08:53:49.2164350Z"}
+{"old_pid":3216,"daemon":"shadow-spread-engine","old_creation":"\/Date(1788948243927)\/","action":"disabled_and_stopped_waiting_runner","at":"2026-09-10T08:53:50.4066438Z"}
+{"old_pid":4504,"daemon":"market-supervisor","old_creation":"\/Date(1788948243927)\/","action":"disabled_and_stopped_waiting_runner","at":"2026-09-10T08:53:51.9522609Z"}
+{"runner_sha256":"44FB107523B37B9D312BA0D48CBE083CFB2AB836F3900EB366A29519E4627B10","arguments":"-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName market-supervisor -ProjectRoot D:\\poly -RawMarketRecovery","action":"market_action_updated_verified_disabled","at":"2026-09-10T08:53:53.0845571Z"}

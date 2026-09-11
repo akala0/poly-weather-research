@@ -16,7 +16,7 @@ from poly_weather.domain import SettlementSpec
 from poly_weather.market_stream import EventArchivePolicy, MarketWebSocketBot
 from poly_weather.retention import RetentionConfig, apply_market_retention, disk_capacity_status
 from poly_weather.runtime_safety import atomic_json_write
-from poly_weather.settlement import parse_settlement_evidence, verify_settlement_evidence
+from poly_weather.settlement_diagnostics import DiagnosticWriteError, SettlementDiagnostics
 from poly_weather.storage import RawEventArchive
 
 
@@ -76,7 +76,16 @@ def discover_event(
     """Discover one exact active event from Gamma public-search, without slug guessing."""
     city = _city_query(spec)
     query = f"highest temperature in {city} on {target_date.strftime('%B')} {target_date.day}"
-    page = gamma.search_markets_page(query=query, limit=50)
+    try:
+        page = gamma.search_markets_page(query=query, limit=50)
+    except DiagnosticWriteError:
+        raise
+    except Exception as exc:
+        diagnostics = getattr(gamma, "settlement_diagnostics", None)
+        if diagnostics is not None:
+            from poly_weather.settlement_diagnostics import safe_exception
+            diagnostics.discovery_outcome("discovery_failed", exception=safe_exception(exc))
+        raise
     suffix = target_date.strftime("-%B-%d-%Y").lower().replace("-0", "-")
     candidates = [
         event
@@ -85,7 +94,13 @@ def discover_event(
         and event.event_slug.endswith(suffix)
     ]
     if len(candidates) > 1:
+        diagnostics = getattr(gamma, "settlement_diagnostics", None)
+        if diagnostics is not None:
+            diagnostics.discovery_outcome("ambiguous", event_ids=[e.event_id for e in candidates])
         raise ValueError(f"ambiguous Gamma discovery for {spec.key}: {len(candidates)} events")
+    diagnostics = getattr(gamma, "settlement_diagnostics", None)
+    if diagnostics is not None:
+        diagnostics.discovery_outcome("candidate" if candidates else "no_candidate", event_ids=[e.event_id for e in candidates])
     return candidates[0] if candidates else None
 
 
@@ -99,6 +114,8 @@ class MarketEventSupervisor:
         bot: MarketWebSocketBot,
         data_dir: Path,
         discovery_interval_seconds: float = 300.0,
+        raw_collection_recovery: bool = False,
+        startup_attempt_id: str | None = None,
     ) -> None:
         self.specs = specs
         self.bot = bot
@@ -114,7 +131,17 @@ class MarketEventSupervisor:
         self.signal_update_path = data_dir / "runtime" / "signal_config_update.json"
         self.archive = RawEventArchive(data_dir / "raw")
         self.retention_config = RetentionConfig()
-        self.retention_result: dict[str, Any] = {}
+        self.raw_collection_recovery = raw_collection_recovery
+        self.startup_attempt_id = startup_attempt_id
+        self.diagnostics = SettlementDiagnostics(data_dir, startup_attempt_id or f"supervisor-{self.run_id}")
+        self.retention_result: dict[str, Any] = (
+            {
+                "state": "disabled_raw_market_recovery",
+                "mutations_attempted": False,
+            }
+            if raw_collection_recovery
+            else {}
+        )
 
     async def reconcile(
         self,
@@ -135,11 +162,9 @@ class MarketEventSupervisor:
                 request_url=event.request_url,
                 payload=event.raw_payload,
             )
-            try:
-                evidence = parse_settlement_evidence(event, registry_spec=spec)
-                verification = verify_settlement_evidence(evidence, spec)
-            except Exception as exc:
-                self._record_failure(spec.key, event.event_slug, f"parse error: {exc}")
+            evidence, verification = self.diagnostics.evaluate(event, spec)
+            if evidence is None or verification is None:
+                self._record_failure(spec.key, event.event_slug, "rule processing failed; see attempt diagnostics")
                 continue
             evidence_payload = {
                 "evidence": evidence.model_dump(mode="json"),
@@ -220,6 +245,8 @@ class MarketEventSupervisor:
         }
 
     def _publish_signal_update(self) -> None:
+        if self.raw_collection_recovery:
+            return
         self.signal_update_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "generation": time.time_ns(),
@@ -243,6 +270,12 @@ class MarketEventSupervisor:
         payload = {
             **asdict(self.metrics),
             "run_id": self.run_id,
+            "collection_mode": (
+                "raw_market_recovery" if self.raw_collection_recovery else "standard"
+            ),
+            "startup_attempt_id": self.startup_attempt_id,
+            "downstream_start_blocked": self.raw_collection_recovery,
+            "signal_update_publication_enabled": not self.raw_collection_recovery,
             "generation": self.published_generation,
             "business_sample": producer_progress_sample(
                 run_id=self.run_id, generation=str(tuple(sorted((key, value.evidence_sha256) for key, value in self.active.items()))),
@@ -266,6 +299,20 @@ class MarketEventSupervisor:
     def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
         atomic_json_write(path, payload)
 
+    async def _apply_retention(self) -> None:
+        if self.raw_collection_recovery:
+            self.retention_result = {
+                "state": "disabled_raw_market_recovery",
+                "mutations_attempted": False,
+            }
+            return
+        self.retention_result = await asyncio.to_thread(
+            apply_market_retention,
+            self.data_dir,
+            config=self.retention_config,
+            maintain_signal_database_online=False,
+        )
+
     async def run(self, *, runtime_seconds: float = 0) -> None:
         self.metrics.state = "running"
         self._write_status()
@@ -279,16 +326,14 @@ class MarketEventSupervisor:
                 discovered: dict[str, EventSnapshot] = {}
                 closed: set[str] = set()
                 try:
-                    self.retention_result = await asyncio.to_thread(
-                        apply_market_retention,
-                        self.data_dir,
-                        config=self.retention_config,
-                        maintain_signal_database_online=False,
-                    )
+                    await self._apply_retention()
                     with GammaClient() as gamma:
                         for spec in self.specs:
                             local_today = datetime.now(ZoneInfo(spec.timezone or "UTC")).date()
                             for target in (local_today, local_today + timedelta(days=1)):
+                                self.diagnostics.begin(spec, target)
+                                gamma.event_observer = self.diagnostics.observe
+                                gamma.settlement_diagnostics = self.diagnostics
                                 event = await asyncio.to_thread(discover_event, gamma, spec, target)
                                 if event is not None:
                                     discovered[spec.key] = event
@@ -298,6 +343,9 @@ class MarketEventSupervisor:
                                 closed.add(slug)
                     await self.reconcile(discovered, closed_event_slugs=closed)
                     self.metrics.last_error = None
+                except DiagnosticWriteError:
+                    self.bot.stop_event.set()
+                    raise
                 except Exception as exc:
                     self.metrics.last_error = f"{type(exc).__name__}: {exc}"
                 self._write_status()

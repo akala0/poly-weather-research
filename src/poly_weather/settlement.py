@@ -25,8 +25,9 @@ from poly_weather.domain import (
     VerificationStatus,
 )
 from poly_weather.modeling import market_temperature_bucket, validate_bucket_partition
+from poly_weather.settlement_contract import parse_rule_contract
 
-PARSER_VERSION = "2"
+PARSER_VERSION = "3"
 _TITLE_RE = re.compile(
     r"^highest temperature in (?P<city>.+?) on (?P<month>[A-Za-z]+) (?P<day>\d{1,2})\?$",
     re.IGNORECASE,
@@ -85,10 +86,20 @@ def _target_date(event: EventSnapshot, description: str) -> date | None:
 
 
 def _source(description: str, event_source: str | None) -> tuple[str | None, str | None]:
-    lowered = description.lower()
-    if "wunderground" in lowered:
+    # Source name belongs to the primary-source sentence, not fallback prose.
+    primary = re.search(
+        r"The resolution source for this market will be information from (NOAA|Wunderground)\b",
+        description,
+        re.I,
+    )
+    lowered = primary.group(1).lower() if primary else description.lower()
+    if lowered == "wunderground" or (not primary and "wunderground" in lowered):
         name = "Wunderground"
-    elif "information from noaa" in lowered or "weather.gov/wrh/timeseries" in lowered:
+    elif (
+        lowered == "noaa"
+        or "information from noaa" in lowered
+        or "weather.gov/wrh/timeseries" in lowered
+    ):
         name = "NOAA Timeseries"
     else:
         name = None
@@ -117,7 +128,8 @@ def parse_settlement_evidence(
     registry_spec: SettlementSpec | None = None,
 ) -> SettlementEvidence:
     """Parse an event into evidence without granting verification status."""
-    description = str(event.raw_payload.get("description") or "")
+    raw_description = str(event.raw_payload.get("description") or "")
+    description = re.sub(r"\s+", " ", raw_description)
     title_match = _TITLE_RE.match(event.title.strip())
     city = title_match.group("city").strip() if title_match else None
     source_name, source_url = _source(description, event.resolution_source)
@@ -146,11 +158,33 @@ def parse_settlement_evidence(
     for market in event.markets:
         parsed_buckets.append(market_temperature_bucket(market, expected_unit=unit))
     buckets = validate_bucket_partition(tuple(parsed_buckets))
-    finite_widths = {
-        width for bucket in buckets if (width := bucket.width_degrees) is not None
-    }
+    finite_widths = {width for bucket in buckets if (width := bucket.width_degrees) is not None}
     bucket_width = next(iter(finite_widths)) if len(finite_widths) == 1 else None
-    timezone = registry_spec.timezone if registry_spec and registry_spec.station_id == station_id else None
+    primary_table = (
+        "Hourly Data / Temp"
+        if source_name == "NOAA Timeseries" and "hourly data" in description.lower()
+        else "Daily Observations"
+        if source_name == "Wunderground" and "daily observations" in description.lower()
+        else None
+    )
+    lowest = next((b.market_id for b in buckets if b.lower_f is None), None)
+    contract = parse_rule_contract(
+        raw_description,
+        source_name=source_name,
+        source_url=source_url,
+        station_id=station_id,
+        primary_table=primary_table,
+        lowest_market_id=lowest,
+    )
+    if contract is not None:
+        finalization = (
+            FinalizationRule.PUBLICATION_OR_DEADLINE
+            if contract.settlement_trigger
+            else FinalizationRule.UNKNOWN
+        )
+    timezone = (
+        registry_spec.timezone if registry_spec and registry_spec.station_id == station_id else None
+    )
     fields = {
         "city": city,
         "target_date": _target_date(event, description),
@@ -161,30 +195,30 @@ def parse_settlement_evidence(
         "official_source_url": source_url,
         "unit": unit,
         "precision_degrees": precision,
-        "observation_table": (
-            "Daily Observations"
-            if "daily observations" in description.lower()
-            else "Hourly Data / Temp"
-            if (
-                "hourly data" in description.lower()
-                or "highest reading under the \"temp\" column" in description.lower()
-            )
-            and "temp" in description.lower()
-            else None
-        ),
+        "observation_table": primary_table,
         "bucket_width_degrees": bucket_width,
     }
     missing = tuple(name for name, value in fields.items() if value is None or value == "")
+    if finalization is FinalizationRule.UNKNOWN:
+        missing += ("finalization_rule",)
+    if contract is not None:
+        missing += contract.completeness_failures()
     canonical = json.dumps(
         {
+            "parser_version": PARSER_VERSION,
+            "rule_contract": contract.model_dump(mode="json") if contract else None,
             "event_id": event.event_id,
             "event_slug": event.event_slug,
             "title": event.title,
-            "description": description,
+            "description": raw_description,
             "resolution_source": event.resolution_source,
             # Gamma does not promise a stable child-market array order. The
             # evidence is a set of contracts, so order must not alter its hash.
             "market_slugs": sorted(market.slug for market in event.markets),
+            "bucket_contracts": sorted(
+                (b.model_dump(mode="json", exclude={"market_probability"}) for b in buckets),
+                key=lambda b: b["market_id"],
+            ),
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -202,6 +236,8 @@ def parse_settlement_evidence(
         buckets=buckets,
         parse_status=RuleParseStatus.COMPLETE if not missing else RuleParseStatus.INCOMPLETE,
         missing_fields=missing,
+        rule_contract=contract,
+        rule_schema_version=2 if contract else 1,
     )
 
 
@@ -211,6 +247,7 @@ def verify_settlement_evidence(
 ) -> SettlementVerification:
     """Compare parsed evidence with a manually reviewed registry entry."""
     checks = {
+        "parser_current": evidence.parser_version == PARSER_VERSION,
         "parse_complete": evidence.parse_status is RuleParseStatus.COMPLETE,
         "registry_verified": spec.status is VerificationStatus.VERIFIED,
         "slug_exact": re.fullmatch(spec.market_slug_pattern, evidence.event_slug) is not None,
@@ -229,6 +266,59 @@ def verify_settlement_evidence(
         "late_revision_cutoff": evidence.ignores_late_revisions,
         "late_revision_exact": evidence.ignores_late_revisions == spec.ignores_late_revisions,
     }
+    differences = {}
+    comparisons = {
+        "parser_current": (PARSER_VERSION, evidence.parser_version),
+        "parse_complete": ("complete", evidence.parse_status.value),
+        "registry_verified": ("verified", spec.status.value),
+        "slug_exact": (spec.market_slug_pattern, evidence.event_slug),
+        "station_exact": (spec.station_id, evidence.station_id),
+        "station_name_exact": (spec.station_name, evidence.station_name),
+        "timezone_exact": (spec.timezone, evidence.timezone),
+        "source_exact": (str(spec.resolution_source_url), evidence.official_source_url),
+        "whole_degree_precision": ("1", str(evidence.precision_degrees)),
+        "unit_exact": (spec.unit, evidence.unit),
+        "bucket_width_exact": (spec.bucket_width_degrees, evidence.bucket_width_degrees),
+        "finalization_known": ("known", evidence.finalization_rule.value),
+        "finalization_exact": (spec.finalization_rule, evidence.finalization_rule.value),
+        "late_revision_cutoff": (True, evidence.ignores_late_revisions),
+        "late_revision_exact": (spec.ignores_late_revisions, evidence.ignores_late_revisions),
+    }
+    differences.update({k: {"expected": a, "actual": b} for k, (a, b) in comparisons.items()})
+    if evidence.rule_contract is not None or spec.rule_contract is not None:
+        actual = evidence.rule_contract.semantics() if evidence.rule_contract else {}
+        expected = spec.rule_contract.semantics() if spec.rule_contract else {}
+        checks["rule_reviewed"] = spec.rule_review_status == "reviewed"
+        checks["rule_resolved"] = (
+            bool(evidence.rule_contract) and not evidence.rule_contract.completeness_failures()
+        )
+        checks["rule_schema_current"] = (
+            evidence.rule_schema_version == 2 and evidence.parser_version == PARSER_VERSION
+        )
+        differences["rule_schema_current"] = {
+            "expected": {"schema": 2, "parser": PARSER_VERSION},
+            "actual": {"schema": evidence.rule_schema_version, "parser": evidence.parser_version},
+        }
+        for field in sorted(set(actual) | set(expected)):
+            checks[f"rule_{field}_exact"] = actual.get(field) == expected.get(field)
+            if not checks[f"rule_{field}_exact"]:
+                differences[f"rule_{field}_exact"] = {
+                    "expected": expected.get(field),
+                    "actual": actual.get(field),
+                }
+        differences["rule_reviewed"] = {"expected": "reviewed", "actual": spec.rule_review_status}
+        differences["rule_resolved"] = {
+            "expected": [],
+            "actual": list(evidence.rule_contract.completeness_failures())
+            if evidence.rule_contract
+            else None,
+        }
+    elif evidence.rule_schema_version != 1:
+        checks["rule_contract_present"] = False
+        differences["rule_contract_present"] = {
+            "expected": "versioned rule contract",
+            "actual": None,
+        }
     failures = tuple(name for name, passed in checks.items() if not passed)
     passed = not failures
     return SettlementVerification(
@@ -238,7 +328,10 @@ def verify_settlement_evidence(
         checks=checks,
         failures=failures,
         tradeable=passed,
-        reason="all settlement evidence checks passed" if passed else "failed: " + ", ".join(failures),
+        reason="all settlement evidence checks passed"
+        if passed
+        else "failed: " + ", ".join(failures),
+        differences={k: v for k, v in differences.items() if k in failures},
     )
 
 
@@ -253,9 +346,16 @@ def verify_signal_contract(
     configured airport station, local day, unit, precision, and finalization semantics.
     """
     strict = verify_settlement_evidence(evidence, spec)
+    if (
+        evidence.rule_contract is not None
+        or spec.rule_contract is not None
+        or evidence.rule_schema_version != 1
+    ):
+        return strict
     if spec.signal_truth_policy is SignalTruthPolicy.OFFICIAL_RESOLUTION_SOURCE:
         return strict
     checks = {
+        "parser_current": evidence.parser_version == PARSER_VERSION,
         "parse_complete": evidence.parse_status is RuleParseStatus.COMPLETE,
         "slug_exact": re.fullmatch(spec.market_slug_pattern, evidence.event_slug) is not None,
         "station_exact": spec.station_id == evidence.station_id,

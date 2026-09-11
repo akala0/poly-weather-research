@@ -1,0 +1,5 @@
+{
+  "command": "python -m pytest -m nautilus_eval -q -p no:cacheprovider -p user_tmp_plugin --tb=short",
+  "environment": "PYTHONPATH=docs/settlement_rule_upgrade_20260910",
+  "exit_code": 0
+}

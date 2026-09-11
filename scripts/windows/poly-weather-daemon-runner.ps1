@@ -11,7 +11,8 @@ param(
     [int]$MaxRestartsInWindow = 6,
     [int]$RestartWindowSeconds = 900,
     [int]$CrashLoopPauseSeconds = 900,
-    [int]$LogRetentionCount = 5
+    [int]$LogRetentionCount = 5,
+    [switch]$RawMarketRecovery
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,6 +27,9 @@ $logDir = Join-Path $dataDir "logs\daemons"
 $runnerLogPath = Join-Path $logDir "$DaemonName.runner.log"
 $stdoutPath = Join-Path $logDir "$DaemonName.stdout.log"
 $stderrPath = Join-Path $logDir "$DaemonName.stderr.log"
+$attemptRoot = Join-Path $logDir ("attempts\{0}" -f $DaemonName)
+$latestAttemptPath = Join-Path $logDir "$DaemonName.attempt.latest.json"
+$childUnresolvedPath = Join-Path $logDir "$DaemonName.child-unresolved.json"
 $mutexName = "Global\PolyWeather.$DaemonName"
 
 if (-not (Test-Path -LiteralPath $ProjectRoot -PathType Container)) {
@@ -34,13 +38,42 @@ if (-not (Test-Path -LiteralPath $ProjectRoot -PathType Container)) {
 if (-not (Test-Path -LiteralPath $exePath -PathType Leaf)) {
     throw "poly-weather executable does not exist: $exePath"
 }
+if ($RawMarketRecovery -and $DaemonName -ne "market-supervisor") {
+    throw "RawMarketRecovery is valid only for market-supervisor"
+}
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+New-Item -ItemType Directory -Force -Path $attemptRoot | Out-Null
+
+function Get-FileSha256 {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = [IO.File]::Open(
+        $Path,
+        [IO.FileMode]::Open,
+        [IO.FileAccess]::Read,
+        [IO.FileShare]::ReadWrite
+    )
+    try {
+        $digest = $algorithm.ComputeHash($stream)
+        return ([BitConverter]::ToString($digest)).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $stream.Dispose()
+        $algorithm.Dispose()
+    }
+}
 
 function Write-RunnerLog {
     param([string]$Message)
 
     $line = "{0} [{1}] {2}" -f (Get-Date).ToUniversalTime().ToString("o"), $DaemonName, $Message
     Add-Content -LiteralPath $runnerLogPath -Value $line -Encoding UTF8
+}
+
+if ($DaemonName -eq "market-supervisor" -and -not $RawMarketRecovery) {
+    Write-RunnerLog "market startup blocked; explicit -RawMarketRecovery is required; no child started"
+    throw "market-supervisor runner requires explicit -RawMarketRecovery"
 }
 
 function Rotate-Log {
@@ -61,6 +94,81 @@ function Rotate-Log {
         }
     }
     Move-Item -LiteralPath $Path -Destination "$Path.1" -Force
+}
+
+function Write-JsonAtomically {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)]$Payload
+    )
+
+    $temporary = "{0}.{1}.{2}.tmp" -f $Path, $PID, ([guid]::NewGuid().ToString("N"))
+    $json = $Payload | ConvertTo-Json -Depth 10
+    [IO.File]::WriteAllText(
+        $temporary,
+        $json + [Environment]::NewLine,
+        [Text.UTF8Encoding]::new($false)
+    )
+    Move-Item -LiteralPath $temporary -Destination $Path -Force
+}
+
+function Get-LogEvidence {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return [ordered]@{
+            path = $Path
+            bytes = 0
+            sha256 = $null
+        }
+    }
+    $item = Get-Item -LiteralPath $Path
+    return [ordered]@{
+        path = $Path
+        bytes = [int64]$item.Length
+        sha256 = Get-FileSha256 -Path $Path
+    }
+}
+
+function Get-StartupDiagnostic {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$AttemptId
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+    $prefix = "POLY_WEATHER_STARTUP_DIAGNOSTIC "
+    $lines = @(Get-Content -LiteralPath $Path -Tail 200)
+    for ($index = $lines.Count - 1; $index -ge 0; $index--) {
+        $line = [string]$lines[$index]
+        if (-not $line.StartsWith($prefix, [StringComparison]::Ordinal)) {
+            continue
+        }
+        try {
+            $value = $line.Substring($prefix.Length) | ConvertFrom-Json
+            if ([string](Get-PropertyValue $value "attempt_id") -eq $AttemptId) {
+                return $value
+            }
+        }
+        catch {
+            continue
+        }
+    }
+    return $null
+}
+
+function Update-CompatibilityLog {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    Rotate-Log $Destination
+    if (Test-Path -LiteralPath $Source -PathType Leaf) {
+        Copy-Item -LiteralPath $Source -Destination $Destination -Force
+    }
 }
 
 function Get-PropertyValue {
@@ -160,12 +268,18 @@ function Wait-ForDependencies {
 }
 
 function Get-ArgumentList {
+    param([Parameter(Mandatory = $true)][string]$AttemptId)
+
     switch ($DaemonName) {
         "market-supervisor" {
-            return @(
+            $commandArguments = @(
                 "market-supervisor", "--runtime", "0", "--config", $configPath,
-                "--data-dir", $dataDir
+                "--data-dir", $dataDir, "--startup-attempt-id", $AttemptId
             )
+            if ($RawMarketRecovery) {
+                $commandArguments += "--raw-collection-recovery"
+            }
+            return $commandArguments
         }
         "weather-stream" {
             return @(
@@ -210,6 +324,7 @@ function Get-ArgumentList {
     throw "Unsupported daemon: $DaemonName"
 }
 
+$runnerSourceSha256 = Get-FileSha256 -Path $PSCommandPath
 $createdNew = $false
 $mutex = [Threading.Mutex]::new($true, $mutexName, [ref]$createdNew)
 if (-not $createdNew) {
@@ -220,35 +335,152 @@ if (-not $createdNew) {
 try {
     $proxyNames = @("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY")
     $proxyPresent = @($proxyNames | Where-Object { Test-Path "Env:\$_" })
-    Write-RunnerLog ("runner started; exe={0}; proxy variable names present={1}; execution_enabled=false" -f $exePath, ($proxyPresent -join ","))
-    $arguments = Get-ArgumentList
+    Write-RunnerLog (
+        "runner started; exe={0}; runner_sha256={1}; raw_market_recovery={2}; proxy variable names present={3}; execution_enabled=false" -f
+        $exePath, $runnerSourceSha256, [bool]$RawMarketRecovery, ($proxyPresent -join ",")
+    )
     $failureStreak = 0
     $restartTimes = [Collections.Generic.Queue[datetime]]::new()
 
     while ($true) {
+        if (Test-Path -LiteralPath $childUnresolvedPath) {
+            throw "Unresolved child ownership; manual reconciliation required: $childUnresolvedPath"
+        }
         Wait-ForDependencies
-        Rotate-Log $stdoutPath
-        Rotate-Log $stderrPath
+        $attemptStarted = (Get-Date).ToUniversalTime()
+        $attemptId = "{0}-{1}" -f $attemptStarted.ToString("yyyyMMddTHHmmssfffffffZ"), ([guid]::NewGuid().ToString("N"))
+        $attemptDir = Join-Path $attemptRoot $attemptId
+        $attemptStdoutPath = Join-Path $attemptDir "stdout.log"
+        $attemptStderrPath = Join-Path $attemptDir "stderr.log"
+        $attemptStartPath = Join-Path $attemptDir "attempt-start.json"
+        $attemptResultPath = Join-Path $attemptDir "attempt-result.json"
+        New-Item -ItemType Directory -Path $attemptDir | Out-Null
+        $arguments = Get-ArgumentList -AttemptId $attemptId
+        $attemptStart = [ordered]@{
+            schema_version = 1
+            attempt_id = $attemptId
+            daemon_name = $DaemonName
+            state = "starting"
+            started_at = $attemptStarted.ToString("o")
+            runner_pid = $PID
+            runner_source_sha256 = $runnerSourceSha256
+            raw_market_recovery = [bool]$RawMarketRecovery
+            stdout_path = $attemptStdoutPath
+            stderr_path = $attemptStderrPath
+            execution_enabled = $false
+        }
+        Write-JsonAtomically -Path $attemptStartPath -Payload $attemptStart
+        Write-JsonAtomically -Path $latestAttemptPath -Payload $attemptStart
+        Write-RunnerLog "attempt started; attempt_id=$attemptId; evidence_dir=$attemptDir"
+
+        $child = $null
+        $childPid = $null
+        $actualExitCode = $null
+        $runnerFailureCode = $null
+        $launchError = $null
+        $childExitConfirmed = $false
+        # Persist before launch: even loss of the process handle must block a new writer.
+        Write-JsonAtomically -Path $childUnresolvedPath -Payload $attemptStart
         try {
             $child = Start-Process -FilePath $exePath -ArgumentList $arguments -WorkingDirectory $ProjectRoot `
-                -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -WindowStyle Hidden -PassThru
-            Write-RunnerLog "child started; pid=$($child.Id)"
+                -RedirectStandardOutput $attemptStdoutPath -RedirectStandardError $attemptStderrPath `
+                -WindowStyle Hidden -PassThru
+            $childPid = $child.Id
+            # Force Windows PowerShell to retain the native process handle. Without
+            # this access, ExitCode can remain unavailable even after WaitForExit.
+            $processHandle = $child.Handle
+            Write-RunnerLog "child started; attempt_id=$attemptId; pid=$childPid"
             $child.WaitForExit()
-            $child.Refresh()
+            $childExitConfirmed = $child.HasExited -eq $true
             $rawExitCode = $child.ExitCode
-            $exitCode = if ($null -eq $rawExitCode) { 9008 } else { [int]$rawExitCode }
-            if ($null -eq $rawExitCode) {
-                Write-RunnerLog "child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008"
+            if ($null -ne $rawExitCode -and $childExitConfirmed) {
+                $actualExitCode = [int]$rawExitCode
             }
-            $child.Dispose()
         }
         catch {
-            $exitCode = 9009
-            Write-RunnerLog "child launch/wait failed: $($_.Exception.GetType().Name): $($_.Exception.Message)"
+            $runnerFailureCode = 9009
+            $launchError = [ordered]@{
+                error_type = $_.Exception.GetType().Name
+                error = $_.Exception.Message
+            }
+            Write-RunnerLog "child launch/wait failed; attempt_id=$attemptId; error_type=$($launchError.error_type)"
+        }
+        finally {
+            if ($null -ne $child) {
+                if (-not $childExitConfirmed) {
+                    try { $childExitConfirmed = $child.HasExited -eq $true } catch { }
+                }
+                try { $child.Dispose() } catch { }
+            }
+        }
+        if ($childExitConfirmed) {
+            Remove-Item -LiteralPath $childUnresolvedPath -Force
+        }
+        if ($null -eq $actualExitCode -and $null -eq $runnerFailureCode) {
+            $runnerFailureCode = 9008
+            Write-RunnerLog "child exit code unavailable; attempt_id=$attemptId; preserving actual_exit_code=null"
         }
 
-        if ($exitCode -eq 0) {
-            Write-RunnerLog "child exited cleanly with code 0; runner stopped"
+        $diagnostic = Get-StartupDiagnostic -Path $attemptStderrPath -AttemptId $attemptId
+        $diagnosticIsTerminal = (
+            $null -ne $diagnostic -and
+            (Get-PropertyValue $diagnostic "terminal") -eq $true
+        )
+        $stage = if ($null -ne $launchError) {
+            "launch"
+        }
+        elseif ($diagnosticIsTerminal) {
+            [string](Get-PropertyValue $diagnostic "stage")
+        }
+        else {
+            "process_runtime"
+        }
+        $outcome = if ($diagnosticIsTerminal) {
+            [string](Get-PropertyValue $diagnostic "outcome")
+        }
+        elseif ($actualExitCode -eq 0) {
+            "completed"
+        }
+        else {
+            "failed"
+        }
+        $attemptEnded = (Get-Date).ToUniversalTime()
+        $attemptResult = [ordered]@{
+            schema_version = 1
+            attempt_id = $attemptId
+            daemon_name = $DaemonName
+            state = $outcome
+            stage = $stage
+            started_at = $attemptStarted.ToString("o")
+            ended_at = $attemptEnded.ToString("o")
+            child_pid = $childPid
+            child_exit_confirmed = $childExitConfirmed
+            restart_blocked = -not $childExitConfirmed
+            exit_code = $actualExitCode
+            exit_code_source = if ($null -ne $actualExitCode) { "process" } elseif ($null -ne $launchError) { "launch_error" } else { "unavailable" }
+            runner_failure_code = $runnerFailureCode
+            runner_source_sha256 = $runnerSourceSha256
+            raw_market_recovery = [bool]$RawMarketRecovery
+            startup_diagnostic = $diagnostic
+            launch_error = $launchError
+            stdout = Get-LogEvidence -Path $attemptStdoutPath
+            stderr = Get-LogEvidence -Path $attemptStderrPath
+            execution_enabled = $false
+        }
+        Write-JsonAtomically -Path $attemptResultPath -Payload $attemptResult
+        Write-JsonAtomically -Path $latestAttemptPath -Payload $attemptResult
+        if (-not $childExitConfirmed) {
+            Write-RunnerLog "restart blocked; child exit unconfirmed; attempt_id=$attemptId"
+            throw "Child exit unconfirmed; durable ownership latch retained"
+        }
+        Update-CompatibilityLog -Source $attemptStdoutPath -Destination $stdoutPath
+        Update-CompatibilityLog -Source $attemptStderrPath -Destination $stderrPath
+
+        $exitLabel = if ($null -eq $actualExitCode) { "unavailable" } else { [string]$actualExitCode }
+        Write-RunnerLog "attempt finished; attempt_id=$attemptId; stage=$stage; outcome=$outcome; actual_exit_code=$exitLabel"
+        $effectiveExitCode = if ($null -ne $actualExitCode) { $actualExitCode } else { $runnerFailureCode }
+        if ($effectiveExitCode -eq 0) {
+            Write-RunnerLog "child exited cleanly with actual code 0; attempt_id=$attemptId; runner stopped"
             exit 0
         }
 
@@ -259,14 +491,14 @@ try {
             [void]$restartTimes.Dequeue()
         }
         if ($restartTimes.Count -ge $MaxRestartsInWindow) {
-            Write-RunnerLog "child exited code=$exitCode; crash-loop guard engaged; failures_in_window=$($restartTimes.Count); sleeping ${CrashLoopPauseSeconds}s"
+            Write-RunnerLog "child failed; attempt_id=$attemptId; actual_exit_code=$exitLabel; runner_failure_code=$runnerFailureCode; crash-loop guard engaged; failures_in_window=$($restartTimes.Count); sleeping ${CrashLoopPauseSeconds}s"
             Start-Sleep -Seconds $CrashLoopPauseSeconds
             $failureStreak = 0
             continue
         }
         $power = [math]::Min($failureStreak - 1, 8)
         $delay = [int][math]::Min($MaxBackoffSeconds, $InitialBackoffSeconds * [math]::Pow(2, $power))
-        Write-RunnerLog "child exited code=$exitCode; exponential backoff ${delay}s; failures_in_window=$($restartTimes.Count)"
+        Write-RunnerLog "child failed; attempt_id=$attemptId; actual_exit_code=$exitLabel; runner_failure_code=$runnerFailureCode; exponential backoff ${delay}s; failures_in_window=$($restartTimes.Count)"
         Start-Sleep -Seconds $delay
     }
 }

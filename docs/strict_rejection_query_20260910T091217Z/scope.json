@@ -1,0 +1,16 @@
+{
+  "started_at": "2026-09-10T09:12:17.653822+00:00",
+  "max_gets": 10,
+  "total_seconds": 180,
+  "per_request_seconds": 15,
+  "retries": 0,
+  "redirects": false,
+  "target_date": "2026-09-10",
+  "source_sha256": {
+    "configs\\settlements.json": "c22d8ab8e0ce05f65ef4c5a526c698b14bf2e4421c8c6d8d9f962472e19f70dd",
+    "src\\poly_weather\\settlement.py": "f702078e6dcae010cdd9071d615df5ea8806873f10f3dcbda99c2c9bec33f40f",
+    "src\\poly_weather\\adapters\\polymarket.py": "056444f439ef8bb991c732a6981790414209b9b6f5a390e5557c73a29ff27dfc",
+    "src\\poly_weather\\modeling.py": "a641b4989ffc192f2c4ade405cbe09973039c2747e903051dadf51e59be09a7a",
+    "src\\poly_weather\\market_supervisor.py": "228cd4db682b1d25fffcd272f78a75a34492d27bf08cd91eb752d291bca36380"
+  }
+}

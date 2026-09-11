@@ -1,9 +1,13 @@
 import json
 from datetime import UTC, datetime
+from pathlib import Path
+from types import SimpleNamespace
 
+import httpx
+import pytest
 from typer.testing import CliRunner
 
-from poly_weather.cli import app
+from poly_weather.cli import MARKET_STARTUP_DIAGNOSTIC_PREFIX, app
 
 
 def test_cli_can_render_help() -> None:
@@ -96,3 +100,101 @@ def test_stream_status_surfaces_only_token_scoped_shadow_status(tmp_path) -> Non
     assert payload["shadow"]["legacy_status_path"].endswith(
         "shadow_spread_status_v1_legacy_read_only.json"
     )
+
+
+def _startup_diagnostic(result) -> dict[str, object]:
+    line = next(
+        line
+        for line in result.stderr.splitlines()
+        if line.startswith(MARKET_STARTUP_DIAGNOSTIC_PREFIX)
+    )
+    return json.loads(line.removeprefix(MARKET_STARTUP_DIAGNOSTIC_PREFIX))
+
+
+@pytest.mark.parametrize("raw_collection_recovery", [False, True])
+def test_market_supervisor_requires_runner_attempt_id(
+    raw_collection_recovery: bool,
+) -> None:
+    args = ["market-supervisor"]
+    if raw_collection_recovery:
+        args.append("--raw-collection-recovery")
+    result = CliRunner().invoke(app, args)
+
+    assert result.exit_code == 2
+    diagnostic = _startup_diagnostic(result)
+    assert diagnostic["stage"] == "configuration"
+    assert diagnostic["raw_collection_recovery"] is raw_collection_recovery
+    assert diagnostic["details"] == {"reason": "STARTUP_ATTEMPT_ID_REQUIRED"}
+
+
+def test_market_startup_diagnostic_distinguishes_strict_rejection(tmp_path, monkeypatch) -> None:
+    class EmptyGamma:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def search_markets_page(self, **_):
+            return SimpleNamespace(events=())
+
+    monkeypatch.setattr("poly_weather.cli.GammaClient", EmptyGamma)
+    config = Path(__file__).resolve().parents[1] / "configs" / "settlements.json"
+    result = CliRunner().invoke(
+        app,
+        [
+            "market-supervisor",
+            "--raw-collection-recovery",
+            "--startup-attempt-id",
+            "strict-test",
+            "--config",
+            str(config),
+            "--data-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 2
+    diagnostic = _startup_diagnostic(result)
+    assert diagnostic["attempt_id"] == "strict-test"
+    assert diagnostic["stage"] == "strict_verification"
+    assert diagnostic["outcome"] == "rejected"
+    assert diagnostic["exit_code"] == 2
+    assert diagnostic["details"]["candidate_count"] == 0
+
+
+def test_market_startup_diagnostic_distinguishes_network_failure(tmp_path, monkeypatch) -> None:
+    class FailedGamma:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def search_markets_page(self, **_):
+            request = httpx.Request("GET", "https://example.test/public-search")
+            raise httpx.ConnectError("offline", request=request)
+
+    monkeypatch.setattr("poly_weather.cli.GammaClient", FailedGamma)
+    config = Path(__file__).resolve().parents[1] / "configs" / "settlements.json"
+    result = CliRunner().invoke(
+        app,
+        [
+            "market-supervisor",
+            "--raw-collection-recovery",
+            "--startup-attempt-id",
+            "network-test",
+            "--config",
+            str(config),
+            "--data-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 3
+    diagnostic = _startup_diagnostic(result)
+    assert diagnostic["attempt_id"] == "network-test"
+    assert diagnostic["stage"] == "discovery_transport"
+    assert diagnostic["outcome"] == "network_failed"
+    assert diagnostic["exit_code"] == 3
+    assert diagnostic["details"]["error_type"] == "ConnectError"

@@ -1,0 +1,13 @@
+{
+    "schema_version":  1,
+    "attempt_id":  "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "daemon_name":  "market-supervisor",
+    "state":  "starting",
+    "started_at":  "2026-09-10T08:55:33.3928914Z",
+    "runner_pid":  16944,
+    "runner_source_sha256":  "44fb107523b37b9d312ba0d48cbe083cfb2ab836f3900eb366a29519e4627b10",
+    "raw_market_recovery":  true,
+    "stdout_path":  "D:\\poly\\data\\logs\\daemons\\attempts\\market-supervisor\\20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899\\stdout.log",
+    "stderr_path":  "D:\\poly\\data\\logs\\daemons\\attempts\\market-supervisor\\20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899\\stderr.log",
+    "execution_enabled":  false
+}

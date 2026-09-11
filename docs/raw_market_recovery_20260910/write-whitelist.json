@@ -1,0 +1,28 @@
+{
+  "scope": "existing RawMarketRecovery paths only; weather is an independent existing writer",
+  "allowed": [
+    "data/raw/polymarket_clob_websocket/<UTC-date>/events.jsonl",
+    "data/raw/polymarket_book_checkpoints/<UTC-date>/events.jsonl",
+    "data/raw/polymarket_gamma_event/<UTC-date>/events.jsonl",
+    "data/raw/settlement_evidence/<UTC-date>/events.jsonl",
+    "data/market_stream.duckdb",
+    "data/market_stream.duckdb.wal",
+    "data/market_stream.duckdb.tmp/* (DuckDB internal temporary spill only)",
+    "data/runtime/polymarket_ws_status.json",
+    "data/runtime/market_supervisor_status.json",
+    "data/runtime/polymarket_ws_reconnects.jsonl",
+    "data/runtime/polymarket_status_history.jsonl",
+    "data/runtime/polymarket_quality_windows.json",
+    "same runtime JSON paths: .last_good.json and atomic temporary siblings",
+    "data/logs/daemons/market-supervisor.runner.log",
+    "data/logs/daemons/market-supervisor.stdout.log[.1-.5]",
+    "data/logs/daemons/market-supervisor.stderr.log[.1-.5]",
+    "data/logs/daemons/market-supervisor.attempt.latest.json",
+    "data/logs/daemons/market-supervisor.child-unresolved.json",
+    "data/logs/daemons/attempts/market-supervisor/<attempt-id>/{attempt-start.json,attempt-result.json,stdout.log,stderr.log}",
+    "same manifest JSON paths: PID/GUID atomic temporary siblings"
+  ],
+  "database_note": "Existing ResearchWarehouse constructor executes idempotent CREATE/ALTER IF NOT EXISTS and schema metadata ON CONFLICT DO NOTHING in the market database. This is normal existing initialization, not an operator repair/rebuild or explicit CHECKPOINT/VACUUM. No separate DB-opening maintenance command is run.",
+  "log_note": "Existing compatibility stdout/stderr rotation is limited to runner logs; bounded pre-operation copies are saved. Per-attempt evidence is retained.",
+  "forbidden": ["retention", "explicit CHECKPOINT/VACUUM", "signal_config_update publication", "old v2 state", "Paper output", "weather configuration", "historical archive mutation"]
+}

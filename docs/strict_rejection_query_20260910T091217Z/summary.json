@@ -1,0 +1,2058 @@
+{
+  "finished_at": "2026-09-10T09:12:29.349161+00:00",
+  "elapsed_seconds": 11.694552899993141,
+  "network_get_count": 10,
+  "results": [
+    {
+      "station_id": "KLGA",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in New York City on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:17.979095+00:00",
+      "registry_expected": {
+        "key": "new-york-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-nyc-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "KLGA",
+        "station_name": "LaGuardia Airport",
+        "latitude": 40.7769,
+        "longitude": -73.874,
+        "timezone": "America/New_York",
+        "metric": "daily_high_temperature",
+        "unit": "fahrenheit",
+        "bucket_width_degrees": 2,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=klga",
+        "ncei_station_id": "USW00014732",
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": true,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against the 2026-08-24 evidence SHA-256 b4c17481e3a46f1f6de3d1e88f262d11ef7a39744c8ba12cf18033684cedd4db: KLGA, NOAA Hourly Data Temp, 2F buckets, whole-degree Fahrenheit, first-next-day finalization, late revisions ignored. The 2026-08-22 snapshot used Wunderground and is retained as historical evidence of a source-template change."
+      },
+      "received_at": "2026-09-10T09:12:20.658784+00:00",
+      "status_code": 200,
+      "wire_sha256": "95a2c574f65972278549c6acf2b8f6a49ad93a3a1602e21079208c171ae97adf",
+      "wire_bytes": 55763,
+      "saved_response_sha256": "ec8eea754f50a75b2cab010bb60b9833a8cc990b044304aaf48efadad359f999",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "987074",
+            "event_slug": "highest-temperature-in-nyc-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "2cf48d21130a434fffa29307d910db990c1b75e2c161100a7403cf911c8217b4",
+              "event_id": "987074",
+              "event_slug": "highest-temperature-in-nyc-on-september-10-2026",
+              "title": "Highest temperature in NYC on September 10?",
+              "city": "NYC",
+              "target_date": "2026-09-10",
+              "station_id": "KLGA",
+              "station_name": "LaGuardia Airport",
+              "timezone": "America/New_York",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=klga",
+              "unit": "fahrenheit",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 2,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4358646",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-75forbelow",
+                  "label": "Will the highest temperature in New York City be 75°F or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 75,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4358647",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-76-77f",
+                  "label": "Will the highest temperature in New York City be between 76-77°F on September 10?",
+                  "lower_f": 76,
+                  "upper_f": 77,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4358648",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-78-79f",
+                  "label": "Will the highest temperature in New York City be between 78-79°F on September 10?",
+                  "lower_f": 78,
+                  "upper_f": 79,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.001"
+                },
+                {
+                  "market_id": "4358649",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-80-81f",
+                  "label": "Will the highest temperature in New York City be between 80-81°F on September 10?",
+                  "lower_f": 80,
+                  "upper_f": 81,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0055"
+                },
+                {
+                  "market_id": "4358650",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-82-83f",
+                  "label": "Will the highest temperature in New York City be between 82-83°F on September 10?",
+                  "lower_f": 82,
+                  "upper_f": 83,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.004"
+                },
+                {
+                  "market_id": "4358651",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-84-85f",
+                  "label": "Will the highest temperature in New York City be between 84-85°F on September 10?",
+                  "lower_f": 84,
+                  "upper_f": 85,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.28"
+                },
+                {
+                  "market_id": "4358652",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-86-87f",
+                  "label": "Will the highest temperature in New York City be between 86-87°F on September 10?",
+                  "lower_f": 86,
+                  "upper_f": 87,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.34"
+                },
+                {
+                  "market_id": "4358653",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-88-89f",
+                  "label": "Will the highest temperature in New York City be between 88-89°F on September 10?",
+                  "lower_f": 88,
+                  "upper_f": 89,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.275"
+                },
+                {
+                  "market_id": "4358654",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-90-91f",
+                  "label": "Will the highest temperature in New York City be between 90-91°F on September 10?",
+                  "lower_f": 90,
+                  "upper_f": 91,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.065"
+                },
+                {
+                  "market_id": "4358655",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-92-93f",
+                  "label": "Will the highest temperature in New York City be between 92-93°F on September 10?",
+                  "lower_f": 92,
+                  "upper_f": 93,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0095"
+                },
+                {
+                  "market_id": "4358656",
+                  "market_slug": "highest-temperature-in-nyc-on-september-10-2026-94forhigher",
+                  "label": "Will the highest temperature in New York City be 94°F or higher on September 10?",
+                  "lower_f": 94,
+                  "upper_f": null,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.002"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "new-york-daily-high-research-seed",
+              "evidence_sha256": "2cf48d21130a434fffa29307d910db990c1b75e2c161100a7403cf911c8217b4",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "KORD",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Chicago on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:20.682049+00:00",
+      "registry_expected": {
+        "key": "chicago-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-chicago-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "KORD",
+        "station_name": "Chicago O'Hare Intl Airport",
+        "latitude": 41.9742,
+        "longitude": -87.9073,
+        "timezone": "America/Chicago",
+        "metric": "daily_high_temperature",
+        "unit": "fahrenheit",
+        "bucket_width_degrees": 2,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=kord",
+        "ncei_station_id": "USW00094846",
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": true,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against the 2026-08-24 evidence SHA-256 d097c0b4699aaff29c84a213d119b6383d94af84ab6016b4119a243516a4e3ba: KORD and NOAA Hourly Data Temp with the standard US 2F bucket and finalization template."
+      },
+      "received_at": "2026-09-10T09:12:23.488493+00:00",
+      "status_code": 200,
+      "wire_sha256": "4c371d16d6c3e05f29c2c090d64895b3e1328a72867f607aca17e8210d0e0e0c",
+      "wire_bytes": 55646,
+      "saved_response_sha256": "cbd38493c8160a4e1d1f0ca64ef0b2be756106cde77ae5a72f58fe5fd4621105",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "987248",
+            "event_slug": "highest-temperature-in-chicago-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "4464b74d7cb846cbaf4a1af2a671767c57bf2592f7ef726fd6c89a1bb6765e76",
+              "event_id": "987248",
+              "event_slug": "highest-temperature-in-chicago-on-september-10-2026",
+              "title": "Highest temperature in Chicago on September 10?",
+              "city": "Chicago",
+              "target_date": "2026-09-10",
+              "station_id": "KORD",
+              "station_name": "Chicago O'Hare Intl Airport",
+              "timezone": "America/Chicago",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=kord",
+              "unit": "fahrenheit",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 2,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4359144",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-69forbelow",
+                  "label": "Will the highest temperature in Chicago be 69°F or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 69,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4359145",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-70-71f",
+                  "label": "Will the highest temperature in Chicago be between 70-71°F on September 10?",
+                  "lower_f": 70,
+                  "upper_f": 71,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.002"
+                },
+                {
+                  "market_id": "4359146",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-72-73f",
+                  "label": "Will the highest temperature in Chicago be between 72-73°F on September 10?",
+                  "lower_f": 72,
+                  "upper_f": 73,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.004"
+                },
+                {
+                  "market_id": "4359147",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-74-75f",
+                  "label": "Will the highest temperature in Chicago be between 74-75°F on September 10?",
+                  "lower_f": 74,
+                  "upper_f": 75,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.015"
+                },
+                {
+                  "market_id": "4359148",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-76-77f",
+                  "label": "Will the highest temperature in Chicago be between 76-77°F on September 10?",
+                  "lower_f": 76,
+                  "upper_f": 77,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.025"
+                },
+                {
+                  "market_id": "4359149",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-78-79f",
+                  "label": "Will the highest temperature in Chicago be between 78-79°F on September 10?",
+                  "lower_f": 78,
+                  "upper_f": 79,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.705"
+                },
+                {
+                  "market_id": "4359150",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-80-81f",
+                  "label": "Will the highest temperature in Chicago be between 80-81°F on September 10?",
+                  "lower_f": 80,
+                  "upper_f": 81,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.255"
+                },
+                {
+                  "market_id": "4359151",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-82-83f",
+                  "label": "Will the highest temperature in Chicago be between 82-83°F on September 10?",
+                  "lower_f": 82,
+                  "upper_f": 83,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.025"
+                },
+                {
+                  "market_id": "4359152",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-84-85f",
+                  "label": "Will the highest temperature in Chicago be between 84-85°F on September 10?",
+                  "lower_f": 84,
+                  "upper_f": 85,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0015"
+                },
+                {
+                  "market_id": "4359153",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-86-87f",
+                  "label": "Will the highest temperature in Chicago be between 86-87°F on September 10?",
+                  "lower_f": 86,
+                  "upper_f": 87,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4359154",
+                  "market_slug": "highest-temperature-in-chicago-on-september-10-2026-88forhigher",
+                  "label": "Will the highest temperature in Chicago be 88°F or higher on September 10?",
+                  "lower_f": 88,
+                  "upper_f": null,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "chicago-daily-high-research-seed",
+              "evidence_sha256": "4464b74d7cb846cbaf4a1af2a671767c57bf2592f7ef726fd6c89a1bb6765e76",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "KLAX",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Los Angeles on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:23.492775+00:00",
+      "registry_expected": {
+        "key": "los-angeles-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-los-angeles-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "KLAX",
+        "station_name": "Los Angeles International Airport",
+        "latitude": 33.9382,
+        "longitude": -118.3866,
+        "timezone": "America/Los_Angeles",
+        "metric": "daily_high_temperature",
+        "unit": "fahrenheit",
+        "bucket_width_degrees": 2,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=klax",
+        "ncei_station_id": "USW00023174",
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": true,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against the 2026-08-24 evidence SHA-256 bd6bdf2b37ea969666964029432000b644615ec9d7056c28092e91e4bab4504a: KLAX and NOAA Hourly Data Temp. The 2026-08-22 Wunderground snapshot remains archived as a historical source-template version."
+      },
+      "received_at": "2026-09-10T09:12:24.036181+00:00",
+      "status_code": 200,
+      "wire_sha256": "5da3082cbe901a5e2f4b8e5e2eaab58a9b16167e10cd3dd0484f4487f849d3b6",
+      "wire_bytes": 55979,
+      "saved_response_sha256": "ac1dade45f31b9a0448e83f498a0b652a4a2362bfd568227357a58528864d35b",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "987929",
+            "event_slug": "highest-temperature-in-los-angeles-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "b2d852d81f7a1f016e8174a6984084caf5cadde43235280da5bfbc2088010e71",
+              "event_id": "987929",
+              "event_slug": "highest-temperature-in-los-angeles-on-september-10-2026",
+              "title": "Highest temperature in Los Angeles on September 10?",
+              "city": "Los Angeles",
+              "target_date": "2026-09-10",
+              "station_id": "KLAX",
+              "station_name": "Los Angeles International Airport",
+              "timezone": "America/Los_Angeles",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=klax",
+              "unit": "fahrenheit",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 2,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4362169",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-75forbelow",
+                  "label": "Will the highest temperature in Los Angeles be 75°F or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 75,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4362170",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-76-77f",
+                  "label": "Will the highest temperature in Los Angeles be between 76-77°F on September 10?",
+                  "lower_f": 76,
+                  "upper_f": 77,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4362171",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-78-79f",
+                  "label": "Will the highest temperature in Los Angeles be between 78-79°F on September 10?",
+                  "lower_f": 78,
+                  "upper_f": 79,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4362172",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-80-81f",
+                  "label": "Will the highest temperature in Los Angeles be between 80-81°F on September 10?",
+                  "lower_f": 80,
+                  "upper_f": 81,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.001"
+                },
+                {
+                  "market_id": "4362173",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-82-83f",
+                  "label": "Will the highest temperature in Los Angeles be between 82-83°F on September 10?",
+                  "lower_f": 82,
+                  "upper_f": 83,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4362174",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-84-85f",
+                  "label": "Will the highest temperature in Los Angeles be between 84-85°F on September 10?",
+                  "lower_f": 84,
+                  "upper_f": 85,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.006"
+                },
+                {
+                  "market_id": "4362175",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-86-87f",
+                  "label": "Will the highest temperature in Los Angeles be between 86-87°F on September 10?",
+                  "lower_f": 86,
+                  "upper_f": 87,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.025"
+                },
+                {
+                  "market_id": "4362176",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-88-89f",
+                  "label": "Will the highest temperature in Los Angeles be between 88-89°F on September 10?",
+                  "lower_f": 88,
+                  "upper_f": 89,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.045"
+                },
+                {
+                  "market_id": "4362177",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-90-91f",
+                  "label": "Will the highest temperature in Los Angeles be between 90-91°F on September 10?",
+                  "lower_f": 90,
+                  "upper_f": 91,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.23"
+                },
+                {
+                  "market_id": "4362178",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-92-93f",
+                  "label": "Will the highest temperature in Los Angeles be between 92-93°F on September 10?",
+                  "lower_f": 92,
+                  "upper_f": 93,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.245"
+                },
+                {
+                  "market_id": "4362179",
+                  "market_slug": "highest-temperature-in-los-angeles-on-september-10-2026-94forhigher",
+                  "label": "Will the highest temperature in Los Angeles be 94°F or higher on September 10?",
+                  "lower_f": 94,
+                  "upper_f": null,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.443"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "los-angeles-daily-high-research-seed",
+              "evidence_sha256": "b2d852d81f7a1f016e8174a6984084caf5cadde43235280da5bfbc2088010e71",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "KMIA",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Miami on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:24.041250+00:00",
+      "registry_expected": {
+        "key": "miami-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-miami-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "KMIA",
+        "station_name": "Miami Intl Airport",
+        "latitude": 25.7959,
+        "longitude": -80.287,
+        "timezone": "America/New_York",
+        "metric": "daily_high_temperature",
+        "unit": "fahrenheit",
+        "bucket_width_degrees": 2,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=kmia",
+        "ncei_station_id": "USW00012839",
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": true,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against the 2026-08-24 evidence SHA-256 f1bbf831d7e1d26d155148447998134ba66e57d4e7146350f0cc8db53497640f: KMIA and NOAA Hourly Data Temp with the standard US template."
+      },
+      "received_at": "2026-09-10T09:12:25.146821+00:00",
+      "status_code": 200,
+      "wire_sha256": "492d1c00420ae47aee4823f543120b3f24fdf07dfa08baaa4ebc9fcc5e301392",
+      "wire_bytes": 55859,
+      "saved_response_sha256": "c8bdbeb92f7ddf1103eb6b547b826b4b3d49bb3ecde06fdc40d956d135c49d0d",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "987247",
+            "event_slug": "highest-temperature-in-miami-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "2b5f16112a32ac37d155b070a767afad91941e3e558cf03d3a2e622059dcbe35",
+              "event_id": "987247",
+              "event_slug": "highest-temperature-in-miami-on-september-10-2026",
+              "title": "Highest temperature in Miami on September 10?",
+              "city": "Miami",
+              "target_date": "2026-09-10",
+              "station_id": "KMIA",
+              "station_name": "Miami Intl Airport",
+              "timezone": "America/New_York",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=kmia",
+              "unit": "fahrenheit",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 2,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4359133",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-79forbelow",
+                  "label": "Will the highest temperature in Miami be 79°F or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 79,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4359134",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-80-81f",
+                  "label": "Will the highest temperature in Miami be between 80-81°F on September 10?",
+                  "lower_f": 80,
+                  "upper_f": 81,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4359135",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-82-83f",
+                  "label": "Will the highest temperature in Miami be between 82-83°F on September 10?",
+                  "lower_f": 82,
+                  "upper_f": 83,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4359136",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-84-85f",
+                  "label": "Will the highest temperature in Miami be between 84-85°F on September 10?",
+                  "lower_f": 84,
+                  "upper_f": 85,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.045"
+                },
+                {
+                  "market_id": "4359137",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-86-87f",
+                  "label": "Will the highest temperature in Miami be between 86-87°F on September 10?",
+                  "lower_f": 86,
+                  "upper_f": 87,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.125"
+                },
+                {
+                  "market_id": "4359138",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-88-89f",
+                  "label": "Will the highest temperature in Miami be between 88-89°F on September 10?",
+                  "lower_f": 88,
+                  "upper_f": 89,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.48"
+                },
+                {
+                  "market_id": "4359139",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-90-91f",
+                  "label": "Will the highest temperature in Miami be between 90-91°F on September 10?",
+                  "lower_f": 90,
+                  "upper_f": 91,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.37"
+                },
+                {
+                  "market_id": "4359140",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-92-93f",
+                  "label": "Will the highest temperature in Miami be between 92-93°F on September 10?",
+                  "lower_f": 92,
+                  "upper_f": 93,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.025"
+                },
+                {
+                  "market_id": "4359141",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-94-95f",
+                  "label": "Will the highest temperature in Miami be between 94-95°F on September 10?",
+                  "lower_f": 94,
+                  "upper_f": 95,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0015"
+                },
+                {
+                  "market_id": "4359142",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-96-97f",
+                  "label": "Will the highest temperature in Miami be between 96-97°F on September 10?",
+                  "lower_f": 96,
+                  "upper_f": 97,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0035"
+                },
+                {
+                  "market_id": "4359143",
+                  "market_slug": "highest-temperature-in-miami-on-september-10-2026-98forhigher",
+                  "label": "Will the highest temperature in Miami be 98°F or higher on September 10?",
+                  "lower_f": 98,
+                  "upper_f": null,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "miami-daily-high-research-seed",
+              "evidence_sha256": "2b5f16112a32ac37d155b070a767afad91941e3e558cf03d3a2e622059dcbe35",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "KATL",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Atlanta on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:25.152022+00:00",
+      "registry_expected": {
+        "key": "atlanta-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-atlanta-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "KATL",
+        "station_name": "Hartsfield-Jackson International Airport",
+        "latitude": 33.6367,
+        "longitude": -84.4281,
+        "timezone": "America/New_York",
+        "metric": "daily_high_temperature",
+        "unit": "fahrenheit",
+        "bucket_width_degrees": 2,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=katl",
+        "ncei_station_id": "USW00013874",
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": true,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against the 2026-08-24 evidence SHA-256 cc1a42635ed2bee099576c31e5bf9f2e217f14c6585b1c31ef84c5d9c077e0a7: KATL and NOAA Hourly Data Temp with the standard US template."
+      },
+      "received_at": "2026-09-10T09:12:25.838012+00:00",
+      "status_code": 200,
+      "wire_sha256": "5fb5cab5bdb91023ac3f0d990092dc058ce959be0ea64fb6dba1bff0bc2ab770",
+      "wire_bytes": 56082,
+      "saved_response_sha256": "f8ff4b1816d7bc8ffdc9e2c906f90dfb761e2c0652965fddcfdf1affc622493d",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "987076",
+            "event_slug": "highest-temperature-in-atlanta-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "03407933f8df708d9ef32889875ac22222e4ff6feee536db70d3653b34fcfd3d",
+              "event_id": "987076",
+              "event_slug": "highest-temperature-in-atlanta-on-september-10-2026",
+              "title": "Highest temperature in Atlanta on September 10?",
+              "city": "Atlanta",
+              "target_date": "2026-09-10",
+              "station_id": "KATL",
+              "station_name": "Hartsfield-Jackson International Airport",
+              "timezone": "America/New_York",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=katl",
+              "unit": "fahrenheit",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 2,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4358668",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-81forbelow",
+                  "label": "Will the highest temperature in Atlanta be 81°F or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 81,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.002"
+                },
+                {
+                  "market_id": "4358669",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-82-83f",
+                  "label": "Will the highest temperature in Atlanta be between 82-83°F on September 10?",
+                  "lower_f": 82,
+                  "upper_f": 83,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.002"
+                },
+                {
+                  "market_id": "4358670",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-84-85f",
+                  "label": "Will the highest temperature in Atlanta be between 84-85°F on September 10?",
+                  "lower_f": 84,
+                  "upper_f": 85,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.006"
+                },
+                {
+                  "market_id": "4358671",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-86-87f",
+                  "label": "Will the highest temperature in Atlanta be between 86-87°F on September 10?",
+                  "lower_f": 86,
+                  "upper_f": 87,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.015"
+                },
+                {
+                  "market_id": "4358672",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-88-89f",
+                  "label": "Will the highest temperature in Atlanta be between 88-89°F on September 10?",
+                  "lower_f": 88,
+                  "upper_f": 89,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.025"
+                },
+                {
+                  "market_id": "4358673",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-90-91f",
+                  "label": "Will the highest temperature in Atlanta be between 90-91°F on September 10?",
+                  "lower_f": 90,
+                  "upper_f": 91,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.475"
+                },
+                {
+                  "market_id": "4358674",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-92-93f",
+                  "label": "Will the highest temperature in Atlanta be between 92-93°F on September 10?",
+                  "lower_f": 92,
+                  "upper_f": 93,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.47"
+                },
+                {
+                  "market_id": "4358675",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-94-95f",
+                  "label": "Will the highest temperature in Atlanta be between 94-95°F on September 10?",
+                  "lower_f": 94,
+                  "upper_f": 95,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.035"
+                },
+                {
+                  "market_id": "4358676",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-96-97f",
+                  "label": "Will the highest temperature in Atlanta be between 96-97°F on September 10?",
+                  "lower_f": 96,
+                  "upper_f": 97,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0055"
+                },
+                {
+                  "market_id": "4358677",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-98-99f",
+                  "label": "Will the highest temperature in Atlanta be between 98-99°F on September 10?",
+                  "lower_f": 98,
+                  "upper_f": 99,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0045"
+                },
+                {
+                  "market_id": "4358678",
+                  "market_slug": "highest-temperature-in-atlanta-on-september-10-2026-100forhigher",
+                  "label": "Will the highest temperature in Atlanta be 100°F or higher on September 10?",
+                  "lower_f": 100,
+                  "upper_f": null,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "atlanta-daily-high-research-seed",
+              "evidence_sha256": "03407933f8df708d9ef32889875ac22222e4ff6feee536db70d3653b34fcfd3d",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "KDAL",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Dallas on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:25.856392+00:00",
+      "registry_expected": {
+        "key": "dallas-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-dallas-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "KDAL",
+        "station_name": "Dallas Love Field",
+        "latitude": 32.8471,
+        "longitude": -96.8518,
+        "timezone": "America/Chicago",
+        "metric": "daily_high_temperature",
+        "unit": "fahrenheit",
+        "bucket_width_degrees": 2,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=kdal",
+        "ncei_station_id": "USW00013960",
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": true,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against the 2026-08-24 evidence SHA-256 f28a9e36333238962c77ec008482758757fbd2846fb2a33be96a107eeb13c878: explicitly KDAL Dallas Love Field, not KDFW, and NOAA Hourly Data Temp."
+      },
+      "received_at": "2026-09-10T09:12:26.767390+00:00",
+      "status_code": 200,
+      "wire_sha256": "384e4210e35ad043748d3ee4bcc5615df33e83e316427956d703dddbc7b8ee6b",
+      "wire_bytes": 56175,
+      "saved_response_sha256": "fac2c6a7b4479281af83c08d9cc1e217aa7647d760ac7a910d3c4a481d688449",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "987075",
+            "event_slug": "highest-temperature-in-dallas-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "0716003d63dc422a68aa5afa43269c901fa0afcc451ff9f44f9df98b8160a785",
+              "event_id": "987075",
+              "event_slug": "highest-temperature-in-dallas-on-september-10-2026",
+              "title": "Highest temperature in Dallas on September 10?",
+              "city": "Dallas",
+              "target_date": "2026-09-10",
+              "station_id": "KDAL",
+              "station_name": "Dallas Love Field",
+              "timezone": "America/Chicago",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=kdal",
+              "unit": "fahrenheit",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 2,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4358657",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-89forbelow",
+                  "label": "Will the highest temperature in Dallas be 89°F or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 89,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0015"
+                },
+                {
+                  "market_id": "4358658",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-90-91f",
+                  "label": "Will the highest temperature in Dallas be between 90-91°F on September 10?",
+                  "lower_f": 90,
+                  "upper_f": 91,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0055"
+                },
+                {
+                  "market_id": "4358659",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-92-93f",
+                  "label": "Will the highest temperature in Dallas be between 92-93°F on September 10?",
+                  "lower_f": 92,
+                  "upper_f": 93,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0055"
+                },
+                {
+                  "market_id": "4358660",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-94-95f",
+                  "label": "Will the highest temperature in Dallas be between 94-95°F on September 10?",
+                  "lower_f": 94,
+                  "upper_f": 95,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.045"
+                },
+                {
+                  "market_id": "4358661",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-96-97f",
+                  "label": "Will the highest temperature in Dallas be between 96-97°F on September 10?",
+                  "lower_f": 96,
+                  "upper_f": 97,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.2"
+                },
+                {
+                  "market_id": "4358662",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-98-99f",
+                  "label": "Will the highest temperature in Dallas be between 98-99°F on September 10?",
+                  "lower_f": 98,
+                  "upper_f": 99,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.645"
+                },
+                {
+                  "market_id": "4358663",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-100-101f",
+                  "label": "Will the highest temperature in Dallas be between 100-101°F on September 10?",
+                  "lower_f": 100,
+                  "upper_f": 101,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.105"
+                },
+                {
+                  "market_id": "4358664",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-102-103f",
+                  "label": "Will the highest temperature in Dallas be between 102-103°F on September 10?",
+                  "lower_f": 102,
+                  "upper_f": 103,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.015"
+                },
+                {
+                  "market_id": "4358665",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-104-105f",
+                  "label": "Will the highest temperature in Dallas be between 104-105°F on September 10?",
+                  "lower_f": 104,
+                  "upper_f": 105,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0045"
+                },
+                {
+                  "market_id": "4358666",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-106-107f",
+                  "label": "Will the highest temperature in Dallas be between 106-107°F on September 10?",
+                  "lower_f": 106,
+                  "upper_f": 107,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4358667",
+                  "market_slug": "highest-temperature-in-dallas-on-september-10-2026-108forhigher",
+                  "label": "Will the highest temperature in Dallas be 108°F or higher on September 10?",
+                  "lower_f": 108,
+                  "upper_f": null,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "dallas-daily-high-research-seed",
+              "evidence_sha256": "0716003d63dc422a68aa5afa43269c901fa0afcc451ff9f44f9df98b8160a785",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "KHOU",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Houston on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:26.775107+00:00",
+      "registry_expected": {
+        "key": "houston-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-houston-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "KHOU",
+        "station_name": "William P. Hobby Airport",
+        "latitude": 29.6454,
+        "longitude": -95.2789,
+        "timezone": "America/Chicago",
+        "metric": "daily_high_temperature",
+        "unit": "fahrenheit",
+        "bucket_width_degrees": 2,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=khou",
+        "ncei_station_id": "USW00012918",
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": true,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against the 2026-08-24 evidence SHA-256 9534c495d7dd5890805c4fc34191eeee8d6ad612b45338c953d64cbad9922c9d: explicitly KHOU William P. Hobby, not KIAH, and NOAA Hourly Data Temp."
+      },
+      "received_at": "2026-09-10T09:12:27.314915+00:00",
+      "status_code": 200,
+      "wire_sha256": "99def5575caa69e5a3be8f5277adcdb0968809977059d037f3efb2d8a36e6c99",
+      "wire_bytes": 55857,
+      "saved_response_sha256": "417cf726f4c580d8fb47f3b9291b366b46e48824c96aff1383aad92acc74c738",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "987250",
+            "event_slug": "highest-temperature-in-houston-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "ed9666c7a0b55cf169a45078cce32f7a090c30fad15e51e5d0f65e1d85b74480",
+              "event_id": "987250",
+              "event_slug": "highest-temperature-in-houston-on-september-10-2026",
+              "title": "Highest temperature in Houston on September 10?",
+              "city": "Houston",
+              "target_date": "2026-09-10",
+              "station_id": "KHOU",
+              "station_name": "William P. Hobby Airport",
+              "timezone": "America/Chicago",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=khou",
+              "unit": "fahrenheit",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 2,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4359166",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-79forbelow",
+                  "label": "Will the highest temperature in Houston be 79°F or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 79,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4359167",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-80-81f",
+                  "label": "Will the highest temperature in Houston be between 80-81°F on September 10?",
+                  "lower_f": 80,
+                  "upper_f": 81,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0025"
+                },
+                {
+                  "market_id": "4359168",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-82-83f",
+                  "label": "Will the highest temperature in Houston be between 82-83°F on September 10?",
+                  "lower_f": 82,
+                  "upper_f": 83,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.003"
+                },
+                {
+                  "market_id": "4359169",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-84-85f",
+                  "label": "Will the highest temperature in Houston be between 84-85°F on September 10?",
+                  "lower_f": 84,
+                  "upper_f": 85,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.043"
+                },
+                {
+                  "market_id": "4359170",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-86-87f",
+                  "label": "Will the highest temperature in Houston be between 86-87°F on September 10?",
+                  "lower_f": 86,
+                  "upper_f": 87,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.055"
+                },
+                {
+                  "market_id": "4359171",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-88-89f",
+                  "label": "Will the highest temperature in Houston be between 88-89°F on September 10?",
+                  "lower_f": 88,
+                  "upper_f": 89,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.185"
+                },
+                {
+                  "market_id": "4359172",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-90-91f",
+                  "label": "Will the highest temperature in Houston be between 90-91°F on September 10?",
+                  "lower_f": 90,
+                  "upper_f": 91,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.425"
+                },
+                {
+                  "market_id": "4359173",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-92-93f",
+                  "label": "Will the highest temperature in Houston be between 92-93°F on September 10?",
+                  "lower_f": 92,
+                  "upper_f": 93,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.155"
+                },
+                {
+                  "market_id": "4359174",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-94-95f",
+                  "label": "Will the highest temperature in Houston be between 94-95°F on September 10?",
+                  "lower_f": 94,
+                  "upper_f": 95,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.015"
+                },
+                {
+                  "market_id": "4359175",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-96-97f",
+                  "label": "Will the highest temperature in Houston be between 96-97°F on September 10?",
+                  "lower_f": 96,
+                  "upper_f": 97,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0065"
+                },
+                {
+                  "market_id": "4359176",
+                  "market_slug": "highest-temperature-in-houston-on-september-10-2026-98forhigher",
+                  "label": "Will the highest temperature in Houston be 98°F or higher on September 10?",
+                  "lower_f": 98,
+                  "upper_f": null,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0015"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "houston-daily-high-research-seed",
+              "evidence_sha256": "ed9666c7a0b55cf169a45078cce32f7a090c30fad15e51e5d0f65e1d85b74480",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "KSEA",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Seattle on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:27.323200+00:00",
+      "registry_expected": {
+        "key": "seattle-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-seattle-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "KSEA",
+        "station_name": "Seattle-Tacoma International Airport",
+        "latitude": 47.4447,
+        "longitude": -122.3136,
+        "timezone": "America/Los_Angeles",
+        "metric": "daily_high_temperature",
+        "unit": "fahrenheit",
+        "bucket_width_degrees": 2,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=ksea",
+        "ncei_station_id": "USW00024233",
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": true,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against the 2026-08-24 evidence SHA-256 d7d5604a906fdf1ab18aaad68cf55d1ee314826f79f1e39efa31bf6d3d8374de: KSEA and NOAA Hourly Data Temp with the standard US template."
+      },
+      "received_at": "2026-09-10T09:12:27.883198+00:00",
+      "status_code": 200,
+      "wire_sha256": "f252281e06a27dd8a33c2d12fbebf7639da65bc1641d78deac97f47f6c9f2f3e",
+      "wire_bytes": 56522,
+      "saved_response_sha256": "298399f4ec39a4ac43b31fc8e992aee9065b85c6eef0e4ad8a0852b28d10a003",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "987928",
+            "event_slug": "highest-temperature-in-seattle-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "be49befcf3551eb090ab895110e800cbe40d662d6662b24c546b611eb9191b98",
+              "event_id": "987928",
+              "event_slug": "highest-temperature-in-seattle-on-september-10-2026",
+              "title": "Highest temperature in Seattle on September 10?",
+              "city": "Seattle",
+              "target_date": "2026-09-10",
+              "station_id": "KSEA",
+              "station_name": "Seattle-Tacoma International Airport",
+              "timezone": "America/Los_Angeles",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=ksea",
+              "unit": "fahrenheit",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 2,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4362155",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-59forbelow",
+                  "label": "Will the highest temperature in Seattle be 59°F or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 59,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4362156",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-60-61f",
+                  "label": "Will the highest temperature in Seattle be between 60-61°F on September 10?",
+                  "lower_f": 60,
+                  "upper_f": 61,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4362157",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-62-63f",
+                  "label": "Will the highest temperature in Seattle be between 62-63°F on September 10?",
+                  "lower_f": 62,
+                  "upper_f": 63,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.004"
+                },
+                {
+                  "market_id": "4362158",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-64-65f",
+                  "label": "Will the highest temperature in Seattle be between 64-65°F on September 10?",
+                  "lower_f": 64,
+                  "upper_f": 65,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.025"
+                },
+                {
+                  "market_id": "4362159",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-66-67f",
+                  "label": "Will the highest temperature in Seattle be between 66-67°F on September 10?",
+                  "lower_f": 66,
+                  "upper_f": 67,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.185"
+                },
+                {
+                  "market_id": "4362160",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-68-69f",
+                  "label": "Will the highest temperature in Seattle be between 68-69°F on September 10?",
+                  "lower_f": 68,
+                  "upper_f": 69,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.465"
+                },
+                {
+                  "market_id": "4362161",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-70-71f",
+                  "label": "Will the highest temperature in Seattle be between 70-71°F on September 10?",
+                  "lower_f": 70,
+                  "upper_f": 71,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.26"
+                },
+                {
+                  "market_id": "4362162",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-72-73f",
+                  "label": "Will the highest temperature in Seattle be between 72-73°F on September 10?",
+                  "lower_f": 72,
+                  "upper_f": 73,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.025"
+                },
+                {
+                  "market_id": "4362163",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-74-75f",
+                  "label": "Will the highest temperature in Seattle be between 74-75°F on September 10?",
+                  "lower_f": 74,
+                  "upper_f": 75,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.02"
+                },
+                {
+                  "market_id": "4362164",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-76-77f",
+                  "label": "Will the highest temperature in Seattle be between 76-77°F on September 10?",
+                  "lower_f": 76,
+                  "upper_f": 77,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0015"
+                },
+                {
+                  "market_id": "4362165",
+                  "market_slug": "highest-temperature-in-seattle-on-september-10-2026-78forhigher",
+                  "label": "Will the highest temperature in Seattle be 78°F or higher on September 10?",
+                  "lower_f": 78,
+                  "upper_f": null,
+                  "unit": "fahrenheit",
+                  "market_probability": "0.0015"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "seattle-daily-high-research-seed",
+              "evidence_sha256": "be49befcf3551eb090ab895110e800cbe40d662d6662b24c546b611eb9191b98",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "ZUCK",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Chongqing on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:27.891349+00:00",
+      "registry_expected": {
+        "key": "chongqing-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-chongqing-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "ZUCK",
+        "station_name": "Chongqing Jiangbei International Airport",
+        "latitude": 29.718,
+        "longitude": 106.639,
+        "timezone": "Asia/Shanghai",
+        "metric": "daily_high_temperature",
+        "unit": "celsius",
+        "bucket_width_degrees": 1,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=zuck",
+        "ncei_station_id": null,
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": false,
+        "open_meteo_enabled": true,
+        "status": "verified",
+        "notes": "Verified against 2026-08-24 evidence SHA-256 5e065a919ac0a7a9988ecc97917b9e2f2e4920b4fab8fd8fe78813a6a2c5b9ae. NOAA AWC station metadata gives 29.718, 106.639. WRH/Synoptic period begins 2018-10-26 and returns hourly observations."
+      },
+      "received_at": "2026-09-10T09:12:28.841171+00:00",
+      "status_code": 200,
+      "wire_sha256": "23b9a349ae85c81eb7716397d1bfd3a2bd8cffe03fa01414501a4aeea4cfa5e8",
+      "wire_bytes": 53513,
+      "saved_response_sha256": "c782201f7bb4b7c1273c1ec7befe7fab820fad2ec837f6a802f37b3c1c34f086",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "986731",
+            "event_slug": "highest-temperature-in-chongqing-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "56a4a4ced79e9c252088958290f5ef608312a67cb8374bb80de70dec259afbc4",
+              "event_id": "986731",
+              "event_slug": "highest-temperature-in-chongqing-on-september-10-2026",
+              "title": "Highest temperature in Chongqing on September 10?",
+              "city": "Chongqing",
+              "target_date": "2026-09-10",
+              "station_id": "ZUCK",
+              "station_name": "Chongqing Jiangbei International Airport",
+              "timezone": "Asia/Shanghai",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=zuck",
+              "unit": "celsius",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 1,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4356404",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-23corbelow",
+                  "label": "Will the highest temperature in Chongqing be 23°C or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 23,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356405",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-24c",
+                  "label": "Will the highest temperature in Chongqing be 24°C on September 10?",
+                  "lower_f": 24,
+                  "upper_f": 24,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356406",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-25c",
+                  "label": "Will the highest temperature in Chongqing be 25°C on September 10?",
+                  "lower_f": 25,
+                  "upper_f": 25,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356407",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-26c",
+                  "label": "Will the highest temperature in Chongqing be 26°C on September 10?",
+                  "lower_f": 26,
+                  "upper_f": 26,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356408",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-27c",
+                  "label": "Will the highest temperature in Chongqing be 27°C on September 10?",
+                  "lower_f": 27,
+                  "upper_f": 27,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356409",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-28c",
+                  "label": "Will the highest temperature in Chongqing be 28°C on September 10?",
+                  "lower_f": 28,
+                  "upper_f": 28,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356410",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-29c",
+                  "label": "Will the highest temperature in Chongqing be 29°C on September 10?",
+                  "lower_f": 29,
+                  "upper_f": 29,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356411",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-30c",
+                  "label": "Will the highest temperature in Chongqing be 30°C on September 10?",
+                  "lower_f": 30,
+                  "upper_f": 30,
+                  "unit": "celsius",
+                  "market_probability": "0.9975"
+                },
+                {
+                  "market_id": "4356412",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-31c",
+                  "label": "Will the highest temperature in Chongqing be 31°C on September 10?",
+                  "lower_f": 31,
+                  "upper_f": 31,
+                  "unit": "celsius",
+                  "market_probability": "0.0025"
+                },
+                {
+                  "market_id": "4356413",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-32c",
+                  "label": "Will the highest temperature in Chongqing be 32°C on September 10?",
+                  "lower_f": 32,
+                  "upper_f": 32,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356414",
+                  "market_slug": "highest-temperature-in-chongqing-on-september-10-2026-33corhigher",
+                  "label": "Will the highest temperature in Chongqing be 33°C or higher on September 10?",
+                  "lower_f": 33,
+                  "upper_f": null,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "chongqing-daily-high-research-seed",
+              "evidence_sha256": "56a4a4ced79e9c252088958290f5ef608312a67cb8374bb80de70dec259afbc4",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    },
+    {
+      "station_id": "ZUUU",
+      "local_date": "2026-09-10",
+      "params": {
+        "q": "highest temperature in Chengdu on September 10",
+        "events_status": "active",
+        "limit_per_type": 50,
+        "page": 1,
+        "keep_closed_markets": 0,
+        "search_tags": "false",
+        "search_profiles": "false"
+      },
+      "requested_at": "2026-09-10T09:12:28.848445+00:00",
+      "registry_expected": {
+        "key": "chengdu-daily-high-research-seed",
+        "venue": "polymarket",
+        "market_slug_pattern": "highest-temperature-in-chengdu-on-[a-z]+-\\d{1,2}-\\d{4}",
+        "station_id": "ZUUU",
+        "station_name": "Chengdu Shuangliu International Airport",
+        "latitude": 30.576,
+        "longitude": 103.95,
+        "timezone": "Asia/Shanghai",
+        "metric": "daily_high_temperature",
+        "unit": "celsius",
+        "bucket_width_degrees": 1,
+        "rounding_precision_degrees": "1",
+        "finalization_rule": "first_next_day_observation",
+        "ignores_late_revisions": true,
+        "window_basis": "local_civil_day",
+        "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=zuuu",
+        "ncei_station_id": null,
+        "signal_truth_policy": "same_station_noaa",
+        "nws_api_enabled": false,
+        "open_meteo_enabled": false,
+        "status": "verified",
+        "notes": "Verified against 2026-08-24 evidence SHA-256 c9aedb2cb947cce1daceffbd5bc5196cb7413b38fc30b4b49a1b282d4924ad79. NOAA AWC station metadata gives 30.576, 103.950. Open-Meteo returns a grid 6.53 km away, so forecast and calibration paths remain fail-closed until a suitable data source is configured."
+      },
+      "received_at": "2026-09-10T09:12:29.339452+00:00",
+      "status_code": 200,
+      "wire_sha256": "0fe2401f17e18012fc63a7eaa2f5da2e8699171fa92ac3fd9facbb7fa59a778c",
+      "wire_bytes": 53351,
+      "saved_response_sha256": "6370d65f92d6f9c43dbc6cf96d43eab2e191f0694bf33032e05bfe5dd9787a49",
+      "diagnosis": {
+        "candidate_count": 1,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "event_id": "986734",
+            "event_slug": "highest-temperature-in-chengdu-on-september-10-2026",
+            "stage": "verification",
+            "parsed": {
+              "parser_version": "2",
+              "evidence_sha256": "999a9989e77acebbd5b046d355aa931a73df468b5043c87c143ac4493b0cb778",
+              "event_id": "986734",
+              "event_slug": "highest-temperature-in-chengdu-on-september-10-2026",
+              "title": "Highest temperature in Chengdu on September 10?",
+              "city": "Chengdu",
+              "target_date": "2026-09-10",
+              "station_id": "ZUUU",
+              "station_name": "Chengdu Shuangliu International Airport",
+              "timezone": "Asia/Shanghai",
+              "official_source_name": "NOAA Timeseries",
+              "official_source_url": "https://www.weather.gov/wrh/timeseries?site=zuuu",
+              "unit": "celsius",
+              "precision_degrees": "1",
+              "bucket_width_degrees": 1,
+              "observation_table": "Daily Observations",
+              "finalization_rule": "unknown",
+              "ignores_late_revisions": true,
+              "buckets": [
+                {
+                  "market_id": "4356437",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-18corbelow",
+                  "label": "Will the highest temperature in Chengdu be 18°C or below on September 10?",
+                  "lower_f": null,
+                  "upper_f": 18,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356438",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-19c",
+                  "label": "Will the highest temperature in Chengdu be 19°C on September 10?",
+                  "lower_f": 19,
+                  "upper_f": 19,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356439",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-20c",
+                  "label": "Will the highest temperature in Chengdu be 20°C on September 10?",
+                  "lower_f": 20,
+                  "upper_f": 20,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356440",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-21c",
+                  "label": "Will the highest temperature in Chengdu be 21°C on September 10?",
+                  "lower_f": 21,
+                  "upper_f": 21,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356441",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-22c",
+                  "label": "Will the highest temperature in Chengdu be 22°C on September 10?",
+                  "lower_f": 22,
+                  "upper_f": 22,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356442",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-23c",
+                  "label": "Will the highest temperature in Chengdu be 23°C on September 10?",
+                  "lower_f": 23,
+                  "upper_f": 23,
+                  "unit": "celsius",
+                  "market_probability": "0.955"
+                },
+                {
+                  "market_id": "4356443",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-24c",
+                  "label": "Will the highest temperature in Chengdu be 24°C on September 10?",
+                  "lower_f": 24,
+                  "upper_f": 24,
+                  "unit": "celsius",
+                  "market_probability": "0.045"
+                },
+                {
+                  "market_id": "4356444",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-25c",
+                  "label": "Will the highest temperature in Chengdu be 25°C on September 10?",
+                  "lower_f": 25,
+                  "upper_f": 25,
+                  "unit": "celsius",
+                  "market_probability": "0.004"
+                },
+                {
+                  "market_id": "4356445",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-26c",
+                  "label": "Will the highest temperature in Chengdu be 26°C on September 10?",
+                  "lower_f": 26,
+                  "upper_f": 26,
+                  "unit": "celsius",
+                  "market_probability": "0.001"
+                },
+                {
+                  "market_id": "4356446",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-27c",
+                  "label": "Will the highest temperature in Chengdu be 27°C on September 10?",
+                  "lower_f": 27,
+                  "upper_f": 27,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                },
+                {
+                  "market_id": "4356447",
+                  "market_slug": "highest-temperature-in-chengdu-on-september-10-2026-28corhigher",
+                  "label": "Will the highest temperature in Chengdu be 28°C or higher on September 10?",
+                  "lower_f": 28,
+                  "upper_f": null,
+                  "unit": "celsius",
+                  "market_probability": "0.0005"
+                }
+              ],
+              "parse_status": "complete",
+              "missing_fields": []
+            },
+            "verification": {
+              "settlement_key": "chengdu-daily-high-research-seed",
+              "evidence_sha256": "999a9989e77acebbd5b046d355aa931a73df468b5043c87c143ac4493b0cb778",
+              "passed": false,
+              "checks": {
+                "parse_complete": true,
+                "registry_verified": true,
+                "slug_exact": true,
+                "station_exact": true,
+                "station_name_exact": true,
+                "timezone_exact": true,
+                "source_exact": true,
+                "whole_degree_precision": true,
+                "unit_exact": true,
+                "bucket_width_exact": true,
+                "finalization_known": false,
+                "finalization_exact": false,
+                "late_revision_cutoff": true,
+                "late_revision_exact": true
+              },
+              "failures": [
+                "finalization_known",
+                "finalization_exact"
+              ],
+              "tradeable": false,
+              "reason": "failed: finalization_known, finalization_exact"
+            }
+          }
+        ]
+      },
+      "saved_replay_matches_original": true
+    }
+  ],
+  "source_unchanged": true
+}

@@ -1,0 +1,205 @@
+{
+  "station_id": "KDAL",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Dallas on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:25.856392+00:00",
+  "registry_expected": {
+    "key": "dallas-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-dallas-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KDAL",
+    "station_name": "Dallas Love Field",
+    "latitude": 32.8471,
+    "longitude": -96.8518,
+    "timezone": "America/Chicago",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=kdal",
+    "ncei_station_id": "USW00013960",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 f28a9e36333238962c77ec008482758757fbd2846fb2a33be96a107eeb13c878: explicitly KDAL Dallas Love Field, not KDFW, and NOAA Hourly Data Temp."
+  },
+  "received_at": "2026-09-10T09:12:26.767390+00:00",
+  "status_code": 200,
+  "wire_sha256": "384e4210e35ad043748d3ee4bcc5615df33e83e316427956d703dddbc7b8ee6b",
+  "wire_bytes": 56175,
+  "saved_response_sha256": "fac2c6a7b4479281af83c08d9cc1e217aa7647d760ac7a910d3c4a481d688449",
+  "diagnosis": {
+    "candidate_count": 1,
+    "ambiguous": false,
+    "candidates": [
+      {
+        "event_id": "987075",
+        "event_slug": "highest-temperature-in-dallas-on-september-10-2026",
+        "stage": "verification",
+        "parsed": {
+          "parser_version": "2",
+          "evidence_sha256": "0716003d63dc422a68aa5afa43269c901fa0afcc451ff9f44f9df98b8160a785",
+          "event_id": "987075",
+          "event_slug": "highest-temperature-in-dallas-on-september-10-2026",
+          "title": "Highest temperature in Dallas on September 10?",
+          "city": "Dallas",
+          "target_date": "2026-09-10",
+          "station_id": "KDAL",
+          "station_name": "Dallas Love Field",
+          "timezone": "America/Chicago",
+          "official_source_name": "NOAA Timeseries",
+          "official_source_url": "https://www.weather.gov/wrh/timeseries?site=kdal",
+          "unit": "fahrenheit",
+          "precision_degrees": "1",
+          "bucket_width_degrees": 2,
+          "observation_table": "Daily Observations",
+          "finalization_rule": "unknown",
+          "ignores_late_revisions": true,
+          "buckets": [
+            {
+              "market_id": "4358657",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-89forbelow",
+              "label": "Will the highest temperature in Dallas be 89°F or below on September 10?",
+              "lower_f": null,
+              "upper_f": 89,
+              "unit": "fahrenheit",
+              "market_probability": "0.0015"
+            },
+            {
+              "market_id": "4358658",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-90-91f",
+              "label": "Will the highest temperature in Dallas be between 90-91°F on September 10?",
+              "lower_f": 90,
+              "upper_f": 91,
+              "unit": "fahrenheit",
+              "market_probability": "0.0055"
+            },
+            {
+              "market_id": "4358659",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-92-93f",
+              "label": "Will the highest temperature in Dallas be between 92-93°F on September 10?",
+              "lower_f": 92,
+              "upper_f": 93,
+              "unit": "fahrenheit",
+              "market_probability": "0.0055"
+            },
+            {
+              "market_id": "4358660",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-94-95f",
+              "label": "Will the highest temperature in Dallas be between 94-95°F on September 10?",
+              "lower_f": 94,
+              "upper_f": 95,
+              "unit": "fahrenheit",
+              "market_probability": "0.045"
+            },
+            {
+              "market_id": "4358661",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-96-97f",
+              "label": "Will the highest temperature in Dallas be between 96-97°F on September 10?",
+              "lower_f": 96,
+              "upper_f": 97,
+              "unit": "fahrenheit",
+              "market_probability": "0.2"
+            },
+            {
+              "market_id": "4358662",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-98-99f",
+              "label": "Will the highest temperature in Dallas be between 98-99°F on September 10?",
+              "lower_f": 98,
+              "upper_f": 99,
+              "unit": "fahrenheit",
+              "market_probability": "0.645"
+            },
+            {
+              "market_id": "4358663",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-100-101f",
+              "label": "Will the highest temperature in Dallas be between 100-101°F on September 10?",
+              "lower_f": 100,
+              "upper_f": 101,
+              "unit": "fahrenheit",
+              "market_probability": "0.105"
+            },
+            {
+              "market_id": "4358664",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-102-103f",
+              "label": "Will the highest temperature in Dallas be between 102-103°F on September 10?",
+              "lower_f": 102,
+              "upper_f": 103,
+              "unit": "fahrenheit",
+              "market_probability": "0.015"
+            },
+            {
+              "market_id": "4358665",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-104-105f",
+              "label": "Will the highest temperature in Dallas be between 104-105°F on September 10?",
+              "lower_f": 104,
+              "upper_f": 105,
+              "unit": "fahrenheit",
+              "market_probability": "0.0045"
+            },
+            {
+              "market_id": "4358666",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-106-107f",
+              "label": "Will the highest temperature in Dallas be between 106-107°F on September 10?",
+              "lower_f": 106,
+              "upper_f": 107,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4358667",
+              "market_slug": "highest-temperature-in-dallas-on-september-10-2026-108forhigher",
+              "label": "Will the highest temperature in Dallas be 108°F or higher on September 10?",
+              "lower_f": 108,
+              "upper_f": null,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            }
+          ],
+          "parse_status": "complete",
+          "missing_fields": []
+        },
+        "verification": {
+          "settlement_key": "dallas-daily-high-research-seed",
+          "evidence_sha256": "0716003d63dc422a68aa5afa43269c901fa0afcc451ff9f44f9df98b8160a785",
+          "passed": false,
+          "checks": {
+            "parse_complete": true,
+            "registry_verified": true,
+            "slug_exact": true,
+            "station_exact": true,
+            "station_name_exact": true,
+            "timezone_exact": true,
+            "source_exact": true,
+            "whole_degree_precision": true,
+            "unit_exact": true,
+            "bucket_width_exact": true,
+            "finalization_known": false,
+            "finalization_exact": false,
+            "late_revision_cutoff": true,
+            "late_revision_exact": true
+          },
+          "failures": [
+            "finalization_known",
+            "finalization_exact"
+          ],
+          "tradeable": false,
+          "reason": "failed: finalization_known, finalization_exact"
+        }
+      }
+    ]
+  },
+  "saved_replay_matches_original": true
+}

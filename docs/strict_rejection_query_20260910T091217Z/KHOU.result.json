@@ -1,0 +1,205 @@
+{
+  "station_id": "KHOU",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Houston on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:26.775107+00:00",
+  "registry_expected": {
+    "key": "houston-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-houston-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KHOU",
+    "station_name": "William P. Hobby Airport",
+    "latitude": 29.6454,
+    "longitude": -95.2789,
+    "timezone": "America/Chicago",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=khou",
+    "ncei_station_id": "USW00012918",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 9534c495d7dd5890805c4fc34191eeee8d6ad612b45338c953d64cbad9922c9d: explicitly KHOU William P. Hobby, not KIAH, and NOAA Hourly Data Temp."
+  },
+  "received_at": "2026-09-10T09:12:27.314915+00:00",
+  "status_code": 200,
+  "wire_sha256": "99def5575caa69e5a3be8f5277adcdb0968809977059d037f3efb2d8a36e6c99",
+  "wire_bytes": 55857,
+  "saved_response_sha256": "417cf726f4c580d8fb47f3b9291b366b46e48824c96aff1383aad92acc74c738",
+  "diagnosis": {
+    "candidate_count": 1,
+    "ambiguous": false,
+    "candidates": [
+      {
+        "event_id": "987250",
+        "event_slug": "highest-temperature-in-houston-on-september-10-2026",
+        "stage": "verification",
+        "parsed": {
+          "parser_version": "2",
+          "evidence_sha256": "ed9666c7a0b55cf169a45078cce32f7a090c30fad15e51e5d0f65e1d85b74480",
+          "event_id": "987250",
+          "event_slug": "highest-temperature-in-houston-on-september-10-2026",
+          "title": "Highest temperature in Houston on September 10?",
+          "city": "Houston",
+          "target_date": "2026-09-10",
+          "station_id": "KHOU",
+          "station_name": "William P. Hobby Airport",
+          "timezone": "America/Chicago",
+          "official_source_name": "NOAA Timeseries",
+          "official_source_url": "https://www.weather.gov/wrh/timeseries?site=khou",
+          "unit": "fahrenheit",
+          "precision_degrees": "1",
+          "bucket_width_degrees": 2,
+          "observation_table": "Daily Observations",
+          "finalization_rule": "unknown",
+          "ignores_late_revisions": true,
+          "buckets": [
+            {
+              "market_id": "4359166",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-79forbelow",
+              "label": "Will the highest temperature in Houston be 79°F or below on September 10?",
+              "lower_f": null,
+              "upper_f": 79,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4359167",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-80-81f",
+              "label": "Will the highest temperature in Houston be between 80-81°F on September 10?",
+              "lower_f": 80,
+              "upper_f": 81,
+              "unit": "fahrenheit",
+              "market_probability": "0.0025"
+            },
+            {
+              "market_id": "4359168",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-82-83f",
+              "label": "Will the highest temperature in Houston be between 82-83°F on September 10?",
+              "lower_f": 82,
+              "upper_f": 83,
+              "unit": "fahrenheit",
+              "market_probability": "0.003"
+            },
+            {
+              "market_id": "4359169",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-84-85f",
+              "label": "Will the highest temperature in Houston be between 84-85°F on September 10?",
+              "lower_f": 84,
+              "upper_f": 85,
+              "unit": "fahrenheit",
+              "market_probability": "0.043"
+            },
+            {
+              "market_id": "4359170",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-86-87f",
+              "label": "Will the highest temperature in Houston be between 86-87°F on September 10?",
+              "lower_f": 86,
+              "upper_f": 87,
+              "unit": "fahrenheit",
+              "market_probability": "0.055"
+            },
+            {
+              "market_id": "4359171",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-88-89f",
+              "label": "Will the highest temperature in Houston be between 88-89°F on September 10?",
+              "lower_f": 88,
+              "upper_f": 89,
+              "unit": "fahrenheit",
+              "market_probability": "0.185"
+            },
+            {
+              "market_id": "4359172",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-90-91f",
+              "label": "Will the highest temperature in Houston be between 90-91°F on September 10?",
+              "lower_f": 90,
+              "upper_f": 91,
+              "unit": "fahrenheit",
+              "market_probability": "0.425"
+            },
+            {
+              "market_id": "4359173",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-92-93f",
+              "label": "Will the highest temperature in Houston be between 92-93°F on September 10?",
+              "lower_f": 92,
+              "upper_f": 93,
+              "unit": "fahrenheit",
+              "market_probability": "0.155"
+            },
+            {
+              "market_id": "4359174",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-94-95f",
+              "label": "Will the highest temperature in Houston be between 94-95°F on September 10?",
+              "lower_f": 94,
+              "upper_f": 95,
+              "unit": "fahrenheit",
+              "market_probability": "0.015"
+            },
+            {
+              "market_id": "4359175",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-96-97f",
+              "label": "Will the highest temperature in Houston be between 96-97°F on September 10?",
+              "lower_f": 96,
+              "upper_f": 97,
+              "unit": "fahrenheit",
+              "market_probability": "0.0065"
+            },
+            {
+              "market_id": "4359176",
+              "market_slug": "highest-temperature-in-houston-on-september-10-2026-98forhigher",
+              "label": "Will the highest temperature in Houston be 98°F or higher on September 10?",
+              "lower_f": 98,
+              "upper_f": null,
+              "unit": "fahrenheit",
+              "market_probability": "0.0015"
+            }
+          ],
+          "parse_status": "complete",
+          "missing_fields": []
+        },
+        "verification": {
+          "settlement_key": "houston-daily-high-research-seed",
+          "evidence_sha256": "ed9666c7a0b55cf169a45078cce32f7a090c30fad15e51e5d0f65e1d85b74480",
+          "passed": false,
+          "checks": {
+            "parse_complete": true,
+            "registry_verified": true,
+            "slug_exact": true,
+            "station_exact": true,
+            "station_name_exact": true,
+            "timezone_exact": true,
+            "source_exact": true,
+            "whole_degree_precision": true,
+            "unit_exact": true,
+            "bucket_width_exact": true,
+            "finalization_known": false,
+            "finalization_exact": false,
+            "late_revision_cutoff": true,
+            "late_revision_exact": true
+          },
+          "failures": [
+            "finalization_known",
+            "finalization_exact"
+          ],
+          "tradeable": false,
+          "reason": "failed: finalization_known, finalization_exact"
+        }
+      }
+    ]
+  },
+  "saved_replay_matches_original": true
+}

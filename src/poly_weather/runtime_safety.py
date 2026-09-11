@@ -323,6 +323,8 @@ def normalize_health(value: Mapping[str, Any], *, integrity: str, pid_state: str
         reasons.append("pid_ownership_unknown")
     if dependency_state not in {"healthy", "not_required"}:
         reasons.append(f"dependency_{dependency_state}")
+    if value.get("downstream_start_blocked") is True:
+        reasons.append("downstream_start_blocked")
     # No observed pair of cursor snapshots is available here.
     progress = "stalled" if reported.casefold() == "stalled" else "unknown"
     if progress == "stalled":

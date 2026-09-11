@@ -1,0 +1,414 @@
+{
+  "at": "2026-09-10T08:57:00.489180+00:00",
+  "protected": {
+    "configs/market_state_challenger_v1.json": {
+      "before": {
+        "size": 995,
+        "mtime_ns": 1788242162270115300
+      },
+      "after": {
+        "size": 995,
+        "mtime_ns": 1788242162270115300
+      },
+      "sha256": "3b9eba683783ba132a2d5904913925043947463b0f30ce067fd8bd14cbe847b6"
+    },
+    "configs/paper_spread_strategy_v1.json": {
+      "before": {
+        "size": 967,
+        "mtime_ns": 1788490580624164700
+      },
+      "after": {
+        "size": 967,
+        "mtime_ns": 1788490580624164700
+      },
+      "sha256": "ea7283cbb070385aace5052d30787d15f18473ba544c0058047c02b807134dc3"
+    },
+    "configs/polymarket_quality_overrides.json": {
+      "before": {
+        "size": 1203,
+        "mtime_ns": 1788155340538053300
+      },
+      "after": {
+        "size": 1203,
+        "mtime_ns": 1788155340538053300
+      },
+      "sha256": "c695b1e161a69c9ae2b3eb2c9cb3b0f95cf3b38e3eb49bb4119707b7559c2122"
+    },
+    "configs/settlements.example.json": {
+      "before": {
+        "size": 10903,
+        "mtime_ns": 1787581273390749500
+      },
+      "after": {
+        "size": 10903,
+        "mtime_ns": 1787581273390749500
+      },
+      "sha256": "c22d8ab8e0ce05f65ef4c5a526c698b14bf2e4421c8c6d8d9f962472e19f70dd"
+    },
+    "configs/settlements.json": {
+      "before": {
+        "size": 10903,
+        "mtime_ns": 1787712965351283900
+      },
+      "after": {
+        "size": 10903,
+        "mtime_ns": 1787712965351283900
+      },
+      "sha256": "c22d8ab8e0ce05f65ef4c5a526c698b14bf2e4421c8c6d8d9f962472e19f70dd"
+    },
+    "configs/shadow_spread_strategy.json": {
+      "before": {
+        "size": 1169,
+        "mtime_ns": 1787825518951881700
+      },
+      "after": {
+        "size": 1169,
+        "mtime_ns": 1787825518951881700
+      },
+      "sha256": "2673bf89b454700516c87fb8b5a0e43deacd88dbcf055d204010df2c48ce221d"
+    },
+    "configs/warming_window_no_thresholds.json": {
+      "before": {
+        "size": 49974,
+        "mtime_ns": 1787718663119478200
+      },
+      "after": {
+        "size": 49974,
+        "mtime_ns": 1787718663119478200
+      },
+      "sha256": "80ad9cbc6e1f63ec6c6e572218f95fbfe32025e86a71e7819af30d493c8d9b87"
+    },
+    "data/raw/shadow_orders/shadow_orders.jsonl": {
+      "before": {
+        "size": 12921,
+        "mtime_ns": 1787805580233211700
+      },
+      "after": {
+        "size": 12921,
+        "mtime_ns": 1787805580233211700
+      },
+      "sha256": "c0be17b78dd0a487a03d123c94dcdfa3f9b6ff9bda9b90b4deca8e2205cfefac"
+    },
+    "data/raw/shadow_orders/shadow_orders_v2_token_scoped.jsonl": {
+      "before": {
+        "size": 6013283,
+        "mtime_ns": 1788378918173173600
+      },
+      "after": {
+        "size": 6013283,
+        "mtime_ns": 1788378918173173600
+      },
+      "sha256": "df2c7dd57452cbb828db901b08091529f5071b935645adee577b57f706122915"
+    },
+    "data/runtime/shadow_spread_cursor_v2_token_scoped.json": {
+      "before": {
+        "size": 3076370,
+        "mtime_ns": 1788522328585957400
+      },
+      "after": {
+        "size": 3076370,
+        "mtime_ns": 1788522328585957400
+      },
+      "sha256": "c8b6023c647878936639f88568a972bb2626857777799f8a223912719a6c05fd"
+    },
+    "data/runtime/shadow_spread_cursor_v2_token_scoped.last_good.json": {
+      "before": {
+        "size": 3076370,
+        "mtime_ns": 1788522328593956100
+      },
+      "after": {
+        "size": 3076370,
+        "mtime_ns": 1788522328593956100
+      },
+      "sha256": "c8b6023c647878936639f88568a972bb2626857777799f8a223912719a6c05fd"
+    },
+    "data/runtime/shadow_spread_status.json": {
+      "before": {
+        "size": 1970,
+        "mtime_ns": 1787808444550800300
+      },
+      "after": {
+        "size": 1970,
+        "mtime_ns": 1787808444550800300
+      },
+      "sha256": "bd0e79299972e077ea7d48900b614afdb869f8ce5c93ba8d3303c43d921ab26f"
+    },
+    "data/runtime/shadow_spread_status_v1_legacy_read_only.json": {
+      "before": {
+        "size": 1970,
+        "mtime_ns": 1787808444550800300
+      },
+      "after": {
+        "size": 1970,
+        "mtime_ns": 1787808444550800300
+      },
+      "sha256": "bd0e79299972e077ea7d48900b614afdb869f8ce5c93ba8d3303c43d921ab26f"
+    },
+    "data/runtime/shadow_spread_status_v2_token_scoped.json": {
+      "before": {
+        "size": 152760,
+        "mtime_ns": 1788522328347594900
+      },
+      "after": {
+        "size": 152760,
+        "mtime_ns": 1788522328347594900
+      },
+      "sha256": "35daa6cd3e10d30525c665a652fc40546c88b9b412068be5e647b1dbe529d82c"
+    },
+    "data/runtime/shadow_spread_status_v2_token_scoped.last_good.json": {
+      "before": {
+        "size": 152760,
+        "mtime_ns": 1788522328352628000
+      },
+      "after": {
+        "size": 152760,
+        "mtime_ns": 1788522328352628000
+      },
+      "sha256": "35daa6cd3e10d30525c665a652fc40546c88b9b412068be5e647b1dbe529d82c"
+    },
+    "data/runtime/signal_config_update.json": {
+      "before": {
+        "size": 1794,
+        "mtime_ns": 1788522329131587000
+      },
+      "after": {
+        "size": 1794,
+        "mtime_ns": 1788522329131587000
+      },
+      "sha256": "e4d59155bdba499efd747f62894334972287003c9482a8636b9197e7d0ac89c4"
+    },
+    "data/runtime/signal_config_update.last_good.json": {
+      "before": {
+        "size": 1794,
+        "mtime_ns": 1788522329135591100
+      },
+      "after": {
+        "size": 1794,
+        "mtime_ns": 1788522329135591100
+      },
+      "sha256": "e4d59155bdba499efd747f62894334972287003c9482a8636b9197e7d0ac89c4"
+    },
+    "data/runtime/signal_engine_status.json": {
+      "before": {
+        "size": 2087,
+        "mtime_ns": 1788522345191386500
+      },
+      "after": {
+        "size": 2087,
+        "mtime_ns": 1788522345191386500
+      },
+      "sha256": "fed6fc7baf1d8c77782b1bee679925e96090a1ab5fa37037db6e47e6b9a565fc"
+    },
+    "data/runtime/signal_engine_status.last_good.json": {
+      "before": {
+        "size": 2087,
+        "mtime_ns": 1788522345194385200
+      },
+      "after": {
+        "size": 2087,
+        "mtime_ns": 1788522345194385200
+      },
+      "sha256": "fed6fc7baf1d8c77782b1bee679925e96090a1ab5fa37037db6e47e6b9a565fc"
+    },
+    "data/runtime/signal_state.json": {
+      "before": {
+        "size": 2212,
+        "mtime_ns": 1788522343873682900
+      },
+      "after": {
+        "size": 2212,
+        "mtime_ns": 1788522343873682900
+      },
+      "sha256": "474935913341d13979644bee4f71567d60c64a3915ec297e6ff3038dca53ebdb"
+    },
+    "data/runtime/signal_state.last_good.json": {
+      "before": {
+        "size": 2212,
+        "mtime_ns": 1788522343877683500
+      },
+      "after": {
+        "size": 2212,
+        "mtime_ns": 1788522343877683500
+      },
+      "sha256": "474935913341d13979644bee4f71567d60c64a3915ec297e6ff3038dca53ebdb"
+    }
+  },
+  "log_ranges": {
+    "market-supervisor.runner.log": {
+      "before": {
+        "size": 522487,
+        "mtime_ns": 1789030571312911300
+      },
+      "after": {
+        "size": 522487,
+        "mtime_ns": 1789030571312911300
+      },
+      "offset": 456951,
+      "length": 65536,
+      "sha256": "9e07fd441d1819cf55f8e0a08847866045b79cbce448ecf99c18a6badb64ecf7"
+    },
+    "market-supervisor.stderr.log": {
+      "before": {
+        "size": 500,
+        "mtime_ns": 1789030571221732900
+      },
+      "after": {
+        "size": 500,
+        "mtime_ns": 1789030571221732900
+      },
+      "offset": 0,
+      "length": 500,
+      "sha256": "b8bfa39a0c2bec0bf83407896967b5d3ba19fc31ed4c6b7532606b4c1abb0a27"
+    },
+    "market-supervisor.stderr.log.1": {
+      "before": {
+        "size": 500,
+        "mtime_ns": 1789030557621482900
+      },
+      "after": {
+        "size": 500,
+        "mtime_ns": 1789030557621482900
+      },
+      "offset": 0,
+      "length": 500,
+      "sha256": "f3d50d6a5977e8be9ed250a789c9f66e72396f3c2ece1884b1a4731fb653113b"
+    },
+    "market-supervisor.stderr.log.2": {
+      "before": {
+        "size": 500,
+        "mtime_ns": 1789030545251864500
+      },
+      "after": {
+        "size": 500,
+        "mtime_ns": 1789030545251864500
+      },
+      "offset": 0,
+      "length": 500,
+      "sha256": "3ec9f6d54b4c48e701e0a0fc1fe10406b86edd86d710c5cf9c17db7ffafeaedf"
+    },
+    "market-supervisor.stderr.log.3": {
+      "before": {
+        "size": 361,
+        "mtime_ns": 1789029824510823600
+      },
+      "after": {
+        "size": 361,
+        "mtime_ns": 1789029824510823600
+      },
+      "offset": 0,
+      "length": 361,
+      "sha256": "248edcf6e1e09da0a51300c6a06638f9050047bb3b29a20f64b3b787db3ef110"
+    },
+    "market-supervisor.stderr.log.4": {
+      "before": {
+        "size": 361,
+        "mtime_ns": 1789029743600628300
+      },
+      "after": {
+        "size": 361,
+        "mtime_ns": 1789029743600628300
+      },
+      "offset": 0,
+      "length": 361,
+      "sha256": "7a232a8d8e5be84fbc92a51f1bc9f986fb241370a58e232f622c8dcd0a3291d9"
+    },
+    "market-supervisor.stderr.log.5": {
+      "before": {
+        "size": 361,
+        "mtime_ns": 1789029702724509100
+      },
+      "after": {
+        "size": 361,
+        "mtime_ns": 1789029702724509100
+      },
+      "offset": 0,
+      "length": 361,
+      "sha256": "7d6b917d8f4f1e44f08e190dfbbab9f1e57bf14a232a60e456171c43d84e8877"
+    },
+    "market-supervisor.stdout.log": {
+      "before": {
+        "size": 0,
+        "mtime_ns": 1789030567715750300
+      },
+      "after": {
+        "size": 0,
+        "mtime_ns": 1789030567715750300
+      },
+      "offset": 0,
+      "length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "market-supervisor.stdout.log.1": {
+      "before": {
+        "size": 0,
+        "mtime_ns": 1789030550546646000
+      },
+      "after": {
+        "size": 0,
+        "mtime_ns": 1789030550546646000
+      },
+      "offset": 0,
+      "length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "market-supervisor.stdout.log.2": {
+      "before": {
+        "size": 0,
+        "mtime_ns": 1789030533517515500
+      },
+      "after": {
+        "size": 0,
+        "mtime_ns": 1789030533517515500
+      },
+      "offset": 0,
+      "length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "market-supervisor.stdout.log.3": {
+      "before": {
+        "size": 0,
+        "mtime_ns": 1789029823706073100
+      },
+      "after": {
+        "size": 0,
+        "mtime_ns": 1789029823706073100
+      },
+      "offset": 0,
+      "length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "market-supervisor.stdout.log.4": {
+      "before": {
+        "size": 0,
+        "mtime_ns": 1789029742822998700
+      },
+      "after": {
+        "size": 0,
+        "mtime_ns": 1789029742822998700
+      },
+      "offset": 0,
+      "length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "market-supervisor.stdout.log.5": {
+      "before": {
+        "size": 0,
+        "mtime_ns": 1789029701908647100
+      },
+      "after": {
+        "size": 0,
+        "mtime_ns": 1789029701908647100
+      },
+      "offset": 0,
+      "length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "today_raw": {
+    "data/raw/weather_daemon/2026-09-10/events.jsonl": {
+      "size": 32164711,
+      "mtime_ns": 1789030581017835700
+    }
+  },
+  "unresolved_exists": false
+}

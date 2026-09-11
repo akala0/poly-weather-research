@@ -1,0 +1,205 @@
+{
+  "station_id": "KMIA",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Miami on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:24.041250+00:00",
+  "registry_expected": {
+    "key": "miami-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-miami-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KMIA",
+    "station_name": "Miami Intl Airport",
+    "latitude": 25.7959,
+    "longitude": -80.287,
+    "timezone": "America/New_York",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=kmia",
+    "ncei_station_id": "USW00012839",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 f1bbf831d7e1d26d155148447998134ba66e57d4e7146350f0cc8db53497640f: KMIA and NOAA Hourly Data Temp with the standard US template."
+  },
+  "received_at": "2026-09-10T09:12:25.146821+00:00",
+  "status_code": 200,
+  "wire_sha256": "492d1c00420ae47aee4823f543120b3f24fdf07dfa08baaa4ebc9fcc5e301392",
+  "wire_bytes": 55859,
+  "saved_response_sha256": "c8bdbeb92f7ddf1103eb6b547b826b4b3d49bb3ecde06fdc40d956d135c49d0d",
+  "diagnosis": {
+    "candidate_count": 1,
+    "ambiguous": false,
+    "candidates": [
+      {
+        "event_id": "987247",
+        "event_slug": "highest-temperature-in-miami-on-september-10-2026",
+        "stage": "verification",
+        "parsed": {
+          "parser_version": "2",
+          "evidence_sha256": "2b5f16112a32ac37d155b070a767afad91941e3e558cf03d3a2e622059dcbe35",
+          "event_id": "987247",
+          "event_slug": "highest-temperature-in-miami-on-september-10-2026",
+          "title": "Highest temperature in Miami on September 10?",
+          "city": "Miami",
+          "target_date": "2026-09-10",
+          "station_id": "KMIA",
+          "station_name": "Miami Intl Airport",
+          "timezone": "America/New_York",
+          "official_source_name": "NOAA Timeseries",
+          "official_source_url": "https://www.weather.gov/wrh/timeseries?site=kmia",
+          "unit": "fahrenheit",
+          "precision_degrees": "1",
+          "bucket_width_degrees": 2,
+          "observation_table": "Daily Observations",
+          "finalization_rule": "unknown",
+          "ignores_late_revisions": true,
+          "buckets": [
+            {
+              "market_id": "4359133",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-79forbelow",
+              "label": "Will the highest temperature in Miami be 79°F or below on September 10?",
+              "lower_f": null,
+              "upper_f": 79,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4359134",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-80-81f",
+              "label": "Will the highest temperature in Miami be between 80-81°F on September 10?",
+              "lower_f": 80,
+              "upper_f": 81,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4359135",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-82-83f",
+              "label": "Will the highest temperature in Miami be between 82-83°F on September 10?",
+              "lower_f": 82,
+              "upper_f": 83,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4359136",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-84-85f",
+              "label": "Will the highest temperature in Miami be between 84-85°F on September 10?",
+              "lower_f": 84,
+              "upper_f": 85,
+              "unit": "fahrenheit",
+              "market_probability": "0.045"
+            },
+            {
+              "market_id": "4359137",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-86-87f",
+              "label": "Will the highest temperature in Miami be between 86-87°F on September 10?",
+              "lower_f": 86,
+              "upper_f": 87,
+              "unit": "fahrenheit",
+              "market_probability": "0.125"
+            },
+            {
+              "market_id": "4359138",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-88-89f",
+              "label": "Will the highest temperature in Miami be between 88-89°F on September 10?",
+              "lower_f": 88,
+              "upper_f": 89,
+              "unit": "fahrenheit",
+              "market_probability": "0.48"
+            },
+            {
+              "market_id": "4359139",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-90-91f",
+              "label": "Will the highest temperature in Miami be between 90-91°F on September 10?",
+              "lower_f": 90,
+              "upper_f": 91,
+              "unit": "fahrenheit",
+              "market_probability": "0.37"
+            },
+            {
+              "market_id": "4359140",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-92-93f",
+              "label": "Will the highest temperature in Miami be between 92-93°F on September 10?",
+              "lower_f": 92,
+              "upper_f": 93,
+              "unit": "fahrenheit",
+              "market_probability": "0.025"
+            },
+            {
+              "market_id": "4359141",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-94-95f",
+              "label": "Will the highest temperature in Miami be between 94-95°F on September 10?",
+              "lower_f": 94,
+              "upper_f": 95,
+              "unit": "fahrenheit",
+              "market_probability": "0.0015"
+            },
+            {
+              "market_id": "4359142",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-96-97f",
+              "label": "Will the highest temperature in Miami be between 96-97°F on September 10?",
+              "lower_f": 96,
+              "upper_f": 97,
+              "unit": "fahrenheit",
+              "market_probability": "0.0035"
+            },
+            {
+              "market_id": "4359143",
+              "market_slug": "highest-temperature-in-miami-on-september-10-2026-98forhigher",
+              "label": "Will the highest temperature in Miami be 98°F or higher on September 10?",
+              "lower_f": 98,
+              "upper_f": null,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            }
+          ],
+          "parse_status": "complete",
+          "missing_fields": []
+        },
+        "verification": {
+          "settlement_key": "miami-daily-high-research-seed",
+          "evidence_sha256": "2b5f16112a32ac37d155b070a767afad91941e3e558cf03d3a2e622059dcbe35",
+          "passed": false,
+          "checks": {
+            "parse_complete": true,
+            "registry_verified": true,
+            "slug_exact": true,
+            "station_exact": true,
+            "station_name_exact": true,
+            "timezone_exact": true,
+            "source_exact": true,
+            "whole_degree_precision": true,
+            "unit_exact": true,
+            "bucket_width_exact": true,
+            "finalization_known": false,
+            "finalization_exact": false,
+            "late_revision_cutoff": true,
+            "late_revision_exact": true
+          },
+          "failures": [
+            "finalization_known",
+            "finalization_exact"
+          ],
+          "tradeable": false,
+          "reason": "failed: finalization_known, finalization_exact"
+        }
+      }
+    ]
+  },
+  "saved_replay_matches_original": true
+}

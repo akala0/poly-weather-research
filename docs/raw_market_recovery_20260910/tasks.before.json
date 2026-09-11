@@ -1,0 +1,54 @@
+[
+  {
+    "enabled": true,
+    "name": "PolyWeather-market-supervisor",
+    "state": "Running",
+    "path": "\\",
+    "actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName market-supervisor -ProjectRoot D:\\poly",
+        "WorkingDirectory": "D:\\poly"
+      }
+    ]
+  },
+  {
+    "enabled": true,
+    "name": "PolyWeather-signal-engine",
+    "state": "Running",
+    "path": "\\",
+    "actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName signal-engine -ProjectRoot D:\\poly",
+        "WorkingDirectory": "D:\\poly"
+      }
+    ]
+  },
+  {
+    "enabled": true,
+    "name": "PolyWeather-shadow-spread-engine",
+    "state": "Running",
+    "path": "\\",
+    "actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName shadow-spread-engine -ProjectRoot D:\\poly",
+        "WorkingDirectory": "D:\\poly"
+      }
+    ]
+  },
+  {
+    "enabled": true,
+    "name": "PolyWeather-weather-stream",
+    "state": "Running",
+    "path": "\\",
+    "actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName weather-stream -ProjectRoot D:\\poly",
+        "WorkingDirectory": "D:\\poly"
+      }
+    ]
+  }
+]

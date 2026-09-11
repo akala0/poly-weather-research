@@ -9,6 +9,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
+from poly_weather.settlement_contract import SettlementRuleContract
+
 
 class VerificationStatus(StrEnum):
     UNVERIFIED = "unverified"
@@ -54,6 +56,8 @@ class SettlementSpec(BaseModel):
     open_meteo_enabled: bool = True
     status: VerificationStatus = VerificationStatus.UNVERIFIED
     notes: str = ""
+    rule_contract: SettlementRuleContract | None = None
+    rule_review_status: str = "unreviewed"
 
     @model_validator(mode="after")
     def validate_verified_spec(self) -> SettlementSpec:
@@ -300,6 +304,7 @@ class FinalizationRule(StrEnum):
     FIRST_NEXT_DAY_OBSERVATION = "first_next_day_observation"
     SOURCE_FINALIZED = "source_finalized"
     UNKNOWN = "unknown"
+    PUBLICATION_OR_DEADLINE = "publication_or_deadline"
 
 
 class SettlementEvidence(BaseModel):
@@ -328,6 +333,8 @@ class SettlementEvidence(BaseModel):
     buckets: tuple[TemperatureBucket, ...]
     parse_status: RuleParseStatus
     missing_fields: tuple[str, ...]
+    rule_contract: SettlementRuleContract | None = None
+    rule_schema_version: int = 1
 
 
 class SettlementVerification(BaseModel):
@@ -340,6 +347,7 @@ class SettlementVerification(BaseModel):
     failures: tuple[str, ...]
     tradeable: bool
     reason: str
+    differences: dict[str, Any] = Field(default_factory=dict)
 
 
 class DailyHighPoint(BaseModel):

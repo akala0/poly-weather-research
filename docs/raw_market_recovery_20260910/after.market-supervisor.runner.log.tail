@@ -1,0 +1,580 @@
+ [market-supervisor] child started; pid=26636
+2026-09-09T23:27:47.2100342Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:27:47.2110343Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-09T23:28:27.2534049Z [market-supervisor] child started; pid=27348
+2026-09-09T23:28:31.3084178Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:28:31.3104184Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-09T23:29:51.3663226Z [market-supervisor] child started; pid=31060
+2026-09-09T23:29:54.0419276Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:29:54.0429278Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-09T23:44:54.1260683Z [market-supervisor] child started; pid=31608
+2026-09-09T23:45:00.7351013Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:45:00.7361013Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-09T23:45:05.7904852Z [market-supervisor] child started; pid=30468
+2026-09-09T23:45:08.5224019Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:45:08.5234022Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-09T23:45:18.5716326Z [market-supervisor] child started; pid=7596
+2026-09-09T23:45:22.1654662Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:45:22.1664666Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-09T23:45:42.2013639Z [market-supervisor] child started; pid=21608
+2026-09-09T23:45:44.9276251Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:45:44.9286258Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-09T23:46:24.9683580Z [market-supervisor] child started; pid=28380
+2026-09-09T23:46:27.6492429Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:46:27.6502433Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-09T23:47:47.6890018Z [market-supervisor] child started; pid=8748
+2026-09-09T23:47:50.5520803Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-09T23:47:50.5531333Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T00:02:50.6519305Z [market-supervisor] child started; pid=20280
+2026-09-10T00:03:00.9197128Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:03:00.9207152Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T00:03:05.9601316Z [market-supervisor] child started; pid=22580
+2026-09-10T00:03:09.8349038Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:03:09.8359035Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T00:03:19.8823726Z [market-supervisor] child started; pid=27484
+2026-09-10T00:03:26.0172961Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:03:26.0182965Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T00:03:46.0580310Z [market-supervisor] child started; pid=28884
+2026-09-10T00:03:48.7687622Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:03:48.7697623Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T00:04:28.8069791Z [market-supervisor] child started; pid=24080
+2026-09-10T00:04:31.3900974Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:04:31.3910980Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T00:05:51.4289414Z [market-supervisor] child started; pid=25996
+2026-09-10T00:05:54.1983537Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:05:54.1993534Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T00:20:54.2667793Z [market-supervisor] child started; pid=27756
+2026-09-10T00:21:00.8407052Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:21:00.8417050Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T00:21:05.8959512Z [market-supervisor] child started; pid=1284
+2026-09-10T00:21:08.7888171Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:21:08.7898187Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T00:21:18.8261256Z [market-supervisor] child started; pid=14812
+2026-09-10T00:21:21.6692250Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:21:21.6702253Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T00:21:41.7186989Z [market-supervisor] child started; pid=740
+2026-09-10T00:21:44.2303187Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:21:44.2313206Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T00:22:24.2790194Z [market-supervisor] child started; pid=17252
+2026-09-10T00:22:26.9888342Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:22:26.9898355Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T00:23:47.0613858Z [market-supervisor] child started; pid=27440
+2026-09-10T00:23:49.6286490Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:23:49.6296485Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T00:38:49.7058952Z [market-supervisor] child started; pid=26796
+2026-09-10T00:38:56.8799434Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:38:56.8809440Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T00:39:01.9336535Z [market-supervisor] child started; pid=3920
+2026-09-10T00:39:04.7140123Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:39:04.7150125Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T00:39:14.7664759Z [market-supervisor] child started; pid=10916
+2026-09-10T00:39:17.6358361Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:39:17.6378460Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T00:39:37.6783051Z [market-supervisor] child started; pid=31468
+2026-09-10T00:39:40.8731994Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:39:40.8742003Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T00:40:20.9306260Z [market-supervisor] child started; pid=27984
+2026-09-10T00:40:23.6103218Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:40:23.6113225Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T00:41:43.6447055Z [market-supervisor] child started; pid=28752
+2026-09-10T00:41:47.3407041Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:41:47.3427065Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T00:56:47.4073277Z [market-supervisor] child started; pid=26496
+2026-09-10T00:56:59.8884803Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:56:59.8894833Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T00:57:04.9258626Z [market-supervisor] child started; pid=31888
+2026-09-10T00:57:08.4288044Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:57:08.4298052Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T00:57:18.4685797Z [market-supervisor] child started; pid=21272
+2026-09-10T00:57:21.3973758Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:57:21.3983754Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T00:57:41.4382713Z [market-supervisor] child started; pid=30692
+2026-09-10T00:57:44.0522731Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:57:44.0532736Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T00:58:24.1059293Z [market-supervisor] child started; pid=18684
+2026-09-10T00:58:27.2412685Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:58:27.2422682Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T00:59:47.2916463Z [market-supervisor] child started; pid=26896
+2026-09-10T00:59:52.3781529Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T00:59:52.3791530Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T01:14:52.4769721Z [market-supervisor] child started; pid=2856
+2026-09-10T01:14:59.3910654Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:14:59.3920661Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T01:15:04.4263933Z [market-supervisor] child started; pid=4252
+2026-09-10T01:15:07.1720208Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:15:07.1730210Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T01:15:17.2112525Z [market-supervisor] child started; pid=18540
+2026-09-10T01:15:19.9544467Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:15:19.9554477Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T01:15:40.0038276Z [market-supervisor] child started; pid=33100
+2026-09-10T01:15:42.7864499Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:15:42.7874493Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T01:16:22.8371793Z [market-supervisor] child started; pid=25680
+2026-09-10T01:16:26.1159467Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:16:26.1159467Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T01:17:46.1773001Z [market-supervisor] child started; pid=29048
+2026-09-10T01:17:50.3465559Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:17:50.3475563Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T01:32:50.4250860Z [market-supervisor] child started; pid=27480
+2026-09-10T01:33:00.5033927Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:33:00.5043930Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T01:33:05.5520559Z [market-supervisor] child started; pid=28124
+2026-09-10T01:33:09.5956112Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:33:09.5966108Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T01:33:19.6534457Z [market-supervisor] child started; pid=21004
+2026-09-10T01:33:23.4025402Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:33:23.4035407Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T01:33:43.4476348Z [market-supervisor] child started; pid=20848
+2026-09-10T01:33:46.4651288Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:33:46.4661289Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T01:34:26.5229156Z [market-supervisor] child started; pid=17644
+2026-09-10T01:34:29.4606645Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:34:29.4616658Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T01:35:49.5027951Z [market-supervisor] child started; pid=19908
+2026-09-10T01:35:51.9529495Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:35:51.9539509Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T01:50:52.0343963Z [market-supervisor] child started; pid=20348
+2026-09-10T01:51:00.0555281Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:51:00.0565282Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T01:51:05.1025912Z [market-supervisor] child started; pid=29304
+2026-09-10T01:51:09.4823989Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:51:09.4833988Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T01:51:19.5285857Z [market-supervisor] child started; pid=28968
+2026-09-10T01:51:22.8540208Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:51:22.8560222Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T01:51:42.8946736Z [market-supervisor] child started; pid=4364
+2026-09-10T01:51:45.4963485Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:51:45.4973482Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T01:52:25.5359786Z [market-supervisor] child started; pid=3920
+2026-09-10T01:52:32.1694937Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:52:32.1704941Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T01:53:52.2293469Z [market-supervisor] child started; pid=16684
+2026-09-10T01:53:55.5056506Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T01:53:55.5066498Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T02:08:55.5762841Z [market-supervisor] child started; pid=26188
+2026-09-10T02:09:02.7234650Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:09:02.7244656Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T02:09:07.7551090Z [market-supervisor] child started; pid=23548
+2026-09-10T02:09:12.8153397Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:09:12.8163398Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T02:09:22.8847002Z [market-supervisor] child started; pid=18048
+2026-09-10T02:09:27.4904609Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:09:27.4914610Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T02:09:47.5423390Z [market-supervisor] child started; pid=1108
+2026-09-10T02:09:51.6478220Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:09:51.6488224Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T02:10:31.6904921Z [market-supervisor] child started; pid=21544
+2026-09-10T02:10:34.7165715Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:10:34.7185721Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T02:11:54.7666433Z [market-supervisor] child started; pid=33016
+2026-09-10T02:12:03.2240949Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:12:03.2250941Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T02:27:03.3230735Z [market-supervisor] child started; pid=21740
+2026-09-10T02:27:15.3227424Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:27:15.3237417Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T02:27:20.3764786Z [market-supervisor] child started; pid=3988
+2026-09-10T02:27:23.4224754Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:27:23.4234750Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T02:27:33.4602317Z [market-supervisor] child started; pid=28656
+2026-09-10T02:27:36.2517755Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:27:36.2527757Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T02:27:56.2929401Z [market-supervisor] child started; pid=21320
+2026-09-10T02:27:59.0944061Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:27:59.0949084Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T02:28:39.1546711Z [market-supervisor] child started; pid=19420
+2026-09-10T02:28:41.8974974Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:28:41.8981046Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T02:30:01.9369203Z [market-supervisor] child started; pid=28808
+2026-09-10T02:30:05.7270082Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:30:05.7280084Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T02:45:05.8034537Z [market-supervisor] child started; pid=31436
+2026-09-10T02:45:13.3688369Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:45:13.3718373Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T02:45:18.4048361Z [market-supervisor] child started; pid=11212
+2026-09-10T02:45:21.1580139Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:45:21.1590139Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T02:45:31.2171893Z [market-supervisor] child started; pid=26404
+2026-09-10T02:45:34.8143866Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:45:34.8153869Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T02:45:54.8685087Z [market-supervisor] child started; pid=21248
+2026-09-10T02:45:57.9144046Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:45:57.9157197Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T02:46:37.9528367Z [market-supervisor] child started; pid=11012
+2026-09-10T02:46:40.0824950Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:46:40.0834951Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T02:48:00.1172063Z [market-supervisor] child started; pid=28468
+2026-09-10T02:48:05.2428044Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T02:48:05.2438043Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T03:03:05.3186958Z [market-supervisor] child started; pid=33088
+2026-09-10T03:03:13.1245266Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:03:13.1265273Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T03:03:18.1646915Z [market-supervisor] child started; pid=29260
+2026-09-10T03:03:25.8668886Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:03:25.8677810Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T03:03:35.9060505Z [market-supervisor] child started; pid=28856
+2026-09-10T03:03:43.6040949Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:03:43.6050955Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T03:04:03.6575473Z [market-supervisor] child started; pid=32696
+2026-09-10T03:04:08.1765920Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:04:08.1785923Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T03:04:48.2140523Z [market-supervisor] child started; pid=22052
+2026-09-10T03:04:53.3078982Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:04:53.3090586Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T03:06:13.3742219Z [market-supervisor] child started; pid=31636
+2026-09-10T03:06:21.0097216Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:06:21.0107215Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T03:21:21.0976813Z [market-supervisor] child started; pid=26096
+2026-09-10T03:21:28.6835951Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:21:28.6855953Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T03:21:33.7203714Z [market-supervisor] child started; pid=25096
+2026-09-10T03:21:41.3214737Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:21:41.3224737Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T03:21:51.3656305Z [market-supervisor] child started; pid=29160
+2026-09-10T03:21:58.9440248Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:21:58.9450257Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T03:22:18.9949177Z [market-supervisor] child started; pid=31528
+2026-09-10T03:22:26.9758752Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:22:26.9768751Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T03:23:07.0113884Z [market-supervisor] child started; pid=18092
+2026-09-10T03:23:15.3219765Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:23:15.3240454Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T03:24:35.3634082Z [market-supervisor] child started; pid=33016
+2026-09-10T03:24:38.8319827Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:24:38.8329837Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T03:39:38.9147393Z [market-supervisor] child started; pid=25076
+2026-09-10T03:39:49.6717276Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:39:49.6727772Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T03:39:54.7149707Z [market-supervisor] child started; pid=17300
+2026-09-10T03:40:00.7072084Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:40:00.7082085Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T03:40:10.7515932Z [market-supervisor] child started; pid=20824
+2026-09-10T03:40:14.7997167Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:40:14.8007163Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T03:40:34.8436373Z [market-supervisor] child started; pid=4628
+2026-09-10T03:40:42.7965053Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:40:42.7975054Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T03:41:22.8350602Z [market-supervisor] child started; pid=25732
+2026-09-10T03:41:26.9727823Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:41:26.9737826Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T03:42:47.0274728Z [market-supervisor] child started; pid=25268
+2026-09-10T03:42:50.3873585Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:42:50.3883589Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T03:57:50.4922660Z [market-supervisor] child started; pid=31420
+2026-09-10T03:57:59.2287736Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:57:59.2307750Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T03:58:04.2712415Z [market-supervisor] child started; pid=32420
+2026-09-10T03:58:09.3014608Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:58:09.3024569Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T03:58:19.3613273Z [market-supervisor] child started; pid=29112
+2026-09-10T03:58:25.7147197Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:58:25.7157196Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T03:58:45.7744442Z [market-supervisor] child started; pid=5600
+2026-09-10T03:58:49.3372941Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:58:49.3382946Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T03:59:29.3933151Z [market-supervisor] child started; pid=33732
+2026-09-10T03:59:33.6018272Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T03:59:33.6028858Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T04:00:53.6483896Z [market-supervisor] child started; pid=29064
+2026-09-10T04:00:58.8770141Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:00:58.8780145Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T04:15:58.9576022Z [market-supervisor] child started; pid=28336
+2026-09-10T04:15:59.7327733Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:15:59.7347733Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T04:16:04.7896655Z [market-supervisor] child started; pid=26216
+2026-09-10T04:16:05.6553922Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:16:05.6563923Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T04:16:15.7108623Z [market-supervisor] child started; pid=21280
+2026-09-10T04:16:16.4865302Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:16:16.4875308Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T04:16:36.5458507Z [market-supervisor] child started; pid=14372
+2026-09-10T04:16:37.3173196Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:16:37.3183192Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T04:17:17.3548704Z [market-supervisor] child started; pid=19996
+2026-09-10T04:17:18.1409777Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:17:18.1419782Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T04:18:38.1961645Z [market-supervisor] child started; pid=15404
+2026-09-10T04:18:38.9751781Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:18:38.9761794Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T04:33:39.0511077Z [market-supervisor] child started; pid=20428
+2026-09-10T04:33:40.0482265Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:33:40.0492262Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T04:33:45.0929845Z [market-supervisor] child started; pid=14204
+2026-09-10T04:33:45.8817514Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:33:45.8849783Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T04:33:55.9205457Z [market-supervisor] child started; pid=1840
+2026-09-10T04:33:56.7098610Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:33:56.7108603Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T04:34:16.7562908Z [market-supervisor] child started; pid=26760
+2026-09-10T04:34:17.5361579Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:34:17.5371666Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T04:34:57.5927053Z [market-supervisor] child started; pid=32728
+2026-09-10T04:34:58.3818296Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:34:58.3828295Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T04:36:18.4443565Z [market-supervisor] child started; pid=12368
+2026-09-10T04:36:19.2193631Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:36:19.2198348Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T04:51:19.3181176Z [market-supervisor] child started; pid=32956
+2026-09-10T04:51:20.1028669Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:51:20.1048672Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T04:51:25.1405360Z [market-supervisor] child started; pid=21400
+2026-09-10T04:51:25.9099392Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:51:25.9109393Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T04:51:35.9509246Z [market-supervisor] child started; pid=21384
+2026-09-10T04:51:36.7231108Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:51:36.7241125Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T04:51:56.7654259Z [market-supervisor] child started; pid=25500
+2026-09-10T04:51:57.5435209Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:51:57.5445213Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T04:52:37.5922389Z [market-supervisor] child started; pid=19504
+2026-09-10T04:52:38.3658434Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:52:38.3668864Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T04:53:58.4268558Z [market-supervisor] child started; pid=2548
+2026-09-10T04:53:59.2662708Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T04:53:59.2682707Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T05:08:59.3485957Z [market-supervisor] child started; pid=4936
+2026-09-10T05:09:00.1134407Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:09:00.1144386Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T05:09:05.1667966Z [market-supervisor] child started; pid=8796
+2026-09-10T05:09:05.9490416Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:09:05.9500425Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T05:09:15.9798505Z [market-supervisor] child started; pid=23200
+2026-09-10T05:09:16.9038777Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:09:16.9048776Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T05:09:36.9455265Z [market-supervisor] child started; pid=33692
+2026-09-10T05:09:37.7202190Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:09:37.7212191Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T05:10:17.7666800Z [market-supervisor] child started; pid=19516
+2026-09-10T05:10:18.5354804Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:10:18.5364810Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T05:11:38.5911448Z [market-supervisor] child started; pid=26724
+2026-09-10T05:11:39.3779575Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:11:39.3789596Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T05:26:39.4715115Z [market-supervisor] child started; pid=31420
+2026-09-10T05:26:40.3365845Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:26:40.3375845Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T05:26:45.3874143Z [market-supervisor] child started; pid=33732
+2026-09-10T05:26:46.2174827Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:26:46.2184834Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T05:26:56.2638765Z [market-supervisor] child started; pid=27816
+2026-09-10T05:26:57.1893973Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:26:57.1904639Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T05:27:17.2444067Z [market-supervisor] child started; pid=8428
+2026-09-10T05:27:18.1306089Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:27:18.1316081Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T05:27:58.1905772Z [market-supervisor] child started; pid=6500
+2026-09-10T05:27:59.1963459Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:27:59.2033434Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T05:29:19.2497736Z [market-supervisor] child started; pid=8472
+2026-09-10T05:29:20.1304660Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:29:20.1314676Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T05:44:20.2348365Z [market-supervisor] child started; pid=30308
+2026-09-10T05:44:21.0190249Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:44:21.0200248Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T05:44:26.0722692Z [market-supervisor] child started; pid=5220
+2026-09-10T05:44:26.8605616Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:44:26.8615622Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T05:44:36.9001346Z [market-supervisor] child started; pid=31032
+2026-09-10T05:44:37.6659918Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:44:37.6669913Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T05:44:57.7086938Z [market-supervisor] child started; pid=28524
+2026-09-10T05:44:58.5083796Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:44:58.5093808Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T05:45:38.5692143Z [market-supervisor] child started; pid=28868
+2026-09-10T05:45:39.5357643Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:45:39.5367639Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T05:46:59.5901029Z [market-supervisor] child started; pid=11836
+2026-09-10T05:47:00.3683083Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T05:47:00.3693079Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T06:02:00.4497367Z [market-supervisor] child started; pid=29328
+2026-09-10T06:02:01.2594849Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:02:01.2604989Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T06:02:06.3179664Z [market-supervisor] child started; pid=4936
+2026-09-10T06:02:07.1446265Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:02:07.1456279Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T06:02:17.1887061Z [market-supervisor] child started; pid=31080
+2026-09-10T06:02:17.9917695Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:02:17.9927702Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T06:02:38.0320642Z [market-supervisor] child started; pid=21612
+2026-09-10T06:02:38.7968115Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:02:38.7978113Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T06:03:18.8487550Z [market-supervisor] child started; pid=17644
+2026-09-10T06:03:19.7215116Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:03:19.7235112Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T06:04:39.7652017Z [market-supervisor] child started; pid=7456
+2026-09-10T06:04:40.5744185Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:04:40.5764189Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T06:19:40.6579935Z [market-supervisor] child started; pid=25328
+2026-09-10T06:19:41.4965584Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:19:41.4975583Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T06:19:46.5399390Z [market-supervisor] child started; pid=24228
+2026-09-10T06:19:47.3456632Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:19:47.3466634Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T06:19:57.3866963Z [market-supervisor] child started; pid=25192
+2026-09-10T06:19:58.2103303Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:19:58.2113299Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T06:20:18.2556551Z [market-supervisor] child started; pid=26648
+2026-09-10T06:20:19.0475416Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:20:19.0491312Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T06:20:59.0971957Z [market-supervisor] child started; pid=26692
+2026-09-10T06:21:00.0150415Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:21:00.0160415Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T06:22:20.0585473Z [market-supervisor] child started; pid=4880
+2026-09-10T06:22:20.8391441Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:22:20.8401451Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T06:37:20.9298908Z [market-supervisor] child started; pid=22392
+2026-09-10T06:37:21.7190958Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:37:21.7200976Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T06:37:26.7656926Z [market-supervisor] child started; pid=24196
+2026-09-10T06:37:27.8671093Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:37:27.8681089Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T06:37:37.9125512Z [market-supervisor] child started; pid=29744
+2026-09-10T06:37:38.7104475Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:37:38.7114728Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T06:37:58.7514884Z [market-supervisor] child started; pid=18240
+2026-09-10T06:37:59.5592794Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:37:59.5602807Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T06:38:39.6078887Z [market-supervisor] child started; pid=17292
+2026-09-10T06:38:40.4130922Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:38:40.4140928Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T06:40:00.4589811Z [market-supervisor] child started; pid=1828
+2026-09-10T06:40:01.2743766Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:40:01.2753777Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T06:55:01.3660238Z [market-supervisor] child started; pid=11104
+2026-09-10T06:55:02.1452295Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:55:02.1472294Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T06:55:07.1847093Z [market-supervisor] child started; pid=33300
+2026-09-10T06:55:07.9747788Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:55:07.9757808Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T06:55:18.0310664Z [market-supervisor] child started; pid=31704
+2026-09-10T06:55:18.8331514Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:55:18.8351517Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T06:55:38.8749499Z [market-supervisor] child started; pid=28156
+2026-09-10T06:55:39.6484941Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:55:39.6494940Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T06:56:19.7113179Z [market-supervisor] child started; pid=26768
+2026-09-10T06:56:20.7017234Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:56:20.7027196Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T06:57:40.7686119Z [market-supervisor] child started; pid=31888
+2026-09-10T06:57:41.5926739Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T06:57:41.5936737Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T07:12:41.6630164Z [market-supervisor] child started; pid=30616
+2026-09-10T07:12:42.4765442Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:12:42.4785451Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T07:12:47.5351120Z [market-supervisor] child started; pid=26304
+2026-09-10T07:12:48.3717319Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:12:48.3727322Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T07:12:58.4193935Z [market-supervisor] child started; pid=32696
+2026-09-10T07:12:59.2573862Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:12:59.2589628Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T07:13:19.3024513Z [market-supervisor] child started; pid=19608
+2026-09-10T07:13:20.1264006Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:13:20.1274012Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T07:14:00.1652951Z [market-supervisor] child started; pid=33488
+2026-09-10T07:14:00.9816150Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:14:00.9826151Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T07:15:21.0468720Z [market-supervisor] child started; pid=34564
+2026-09-10T07:15:21.8528461Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:15:21.8544589Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T07:30:21.9229041Z [market-supervisor] child started; pid=15552
+2026-09-10T07:30:22.8082606Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:30:22.8102612Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T07:30:27.8583191Z [market-supervisor] child started; pid=34704
+2026-09-10T07:30:28.6504358Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:30:28.6524339Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T07:30:38.7081978Z [market-supervisor] child started; pid=24136
+2026-09-10T07:30:39.7485878Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:30:39.7495879Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T07:30:59.7837081Z [market-supervisor] child started; pid=6412
+2026-09-10T07:31:00.6006886Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:31:00.6012068Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T07:31:40.6469129Z [market-supervisor] child started; pid=5948
+2026-09-10T07:31:41.4356166Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:31:41.4366172Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T07:33:01.4947873Z [market-supervisor] child started; pid=5160
+2026-09-10T07:33:02.2917945Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:33:02.2927947Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T07:48:02.3745503Z [market-supervisor] child started; pid=10912
+2026-09-10T07:48:03.2151704Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:48:03.2161785Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T07:48:08.2477312Z [market-supervisor] child started; pid=34636
+2026-09-10T07:48:09.1055156Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:48:09.1066011Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T07:48:19.1503401Z [market-supervisor] child started; pid=22584
+2026-09-10T07:48:20.0073614Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:48:20.0083616Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T07:48:40.0531544Z [market-supervisor] child started; pid=5796
+2026-09-10T07:48:40.9135139Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:48:40.9165040Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T07:49:20.9704508Z [market-supervisor] child started; pid=16564
+2026-09-10T07:49:21.7670924Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:49:21.7680925Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T07:50:41.8313001Z [market-supervisor] child started; pid=34104
+2026-09-10T07:50:42.7663537Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T07:50:42.7673545Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T08:05:42.8752463Z [market-supervisor] child started; pid=34028
+2026-09-10T08:05:43.7745538Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:05:43.7755531Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T08:05:48.8283656Z [market-supervisor] child started; pid=23376
+2026-09-10T08:05:49.7119982Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:05:49.7129977Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T08:05:59.7720476Z [market-supervisor] child started; pid=25152
+2026-09-10T08:06:00.6478946Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:06:00.6498956Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T08:06:20.6920829Z [market-supervisor] child started; pid=27124
+2026-09-10T08:06:21.6027597Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:06:21.6037596Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T08:07:01.6671259Z [market-supervisor] child started; pid=34484
+2026-09-10T08:07:02.5689522Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:07:02.5699528Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T08:08:22.6193522Z [market-supervisor] child started; pid=29264
+2026-09-10T08:08:23.5511617Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:08:23.5521614Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T08:23:23.6314118Z [market-supervisor] child started; pid=1444
+2026-09-10T08:23:24.5173816Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:23:24.5193824Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T08:23:29.5516588Z [market-supervisor] child started; pid=28192
+2026-09-10T08:23:30.4538091Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:23:30.4548190Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T08:23:40.5307320Z [market-supervisor] child started; pid=26324
+2026-09-10T08:23:41.4006477Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:23:41.4026478Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T08:24:01.4508916Z [market-supervisor] child started; pid=26004
+2026-09-10T08:24:02.2196446Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:24:02.2206434Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T08:24:42.2670299Z [market-supervisor] child started; pid=8416
+2026-09-10T08:24:43.0434900Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:24:43.0444913Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T08:26:03.1226565Z [market-supervisor] child started; pid=32976
+2026-09-10T08:26:04.2385308Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:26:04.2405315Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T08:41:04.3266870Z [market-supervisor] child started; pid=18104
+2026-09-10T08:41:05.1617514Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:41:05.1627512Z [market-supervisor] child exited code=9008; exponential backoff 5s; failures_in_window=1
+2026-09-10T08:41:10.2094860Z [market-supervisor] child started; pid=18180
+2026-09-10T08:41:11.0247479Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:41:11.0257484Z [market-supervisor] child exited code=9008; exponential backoff 10s; failures_in_window=2
+2026-09-10T08:41:21.0833564Z [market-supervisor] child started; pid=28880
+2026-09-10T08:41:21.8771655Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:41:21.8781673Z [market-supervisor] child exited code=9008; exponential backoff 20s; failures_in_window=3
+2026-09-10T08:41:41.9356298Z [market-supervisor] child started; pid=29628
+2026-09-10T08:41:42.7977507Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:41:42.7987517Z [market-supervisor] child exited code=9008; exponential backoff 40s; failures_in_window=4
+2026-09-10T08:42:22.8379998Z [market-supervisor] child started; pid=12396
+2026-09-10T08:42:23.6706287Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:42:23.6716294Z [market-supervisor] child exited code=9008; exponential backoff 80s; failures_in_window=5
+2026-09-10T08:43:43.8029171Z [market-supervisor] child started; pid=25076
+2026-09-10T08:43:44.5799581Z [market-supervisor] child exit code was unavailable after WaitForExit; using synthetic nonzero code 9008
+2026-09-10T08:43:44.5810155Z [market-supervisor] child exited code=9008; crash-loop guard engaged; failures_in_window=6; sleeping 900s
+2026-09-10T08:55:33.3587432Z [market-supervisor] runner started; exe=D:\poly\.venv\Scripts\poly-weather.exe; runner_sha256=44fb107523b37b9d312ba0d48cbe083cfb2ab836f3900eb366a29519e4627b10; raw_market_recovery=True; proxy variable names present=; execution_enabled=false
+2026-09-10T08:55:33.4975154Z [market-supervisor] attempt started; attempt_id=20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899; evidence_dir=D:\poly\data\logs\daemons\attempts\market-supervisor\20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899
+2026-09-10T08:55:33.5359424Z [market-supervisor] child started; attempt_id=20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899; pid=27072
+2026-09-10T08:55:45.4867615Z [market-supervisor] attempt finished; attempt_id=20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899; stage=strict_verification; outcome=rejected; actual_exit_code=2
+2026-09-10T08:55:45.5307970Z [market-supervisor] child failed; attempt_id=20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899; actual_exit_code=2; runner_failure_code=; exponential backoff 5s; failures_in_window=1
+2026-09-10T08:55:50.5436454Z [market-supervisor] attempt started; attempt_id=20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12; evidence_dir=D:\poly\data\logs\daemons\attempts\market-supervisor\20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12
+2026-09-10T08:55:50.5576527Z [market-supervisor] child started; attempt_id=20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12; pid=25436
+2026-09-10T08:55:57.7029634Z [market-supervisor] attempt finished; attempt_id=20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12; stage=strict_verification; outcome=rejected; actual_exit_code=2
+2026-09-10T08:55:57.7039647Z [market-supervisor] child failed; attempt_id=20260910T0855505376425Z-b28ded0cc1e24e95aa7508cb86aecd12; actual_exit_code=2; runner_failure_code=; exponential backoff 10s; failures_in_window=2
+2026-09-10T08:56:07.7137503Z [market-supervisor] attempt started; attempt_id=20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127; evidence_dir=D:\poly\data\logs\daemons\attempts\market-supervisor\20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127
+2026-09-10T08:56:07.7378679Z [market-supervisor] child started; attempt_id=20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127; pid=26220
+2026-09-10T08:56:11.3119112Z [market-supervisor] attempt finished; attempt_id=20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127; stage=strict_verification; outcome=rejected; actual_exit_code=2
+2026-09-10T08:56:11.3119112Z [market-supervisor] child failed; attempt_id=20260910T0856077097498Z-bc9e70c7dcb44591a6735db4a3017127; actual_exit_code=2; runner_failure_code=; exponential backoff 20s; failures_in_window=3

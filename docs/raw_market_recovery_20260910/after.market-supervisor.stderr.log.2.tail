@@ -1,0 +1,2 @@
+POLY_WEATHER_STARTUP_DIAGNOSTIC {"attempt_id":"20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899","details":{"candidate_count":10,"no_candidate_count":0,"rejected_count":10,"verified_event_count":0,"verified_template_count":10},"emitted_at":"2026-09-10T08:55:45.231027+00:00","execution_enabled":false,"exit_code":2,"outcome":"rejected","raw_collection_recovery":true,"schema_version":1,"stage":"strict_verification","terminal":true}
+No current events passed strict settlement verification.

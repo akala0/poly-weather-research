@@ -1,0 +1,51 @@
+[
+  {
+    "ProcessId": 4524,
+    "ParentProcessId": 2112,
+    "CreationDate": "2026-09-09T18:04:03.927235+08:00",
+    "ExecutablePath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName weather-stream -ProjectRoot D:\\poly"
+  },
+  {
+    "ProcessId": 4504,
+    "ParentProcessId": 2112,
+    "CreationDate": "2026-09-09T18:04:03.927246+08:00",
+    "ExecutablePath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName market-supervisor -ProjectRoot D:\\poly"
+  },
+  {
+    "ProcessId": 4516,
+    "ParentProcessId": 2112,
+    "CreationDate": "2026-09-09T18:04:03.927253+08:00",
+    "ExecutablePath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName signal-engine -ProjectRoot D:\\poly"
+  },
+  {
+    "ProcessId": 3216,
+    "ParentProcessId": 2112,
+    "CreationDate": "2026-09-09T18:04:03.927335+08:00",
+    "ExecutablePath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "CommandLine": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName shadow-spread-engine -ProjectRoot D:\\poly"
+  },
+  {
+    "ProcessId": 17784,
+    "ParentProcessId": 4524,
+    "CreationDate": "2026-09-09T18:04:13.430314+08:00",
+    "ExecutablePath": "D:\\poly\\.venv\\Scripts\\poly-weather.exe",
+    "CommandLine": "\"D:\\poly\\.venv\\Scripts\\poly-weather.exe\" weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed chicago-daily-high-research-seed miami-daily-high-research-seed atlanta-daily-high-research-seed dallas-daily-high-research-seed houston-daily-high-research-seed seattle-daily-high-research-seed chongqing-daily-high-research-seed chengdu-daily-high-research-seed --runtime 0 --config D:\\poly\\configs\\settlements.json --data-dir D:\\poly\\data "
+  },
+  {
+    "ProcessId": 17912,
+    "ParentProcessId": 17784,
+    "CreationDate": "2026-09-09T18:04:13.490514+08:00",
+    "ExecutablePath": "D:\\poly\\.venv\\Scripts\\python.exe",
+    "CommandLine": "\"D:\\poly\\.venv\\Scripts\\python.exe\" \"D:\\poly\\.venv\\Scripts\\poly-weather.exe\" weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed chicago-daily-high-research-seed miami-daily-high-research-seed atlanta-daily-high-research-seed dallas-daily-high-research-seed houston-daily-high-research-seed seattle-daily-high-research-seed chongqing-daily-high-research-seed chengdu-daily-high-research-seed --runtime 0 --config D:\\poly\\configs\\settlements.json --data-dir D:\\poly\\data "
+  },
+  {
+    "ProcessId": 17944,
+    "ParentProcessId": 17912,
+    "CreationDate": "2026-09-09T18:04:13.498518+08:00",
+    "ExecutablePath": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+    "CommandLine": "\"D:\\poly\\.venv\\Scripts\\python.exe\" \"D:\\poly\\.venv\\Scripts\\poly-weather.exe\" weather-stream new-york-daily-high-research-seed los-angeles-daily-high-research-seed chicago-daily-high-research-seed miami-daily-high-research-seed atlanta-daily-high-research-seed dallas-daily-high-research-seed houston-daily-high-research-seed seattle-daily-high-research-seed chongqing-daily-high-research-seed chengdu-daily-high-research-seed --runtime 0 --config D:\\poly\\configs\\settlements.json --data-dir D:\\poly\\data "
+  }
+]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import UTC, datetime
 from typing import Any
 
@@ -125,3 +126,40 @@ def test_verification_failure_is_fail_closed(tmp_path) -> None:
     assert subscriptions == 0
     assert failures["city"]["fail_closed"] is True
     assert "station_exact" in failures["city"]["differences"]
+
+
+def test_raw_market_recovery_skips_retention_and_downstream_publication(
+    tmp_path, monkeypatch
+) -> None:
+    def forbidden_retention(*_, **__):
+        raise AssertionError("raw market recovery invoked retention")
+
+    monkeypatch.setattr(
+        "poly_weather.market_supervisor.apply_market_retention", forbidden_retention
+    )
+    bot = FakeBot()
+    supervisor = MarketEventSupervisor(
+        specs=(_spec(),),
+        bot=bot,  # type: ignore[arg-type]
+        data_dir=tmp_path,
+        raw_collection_recovery=True,
+        startup_attempt_id="attempt-test",
+    )
+
+    async def run() -> None:
+        await supervisor._apply_retention()
+        await supervisor.reconcile({"city": _event(25, "recovery")})
+
+    asyncio.run(run())
+
+    assert supervisor.retention_result == {
+        "state": "disabled_raw_market_recovery",
+        "mutations_attempted": False,
+    }
+    assert supervisor.published_count == 0
+    assert supervisor.signal_update_path.exists() is False
+    status = json.loads(supervisor.status_path.read_text(encoding="utf-8"))
+    assert status["collection_mode"] == "raw_market_recovery"
+    assert status["startup_attempt_id"] == "attempt-test"
+    assert status["downstream_start_blocked"] is True
+    assert status["signal_update_publication_enabled"] is False

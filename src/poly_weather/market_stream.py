@@ -261,6 +261,8 @@ class MarketWebSocketBot:
         max_message_size_bytes: int = DEFAULT_MAX_WS_MESSAGE_SIZE,
         status_poll_seconds: float = STATUS_POLL_SECONDS,
         status_client: PolymarketStatusClient | None = None,
+        raw_collection_recovery: bool = False,
+        startup_attempt_id: str | None = None,
     ) -> None:
         if not asset_slugs:
             raise ValueError("at least one asset id is required")
@@ -300,6 +302,8 @@ class MarketWebSocketBot:
         self.quality_windows_path = data_dir / "runtime" / "polymarket_quality_windows.json"
         self.status_client = status_client or PolymarketStatusClient()
         self._owns_status_client = status_client is None
+        self.raw_collection_recovery = raw_collection_recovery
+        self.startup_attempt_id = startup_attempt_id
         self.quality_windows = merge_quality_windows(
             load_quality_windows(self.quality_windows_path),
             load_quality_overrides(),
@@ -975,9 +979,7 @@ class MarketWebSocketBot:
                 await asyncio.to_thread(self.sink.write_database, batch)
                 self.database_queue.task_done()
                 self.metrics.database_rows_written += len(batch)
-                if time.monotonic() - self.last_database_maintenance >= 86_400:
-                    await asyncio.to_thread(self._maintain_database)
-                    self.last_database_maintenance = time.monotonic()
+                await self._maybe_maintain_database()
         except Exception as exc:
             self.metrics.state = "failed"
             self.metrics.last_error = f"database writer {type(exc).__name__}: {exc}"
@@ -988,6 +990,15 @@ class MarketWebSocketBot:
     def _maintain_database(self) -> None:
         self.sink.warehouse.connection.execute("CHECKPOINT")
         self.sink.warehouse.connection.execute("VACUUM")
+
+    async def _maybe_maintain_database(self) -> bool:
+        if self.raw_collection_recovery:
+            return False
+        if time.monotonic() - self.last_database_maintenance < 86_400:
+            return False
+        await asyncio.to_thread(self._maintain_database)
+        self.last_database_maintenance = time.monotonic()
+        return True
 
     async def _status_heartbeat(self) -> None:
         while not self.stop_event.is_set():
@@ -1042,11 +1053,22 @@ class MarketWebSocketBot:
             "upstream_status_history_path": str(self.status_history_path.resolve()),
             "upstream_quality_windows_path": str(self.quality_windows_path.resolve()),
             "upstream_status_poll_seconds": self.status_poll_seconds,
+            "collection_mode": (
+                "raw_market_recovery" if self.raw_collection_recovery else "standard"
+            ),
+            "startup_attempt_id": self.startup_attempt_id,
+            "downstream_start_blocked": self.raw_collection_recovery,
             "read_only": True,
             "database": self.sink.warehouse.database_status(),
             "retention": {
-                "raw_market_days": 30,
+                "state": (
+                    "disabled_raw_market_recovery"
+                    if self.raw_collection_recovery
+                    else "configured"
+                ),
+                "raw_market_days": None if self.raw_collection_recovery else 30,
                 "aggregate_results": "permanent",
+                "automatic_checkpoint_vacuum_enabled": not self.raw_collection_recovery,
             },
             **self.disk_status_cache,
         }

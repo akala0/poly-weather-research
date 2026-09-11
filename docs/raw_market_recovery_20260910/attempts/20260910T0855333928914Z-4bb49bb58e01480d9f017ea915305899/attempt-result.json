@@ -1,0 +1,47 @@
+{
+    "schema_version":  1,
+    "attempt_id":  "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+    "daemon_name":  "market-supervisor",
+    "state":  "rejected",
+    "stage":  "strict_verification",
+    "started_at":  "2026-09-10T08:55:33.3928914Z",
+    "ended_at":  "2026-09-10T08:55:45.4309849Z",
+    "child_pid":  27072,
+    "child_exit_confirmed":  true,
+    "restart_blocked":  false,
+    "exit_code":  2,
+    "exit_code_source":  "process",
+    "runner_failure_code":  null,
+    "runner_source_sha256":  "44fb107523b37b9d312ba0d48cbe083cfb2ab836f3900eb366a29519e4627b10",
+    "raw_market_recovery":  true,
+    "startup_diagnostic":  {
+                               "attempt_id":  "20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899",
+                               "details":  {
+                                               "candidate_count":  10,
+                                               "no_candidate_count":  0,
+                                               "rejected_count":  10,
+                                               "verified_event_count":  0,
+                                               "verified_template_count":  10
+                                           },
+                               "emitted_at":  "2026-09-10T08:55:45.231027+00:00",
+                               "execution_enabled":  false,
+                               "exit_code":  2,
+                               "outcome":  "rejected",
+                               "raw_collection_recovery":  true,
+                               "schema_version":  1,
+                               "stage":  "strict_verification",
+                               "terminal":  true
+                           },
+    "launch_error":  null,
+    "stdout":  {
+                   "path":  "D:\\poly\\data\\logs\\daemons\\attempts\\market-supervisor\\20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899\\stdout.log",
+                   "bytes":  0,
+                   "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+               },
+    "stderr":  {
+                   "path":  "D:\\poly\\data\\logs\\daemons\\attempts\\market-supervisor\\20260910T0855333928914Z-4bb49bb58e01480d9f017ea915305899\\stderr.log",
+                   "bytes":  500,
+                   "sha256":  "3ec9f6d54b4c48e701e0a0fc1fe10406b86edd86d710c5cf9c17db7ffafeaedf"
+               },
+    "execution_enabled":  false
+}

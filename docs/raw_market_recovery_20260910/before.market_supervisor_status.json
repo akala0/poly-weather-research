@@ -1,0 +1,124 @@
+{
+  "active_events": [],
+  "cycles": 370,
+  "discovered": 3568,
+  "execution_enabled": false,
+  "heartbeat": "2026-09-04T11:45:29.148221+00:00",
+  "hot_subscriptions": 8,
+  "hot_unsubscriptions": 8,
+  "last_cycle_at": "2026-09-04T11:45:15.555706+00:00",
+  "last_error": null,
+  "pid": 23304,
+  "runtime_status_schema_version": 1,
+  "signal_update_path": "D:\\poly\\data\\runtime\\signal_config_update.json",
+  "skipped": 3560,
+  "started_at": "2026-09-03T03:28:42.184053+00:00",
+  "state": "running",
+  "state_path": "D:\\poly\\data\\runtime\\market_supervisor_status.json",
+  "status_checksum_sha256": "fb322f3b26948b548ab7d8160688db812d2205c3c511c1fbac5bb1907639c33f",
+  "status_sequence": 2175,
+  "updated_at": "2026-09-04T11:45:29.148210+00:00",
+  "verification_failures": {
+    "atlanta-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-atlanta-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.115042+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "chengdu-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-chengdu-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.126851+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "chicago-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-chicago-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.108089+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "chongqing-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-chongqing-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.124625+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "dallas-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-dallas-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.117121+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "houston-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-houston-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.120192+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "los-angeles-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-los-angeles-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.110460+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "miami-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-miami-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.112854+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "new-york-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-nyc-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.105965+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    },
+    "seattle-daily-high-research-seed": {
+      "differences": [
+        "finalization_known",
+        "finalization_exact"
+      ],
+      "event_slug": "highest-temperature-in-seattle-on-september-5-2026",
+      "fail_closed": true,
+      "failed_at": "2026-09-04T11:45:29.122431+00:00",
+      "reason": "failed: finalization_known, finalization_exact"
+    }
+  },
+  "verified": 8
+}

@@ -1,0 +1,38 @@
+{
+  "station_id": "ZUUU",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Chengdu on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:28.848445+00:00",
+  "registry_expected": {
+    "key": "chengdu-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-chengdu-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "ZUUU",
+    "station_name": "Chengdu Shuangliu International Airport",
+    "latitude": 30.576,
+    "longitude": 103.95,
+    "timezone": "Asia/Shanghai",
+    "metric": "daily_high_temperature",
+    "unit": "celsius",
+    "bucket_width_degrees": 1,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=zuuu",
+    "ncei_station_id": null,
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": false,
+    "open_meteo_enabled": false,
+    "status": "verified",
+    "notes": "Verified against 2026-08-24 evidence SHA-256 c9aedb2cb947cce1daceffbd5bc5196cb7413b38fc30b4b49a1b282d4924ad79. NOAA AWC station metadata gives 30.576, 103.950. Open-Meteo returns a grid 6.53 km away, so forecast and calibration paths remain fail-closed until a suitable data source is configured."
+  }
+}

@@ -1,0 +1,2 @@
+POLY_WEATHER_STARTUP_DIAGNOSTIC {"attempt_id":"unmanaged","details":{"reason":"STARTUP_ATTEMPT_ID_REQUIRED"},"emitted_at":"2026-09-10T08:41:05.076634+00:00","execution_enabled":false,"exit_code":2,"outcome":"rejected","raw_collection_recovery":false,"schema_version":1,"stage":"configuration","terminal":true}
+Market supervisor requires --startup-attempt-id.

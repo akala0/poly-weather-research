@@ -1,0 +1,205 @@
+{
+  "station_id": "KSEA",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Seattle on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:27.323200+00:00",
+  "registry_expected": {
+    "key": "seattle-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-seattle-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KSEA",
+    "station_name": "Seattle-Tacoma International Airport",
+    "latitude": 47.4447,
+    "longitude": -122.3136,
+    "timezone": "America/Los_Angeles",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=ksea",
+    "ncei_station_id": "USW00024233",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 d7d5604a906fdf1ab18aaad68cf55d1ee314826f79f1e39efa31bf6d3d8374de: KSEA and NOAA Hourly Data Temp with the standard US template."
+  },
+  "received_at": "2026-09-10T09:12:27.883198+00:00",
+  "status_code": 200,
+  "wire_sha256": "f252281e06a27dd8a33c2d12fbebf7639da65bc1641d78deac97f47f6c9f2f3e",
+  "wire_bytes": 56522,
+  "saved_response_sha256": "298399f4ec39a4ac43b31fc8e992aee9065b85c6eef0e4ad8a0852b28d10a003",
+  "diagnosis": {
+    "candidate_count": 1,
+    "ambiguous": false,
+    "candidates": [
+      {
+        "event_id": "987928",
+        "event_slug": "highest-temperature-in-seattle-on-september-10-2026",
+        "stage": "verification",
+        "parsed": {
+          "parser_version": "2",
+          "evidence_sha256": "be49befcf3551eb090ab895110e800cbe40d662d6662b24c546b611eb9191b98",
+          "event_id": "987928",
+          "event_slug": "highest-temperature-in-seattle-on-september-10-2026",
+          "title": "Highest temperature in Seattle on September 10?",
+          "city": "Seattle",
+          "target_date": "2026-09-10",
+          "station_id": "KSEA",
+          "station_name": "Seattle-Tacoma International Airport",
+          "timezone": "America/Los_Angeles",
+          "official_source_name": "NOAA Timeseries",
+          "official_source_url": "https://www.weather.gov/wrh/timeseries?site=ksea",
+          "unit": "fahrenheit",
+          "precision_degrees": "1",
+          "bucket_width_degrees": 2,
+          "observation_table": "Daily Observations",
+          "finalization_rule": "unknown",
+          "ignores_late_revisions": true,
+          "buckets": [
+            {
+              "market_id": "4362155",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-59forbelow",
+              "label": "Will the highest temperature in Seattle be 59°F or below on September 10?",
+              "lower_f": null,
+              "upper_f": 59,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4362156",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-60-61f",
+              "label": "Will the highest temperature in Seattle be between 60-61°F on September 10?",
+              "lower_f": 60,
+              "upper_f": 61,
+              "unit": "fahrenheit",
+              "market_probability": "0.0005"
+            },
+            {
+              "market_id": "4362157",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-62-63f",
+              "label": "Will the highest temperature in Seattle be between 62-63°F on September 10?",
+              "lower_f": 62,
+              "upper_f": 63,
+              "unit": "fahrenheit",
+              "market_probability": "0.004"
+            },
+            {
+              "market_id": "4362158",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-64-65f",
+              "label": "Will the highest temperature in Seattle be between 64-65°F on September 10?",
+              "lower_f": 64,
+              "upper_f": 65,
+              "unit": "fahrenheit",
+              "market_probability": "0.025"
+            },
+            {
+              "market_id": "4362159",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-66-67f",
+              "label": "Will the highest temperature in Seattle be between 66-67°F on September 10?",
+              "lower_f": 66,
+              "upper_f": 67,
+              "unit": "fahrenheit",
+              "market_probability": "0.185"
+            },
+            {
+              "market_id": "4362160",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-68-69f",
+              "label": "Will the highest temperature in Seattle be between 68-69°F on September 10?",
+              "lower_f": 68,
+              "upper_f": 69,
+              "unit": "fahrenheit",
+              "market_probability": "0.465"
+            },
+            {
+              "market_id": "4362161",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-70-71f",
+              "label": "Will the highest temperature in Seattle be between 70-71°F on September 10?",
+              "lower_f": 70,
+              "upper_f": 71,
+              "unit": "fahrenheit",
+              "market_probability": "0.26"
+            },
+            {
+              "market_id": "4362162",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-72-73f",
+              "label": "Will the highest temperature in Seattle be between 72-73°F on September 10?",
+              "lower_f": 72,
+              "upper_f": 73,
+              "unit": "fahrenheit",
+              "market_probability": "0.025"
+            },
+            {
+              "market_id": "4362163",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-74-75f",
+              "label": "Will the highest temperature in Seattle be between 74-75°F on September 10?",
+              "lower_f": 74,
+              "upper_f": 75,
+              "unit": "fahrenheit",
+              "market_probability": "0.02"
+            },
+            {
+              "market_id": "4362164",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-76-77f",
+              "label": "Will the highest temperature in Seattle be between 76-77°F on September 10?",
+              "lower_f": 76,
+              "upper_f": 77,
+              "unit": "fahrenheit",
+              "market_probability": "0.0015"
+            },
+            {
+              "market_id": "4362165",
+              "market_slug": "highest-temperature-in-seattle-on-september-10-2026-78forhigher",
+              "label": "Will the highest temperature in Seattle be 78°F or higher on September 10?",
+              "lower_f": 78,
+              "upper_f": null,
+              "unit": "fahrenheit",
+              "market_probability": "0.0015"
+            }
+          ],
+          "parse_status": "complete",
+          "missing_fields": []
+        },
+        "verification": {
+          "settlement_key": "seattle-daily-high-research-seed",
+          "evidence_sha256": "be49befcf3551eb090ab895110e800cbe40d662d6662b24c546b611eb9191b98",
+          "passed": false,
+          "checks": {
+            "parse_complete": true,
+            "registry_verified": true,
+            "slug_exact": true,
+            "station_exact": true,
+            "station_name_exact": true,
+            "timezone_exact": true,
+            "source_exact": true,
+            "whole_degree_precision": true,
+            "unit_exact": true,
+            "bucket_width_exact": true,
+            "finalization_known": false,
+            "finalization_exact": false,
+            "late_revision_cutoff": true,
+            "late_revision_exact": true
+          },
+          "failures": [
+            "finalization_known",
+            "finalization_exact"
+          ],
+          "tradeable": false,
+          "reason": "failed: finalization_known, finalization_exact"
+        }
+      }
+    ]
+  },
+  "saved_replay_matches_original": true
+}

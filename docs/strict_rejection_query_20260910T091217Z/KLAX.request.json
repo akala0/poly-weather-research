@@ -1,0 +1,38 @@
+{
+  "station_id": "KLAX",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Los Angeles on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:23.492775+00:00",
+  "registry_expected": {
+    "key": "los-angeles-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-los-angeles-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KLAX",
+    "station_name": "Los Angeles International Airport",
+    "latitude": 33.9382,
+    "longitude": -118.3866,
+    "timezone": "America/Los_Angeles",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=klax",
+    "ncei_station_id": "USW00023174",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 bd6bdf2b37ea969666964029432000b644615ec9d7056c28092e91e4bab4504a: KLAX and NOAA Hourly Data Temp. The 2026-08-22 Wunderground snapshot remains archived as a historical source-template version."
+  }
+}

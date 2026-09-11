@@ -71,6 +71,7 @@ class GammaClient:
         client: httpx.Client | None = None,
     ) -> None:
         self._owns_client = client is None
+        self.event_observer = None
         self._client = client or httpx.Client(
             base_url=base_url,
             timeout=timeout,
@@ -145,6 +146,9 @@ class GammaClient:
         for event in events:
             if not isinstance(event, dict):
                 continue
+            receipt = datetime.now(UTC)
+            if self.event_observer is not None:
+                self.event_observer("input", event, receipt)
             event_markets: list[dict[str, Any]] = []
             for market in event.get("markets") or []:
                 if not isinstance(market, dict):
@@ -155,19 +159,24 @@ class GammaClient:
                 enriched.setdefault("resolutionSource", event.get("resolutionSource"))
                 raw_markets.append(enriched)
                 event_markets.append(enriched)
-            if event.get("id") and event.get("slug"):
-                event_snapshots.append(
-                    EventSnapshot(
+            try:
+                converted = tuple(Market.from_gamma(item) for item in event_markets)
+                if event.get("id") and event.get("slug"):
+                    snapshot = EventSnapshot(
                         request_url=str(response.request.url),
-                        fetched_at=datetime.now(UTC),
+                        fetched_at=receipt,
                         event_id=str(event["id"]),
                         event_slug=str(event["slug"]),
                         title=str(event.get("title") or ""),
                         resolution_source=event.get("resolutionSource"),
                         raw_payload=event,
-                        markets=tuple(Market.from_gamma(item) for item in event_markets),
+                        markets=converted,
                     )
-                )
+                    event_snapshots.append(snapshot)
+            except Exception as exc:
+                if self.event_observer is not None:
+                    self.event_observer("conversion", event, receipt, exc)
+                raise
 
         pagination = payload.get("pagination") or {}
         return SearchPage(

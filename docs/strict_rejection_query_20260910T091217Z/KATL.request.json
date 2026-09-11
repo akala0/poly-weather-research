@@ -1,0 +1,38 @@
+{
+  "station_id": "KATL",
+  "local_date": "2026-09-10",
+  "params": {
+    "q": "highest temperature in Atlanta on September 10",
+    "events_status": "active",
+    "limit_per_type": 50,
+    "page": 1,
+    "keep_closed_markets": 0,
+    "search_tags": "false",
+    "search_profiles": "false"
+  },
+  "requested_at": "2026-09-10T09:12:25.152022+00:00",
+  "registry_expected": {
+    "key": "atlanta-daily-high-research-seed",
+    "venue": "polymarket",
+    "market_slug_pattern": "highest-temperature-in-atlanta-on-[a-z]+-\\d{1,2}-\\d{4}",
+    "station_id": "KATL",
+    "station_name": "Hartsfield-Jackson International Airport",
+    "latitude": 33.6367,
+    "longitude": -84.4281,
+    "timezone": "America/New_York",
+    "metric": "daily_high_temperature",
+    "unit": "fahrenheit",
+    "bucket_width_degrees": 2,
+    "rounding_precision_degrees": "1",
+    "finalization_rule": "first_next_day_observation",
+    "ignores_late_revisions": true,
+    "window_basis": "local_civil_day",
+    "resolution_source_url": "https://www.weather.gov/wrh/timeseries?site=katl",
+    "ncei_station_id": "USW00013874",
+    "signal_truth_policy": "same_station_noaa",
+    "nws_api_enabled": true,
+    "open_meteo_enabled": true,
+    "status": "verified",
+    "notes": "Verified against the 2026-08-24 evidence SHA-256 cc1a42635ed2bee099576c31e5bf9f2e217f14c6585b1c31ef84c5d9c077e0a7: KATL and NOAA Hourly Data Temp with the standard US template."
+  }
+}

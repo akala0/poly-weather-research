@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-11",
+  "scope": "isolated_public_market_capture_identity_gate",
+  "default_enabled": false,
+  "execution_enabled": false,
+  "formal_market_recovery_authorized": false,
+  "formal_data_written": false,
+  "weather_touched": false,
+  "legacy_v2_state_touched": false,
+  "paper_started": false,
+  "identity_tests": {
+    "path": "tests/test_collection_identity.py",
+    "passed": 25
+  },
+  "capture_sync_tests": {
+    "path": "tests/test_collection_capture.py",
+    "passed": 21,
+    "deselected_async_entry_tests": 2
+  },
+  "consumer_isolation": {
+    "passed": 1,
+    "families": [
+      "archive_glob",
+      "weather_join",
+      "market_ws_trade_tape",
+      "depth_and_liquidity",
+      "information_clock",
+      "real_no",
+      "shadow_pair",
+      "book_snapshot_converters"
+    ]
+  },
+  "broad_regression": {
+    "collected": 849,
+    "passed": 832,
+    "deselected_async_entry_tests": 17,
+    "full_suite_status": "not_sealed_async_environment_blocked"
+  },
+  "static_checks": {
+    "ruff_src_tests": "passed",
+    "compileall": "passed",
+    "new_capture_identity_format": "passed"
+  },
+  "async_blocker": {
+    "status": "environment_blocked",
+    "symptom": "Windows asyncio event-loop creation blocks in socket.socketpair",
+    "affected_capture_tests": [
+      "test_actual_recorder_fake_wire_reconnect_rechecks_identity_and_preserves_unknown",
+      "test_invalid_identity_saved_before_rejection_and_no_subscription"
+    ],
+    "interpretation": "not counted as pass or failure"
+  },
+  "commands": [
+    ".\\.venv\\Scripts\\python.exe -B -m pytest tests/test_collection_identity.py -q -p no:cacheprovider",
+    ".\\.venv\\Scripts\\python.exe -B -m pytest tests/test_collection_capture.py -k \"not actual_recorder and not invalid_identity\" -q -p no:cacheprovider",
+    ".\\.venv\\Scripts\\python.exe -B -m ruff check src tests",
+    ".\\.venv\\Scripts\\python.exe -B -m compileall -q src/poly_weather tests"
+  ],
+  "subsequent_acceptance_20260911": {
+    "status": "BLOCKED",
+    "report": "isolated_capture_acceptance_report_20260911.md",
+    "evidence": "isolated_capture_acceptance_evidence_20260911.json",
+    "current_full_default": "877 passed in 44.27s; exit 0",
+    "historical_records_preserved": true,
+    "old_async_blocker_superseded_by": "windows_asyncio_loopback_fix_20260911.md",
+    "real_capture_started": false
+  }
+}

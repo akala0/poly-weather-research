@@ -196,6 +196,39 @@ def test_market_websocket_has_frame_headroom_without_compression(tmp_path) -> No
         bot.sink.close()
 
 
+def test_raw_market_recovery_disables_database_maintenance_and_marks_status(
+    tmp_path, monkeypatch
+) -> None:
+    bot = MarketWebSocketBot(
+        asset_slugs={"yes": "bucket:Yes"},
+        data_dir=tmp_path,
+        raw_collection_recovery=True,
+        startup_attempt_id="attempt-test",
+    )
+
+    def forbidden_maintenance() -> None:
+        raise AssertionError("raw market recovery invoked CHECKPOINT/VACUUM")
+
+    monkeypatch.setattr(bot, "_maintain_database", forbidden_maintenance)
+    bot.last_database_maintenance = 0
+    try:
+        assert asyncio.run(bot._maybe_maintain_database()) is False
+        bot.metrics.state = "connected"
+        bot._write_status()
+        status = json.loads(bot.status_path.read_text(encoding="utf-8"))
+        assert status["collection_mode"] == "raw_market_recovery"
+        assert status["startup_attempt_id"] == "attempt-test"
+        assert status["downstream_start_blocked"] is True
+        assert status["retention"] == {
+            "state": "disabled_raw_market_recovery",
+            "raw_market_days": None,
+            "aggregate_results": "permanent",
+            "automatic_checkpoint_vacuum_enabled": False,
+        }
+    finally:
+        bot.sink.close()
+
+
 def test_repeated_message_too_big_failures_latch_explicit_fault(tmp_path) -> None:
     bot = MarketWebSocketBot(asset_slugs={"yes": "bucket:Yes"}, data_dir=tmp_path)
     error = (

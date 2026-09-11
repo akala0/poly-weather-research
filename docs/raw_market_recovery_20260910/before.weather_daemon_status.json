@@ -1,0 +1,642 @@
+{
+  "base_state": "running",
+  "errors": 208,
+  "events": 7022,
+  "heartbeat": "2026-09-10T08:52:34.515826+00:00",
+  "http_pool_accounting_gap_degraded_threshold": 10,
+  "http_pool_health": {
+    "connection_accounting_gap": -2,
+    "gap_consecutive_samples": 0,
+    "last_rebuild_at": null,
+    "last_rebuild_reason": null,
+    "pool": {
+      "connections_connecting": 0,
+      "connections_idle": 2,
+      "connections_in_use": 0,
+      "connections_total": 2,
+      "pools": [
+        {
+          "connections_available": 2,
+          "connections_closed": 0,
+          "connections_connecting": 0,
+          "connections_failed": 0,
+          "connections_idle": 2,
+          "connections_in_use": 0,
+          "connections_total": 2,
+          "max_connections": 80,
+          "max_keepalive_connections": 40,
+          "name": "default",
+          "pool_type": "AsyncConnectionPool",
+          "requests_assigned": 0,
+          "requests_queued": 0,
+          "requests_total": 0
+        }
+      ],
+      "proxy_mounts_present": false,
+      "requests_queued": 0,
+      "requests_total": 0,
+      "supported": true
+    },
+    "process_tcp": {
+      "established": 4,
+      "external": 2,
+      "states": {
+        "ESTABLISHED": 4
+      },
+      "supported": true,
+      "total": 4
+    },
+    "rebuild_count": 0,
+    "sampled_at": "2026-09-10T08:52:23.687835+00:00"
+  },
+  "intervals_seconds": {
+    "forecast": 10800.0,
+    "metar_us": 900.0,
+    "taf": 3600.0,
+    "wrh_metar_international": 1800.0,
+    "wrh_nws_us": 120.0
+  },
+  "last_error": null,
+  "last_event_at": "2026-09-10T08:52:20.248635+00:00",
+  "last_new_observation_age_seconds": 14.267147,
+  "last_new_observation_at": "2026-09-10T08:52:20.248635+00:00",
+  "last_success_age_seconds": 14.26714,
+  "last_successful_request_at": "2026-09-10T08:52:20.248635+00:00",
+  "model_weights_by_station": {
+    "KATL": {
+      "gem": 0.3333333333333333,
+      "gfs": 0.3333333333333333,
+      "icon": 0.3333333333333333
+    },
+    "KDAL": {
+      "gem": 0.3333333333333333,
+      "gfs": 0.3333333333333333,
+      "icon": 0.3333333333333333
+    },
+    "KHOU": {
+      "gem": 0.3333333333333333,
+      "gfs": 0.3333333333333333,
+      "icon": 0.3333333333333333
+    },
+    "KLAX": {
+      "gem": 0.24271559821412578,
+      "gfs": 0.46235421002086813,
+      "icon": 0.29493019176500607
+    },
+    "KLGA": {
+      "gem": 0.32707082200593535,
+      "gfs": 0.3211663706239903,
+      "icon": 0.3517628073700744
+    },
+    "KMIA": {
+      "gem": 0.3333333333333333,
+      "gfs": 0.3333333333333333,
+      "icon": 0.3333333333333333
+    },
+    "KORD": {
+      "gem": 0.3333333333333333,
+      "gfs": 0.3333333333333333,
+      "icon": 0.3333333333333333
+    },
+    "KSEA": {
+      "gem": 0.3333333333333333,
+      "gfs": 0.3333333333333333,
+      "icon": 0.3333333333333333
+    },
+    "ZUCK": {
+      "gem": 0.3333333333333333,
+      "gfs": 0.3333333333333333,
+      "icon": 0.3333333333333333
+    },
+    "ZUUU": {
+      "gem": 0.3333333333333333,
+      "gfs": 0.3333333333333333,
+      "icon": 0.3333333333333333
+    }
+  },
+  "new_observation_stall_threshold_seconds": 1200,
+  "pid": 17944,
+  "products": {
+    "KATL:metar": {
+      "errors": 2,
+      "events": 23,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:36.646706+00:00",
+      "last_successful_request_at": "2026-09-10T08:49:37.596914+00:00",
+      "requests": 92
+    },
+    "KATL:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:25.206391+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:25.206391+00:00",
+      "requests": 8
+    },
+    "KATL:nws": {
+      "errors": 9,
+      "events": 168,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:47:20.940090+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:21.656010+00:00",
+      "requests": 684
+    },
+    "KATL:taf": {
+      "errors": 1,
+      "events": 12,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:36.634878+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:36.634878+00:00",
+      "requests": 23
+    },
+    "KATL:wrh_timeseries_observation": {
+      "errors": 12,
+      "events": 634,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:37.110279+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:37.110279+00:00",
+      "requests": 684
+    },
+    "KDAL:metar": {
+      "errors": 2,
+      "events": 23,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:37.160072+00:00",
+      "last_successful_request_at": "2026-09-10T08:49:37.112476+00:00",
+      "requests": 92
+    },
+    "KDAL:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:22.532308+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:22.532308+00:00",
+      "requests": 8
+    },
+    "KDAL:nws": {
+      "errors": 8,
+      "events": 175,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:20.977686+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:20.977686+00:00",
+      "requests": 684
+    },
+    "KDAL:taf": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T06:04:31.257279+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:24.128390+00:00",
+      "requests": 23
+    },
+    "KDAL:wrh_timeseries_observation": {
+      "errors": 11,
+      "events": 628,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:35.802458+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:35.802458+00:00",
+      "requests": 684
+    },
+    "KHOU:metar": {
+      "errors": 1,
+      "events": 30,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:30.570364+00:00",
+      "last_successful_request_at": "2026-09-10T08:49:31.835040+00:00",
+      "requests": 92
+    },
+    "KHOU:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:23.370928+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:23.370928+00:00",
+      "requests": 8
+    },
+    "KHOU:nws": {
+      "errors": 9,
+      "events": 183,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:20.912028+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:20.912028+00:00",
+      "requests": 684
+    },
+    "KHOU:taf": {
+      "errors": 0,
+      "events": 10,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:22.353523+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:22.353523+00:00",
+      "requests": 23
+    },
+    "KHOU:wrh_timeseries_observation": {
+      "errors": 12,
+      "events": 628,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:37.351982+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:37.351982+00:00",
+      "requests": 684
+    },
+    "KLAX:metar": {
+      "errors": 2,
+      "events": 23,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:37.024777+00:00",
+      "last_successful_request_at": "2026-09-10T08:49:36.960848+00:00",
+      "requests": 92
+    },
+    "KLAX:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:22.538478+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:22.538478+00:00",
+      "requests": 8
+    },
+    "KLAX:nws": {
+      "errors": 9,
+      "events": 182,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:25.469392+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:25.469392+00:00",
+      "requests": 684
+    },
+    "KLAX:taf": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T06:04:27.151690+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:22.700753+00:00",
+      "requests": 23
+    },
+    "KLAX:wrh_timeseries_observation": {
+      "errors": 17,
+      "events": 620,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:57.619915+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:57.619915+00:00",
+      "requests": 684
+    },
+    "KLGA:metar": {
+      "errors": 2,
+      "events": 23,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:34.603207+00:00",
+      "last_successful_request_at": "2026-09-10T08:49:36.980011+00:00",
+      "requests": 92
+    },
+    "KLGA:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:23.527953+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:23.527953+00:00",
+      "requests": 8
+    },
+    "KLGA:nws": {
+      "errors": 9,
+      "events": 190,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:20.899545+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:20.899545+00:00",
+      "requests": 684
+    },
+    "KLGA:taf": {
+      "errors": 1,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T06:04:45.293969+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:42.951841+00:00",
+      "requests": 23
+    },
+    "KLGA:wrh_timeseries_observation": {
+      "errors": 12,
+      "events": 638,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:38.692174+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:38.692174+00:00",
+      "requests": 684
+    },
+    "KMIA:metar": {
+      "errors": 4,
+      "events": 36,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:05:00.320974+00:00",
+      "last_successful_request_at": "2026-09-10T08:50:01.001205+00:00",
+      "requests": 92
+    },
+    "KMIA:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:22.656181+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:22.656181+00:00",
+      "requests": 8
+    },
+    "KMIA:nws": {
+      "errors": 9,
+      "events": 175,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:47:21.189956+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:20.796716+00:00",
+      "requests": 684
+    },
+    "KMIA:taf": {
+      "errors": 1,
+      "events": 9,
+      "last_error": null,
+      "last_event_at": "2026-09-10T06:04:44.248202+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:42.676918+00:00",
+      "requests": 23
+    },
+    "KMIA:wrh_timeseries_observation": {
+      "errors": 14,
+      "events": 631,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:41.090959+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:41.090959+00:00",
+      "requests": 684
+    },
+    "KORD:metar": {
+      "errors": 2,
+      "events": 37,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:39.552337+00:00",
+      "last_successful_request_at": "2026-09-10T08:49:33.566549+00:00",
+      "requests": 92
+    },
+    "KORD:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:22.387643+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:22.387643+00:00",
+      "requests": 8
+    },
+    "KORD:nws": {
+      "errors": 9,
+      "events": 178,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:18.859810+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:18.859810+00:00",
+      "requests": 684
+    },
+    "KORD:taf": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T06:04:24.013854+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:40.331903+00:00",
+      "requests": 23
+    },
+    "KORD:wrh_timeseries_observation": {
+      "errors": 14,
+      "events": 628,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:52:19.910321+00:00",
+      "last_successful_request_at": "2026-09-10T08:52:19.910321+00:00",
+      "requests": 684
+    },
+    "KSEA:metar": {
+      "errors": 2,
+      "events": 27,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:04:36.015759+00:00",
+      "last_successful_request_at": "2026-09-10T08:49:36.760445+00:00",
+      "requests": 92
+    },
+    "KSEA:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:22.296126+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:22.296126+00:00",
+      "requests": 8
+    },
+    "KSEA:nws": {
+      "errors": 16,
+      "events": 180,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:48:00.822671+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:59.583869+00:00",
+      "requests": 684
+    },
+    "KSEA:taf": {
+      "errors": 1,
+      "events": 9,
+      "last_error": null,
+      "last_event_at": "2026-09-10T06:04:31.204062+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:31.284385+00:00",
+      "requests": 23
+    },
+    "KSEA:wrh_timeseries_observation": {
+      "errors": 15,
+      "events": 628,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:52:20.248635+00:00",
+      "last_successful_request_at": "2026-09-10T08:52:20.248635+00:00",
+      "requests": 684
+    },
+    "ZUCK:metar": {
+      "errors": 1,
+      "events": 45,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:34:27.433731+00:00",
+      "last_successful_request_at": "2026-09-10T08:34:27.433731+00:00",
+      "requests": 46
+    },
+    "ZUCK:multi_model_deterministic_forecast": {
+      "errors": 0,
+      "events": 8,
+      "last_error": null,
+      "last_event_at": "2026-09-10T07:04:22.526531+00:00",
+      "last_successful_request_at": "2026-09-10T07:04:22.526531+00:00",
+      "requests": 8
+    },
+    "ZUCK:taf": {
+      "errors": 0,
+      "events": 4,
+      "last_error": null,
+      "last_event_at": "2026-09-10T04:04:21.940419+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:23.177703+00:00",
+      "requests": 23
+    },
+    "ZUCK:wrh_timeseries_observation": {
+      "errors": 0,
+      "events": 46,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:34:22.398176+00:00",
+      "last_successful_request_at": "2026-09-10T08:34:22.398176+00:00",
+      "requests": 46
+    },
+    "ZUUU:metar": {
+      "errors": 1,
+      "events": 45,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:34:28.436403+00:00",
+      "last_successful_request_at": "2026-09-10T08:34:28.436403+00:00",
+      "requests": 46
+    },
+    "ZUUU:taf": {
+      "errors": 0,
+      "events": 4,
+      "last_error": null,
+      "last_event_at": "2026-09-10T04:04:21.816554+00:00",
+      "last_successful_request_at": "2026-09-10T08:04:22.365757+00:00",
+      "requests": 23
+    },
+    "ZUUU:wrh_timeseries_observation": {
+      "errors": 0,
+      "events": 46,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:34:24.919422+00:00",
+      "last_successful_request_at": "2026-09-10T08:34:24.919422+00:00",
+      "requests": 46
+    }
+  },
+  "queue_depth": 0,
+  "queue_high_water": 7,
+  "read_only": true,
+  "recent_error_count_5m": 0,
+  "recent_error_rate_5m": 0.0,
+  "recent_request_count_5m": 48,
+  "requests": 12166,
+  "rows_written": 7022,
+  "run_id": "dce60e51-02f7-493c-834d-df3ced93a0fc",
+  "runtime_status_schema_version": 1,
+  "started_at": "2026-09-09T10:04:15.944852+00:00",
+  "state": "running",
+  "station_id": null,
+  "station_ids": [
+    "KLGA",
+    "KLAX",
+    "KORD",
+    "KMIA",
+    "KATL",
+    "KDAL",
+    "KHOU",
+    "KSEA",
+    "ZUCK",
+    "ZUUU"
+  ],
+  "stations": {
+    "KATL": {
+      "errors": 24,
+      "events": 845,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:37.110279+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:37.110279+00:00",
+      "requests": 1491
+    },
+    "KDAL": {
+      "errors": 21,
+      "events": 842,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:35.802458+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:35.802458+00:00",
+      "requests": 1491
+    },
+    "KHOU": {
+      "errors": 22,
+      "events": 859,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:37.351982+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:37.351982+00:00",
+      "requests": 1491
+    },
+    "KLAX": {
+      "errors": 28,
+      "events": 841,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:57.619915+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:57.619915+00:00",
+      "requests": 1491
+    },
+    "KLGA": {
+      "errors": 24,
+      "events": 867,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:38.692174+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:38.692174+00:00",
+      "requests": 1491
+    },
+    "KMIA": {
+      "errors": 28,
+      "events": 859,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:51:41.090959+00:00",
+      "last_successful_request_at": "2026-09-10T08:51:41.090959+00:00",
+      "requests": 1491
+    },
+    "KORD": {
+      "errors": 25,
+      "events": 859,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:52:19.910321+00:00",
+      "last_successful_request_at": "2026-09-10T08:52:19.910321+00:00",
+      "requests": 1491
+    },
+    "KSEA": {
+      "errors": 34,
+      "events": 852,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:52:20.248635+00:00",
+      "last_successful_request_at": "2026-09-10T08:52:20.248635+00:00",
+      "requests": 1491
+    },
+    "ZUCK": {
+      "errors": 1,
+      "events": 103,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:34:27.433731+00:00",
+      "last_successful_request_at": "2026-09-10T08:34:27.433731+00:00",
+      "requests": 123
+    },
+    "ZUUU": {
+      "errors": 1,
+      "events": 95,
+      "last_error": null,
+      "last_event_at": "2026-09-10T08:34:28.436403+00:00",
+      "last_successful_request_at": "2026-09-10T08:34:28.436403+00:00",
+      "requests": 115
+    }
+  },
+  "status_checksum_sha256": "3de57b2da01dec264477c0a4ca56655cdd14df1248d9e7a32c514be03ea05d3c",
+  "status_sequence": 1302332,
+  "updated_at": "2026-09-10T08:52:34.515815+00:00",
+  "writer": {
+    "configured_batch_size": 16,
+    "database": {
+      "config": {
+        "max_temp_directory_size": "4GB",
+        "memory_limit": "256MB",
+        "temp_directory": "D:\\poly\\data\\tmp\\duckdb-weather",
+        "threads": "1"
+      },
+      "database": {
+        "exists": true,
+        "mtime_at": "2026-09-10T08:39:21.584111+00:00",
+        "size_bytes": 1486630912
+      },
+      "last_database_error": null,
+      "last_successful_commit_at": "2026-09-10T08:52:20.277638+00:00",
+      "last_successful_commit_rows": 1,
+      "last_successful_write_at": "2026-09-10T08:52:20.277638+00:00",
+      "last_successful_write_rows": 1,
+      "path": "D:\\poly\\data\\weather_stream.duckdb",
+      "wal": {
+        "exists": true,
+        "mtime_at": "2026-09-10T08:52:20.266183+00:00",
+        "size_bytes": 890835
+      },
+      "wal_path": "D:\\poly\\data\\weather_stream.duckdb.wal",
+      "write_count": 6975
+    },
+    "process_memory": {
+      "reason": "GetProcessMemoryInfo unavailable",
+      "supported": false
+    },
+    "raw_batch_bytes": 13857,
+    "raw_batch_rows": 1
+  }
+}

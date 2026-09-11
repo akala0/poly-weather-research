@@ -1,0 +1,27 @@
+ M docs/reliability_test_inventory.json
+ M scripts/windows/poly-weather-daemon-runner.ps1
+ M src/poly_weather/cli.py
+ M src/poly_weather/market_stream.py
+ M src/poly_weather/market_supervisor.py
+ M src/poly_weather/runtime_safety.py
+ M tests/test_business_readiness_closure.py
+ M tests/test_cli.py
+ M tests/test_market_supervisor.py
+ M tests/test_stream_daemons.py
+?? .claude/
+?? CODEX_RAW_MARKET_LIMITED_RECOVERY_TASK.md
+?? CODEX_SETTLEMENT_RULE_CONTRACT_UPGRADE_TASK.md
+?? CODEX_SOURCE_CAPABILITY_AND_COLLECTION_RECOVERY_TASK.md
+?? docs/collection_recovery_plan_20260910.md
+?? docs/raw_market_recovery_20260910/
+?? docs/raw_market_recovery_report_20260910.md
+?? docs/raw_market_recovery_validation_20260910.json
+?? docs/settlement_rule_upgrade_20260910/
+?? docs/source_capability_audit_20260910.md
+?? docs/source_recovery_evidence_20260910.json
+?? docs/strict_rejection_diagnosis_20260910.md
+?? docs/strict_rejection_offline_20260910.py
+?? docs/strict_rejection_offline_20260910/
+?? docs/strict_rejection_query_20260910.py
+?? docs/strict_rejection_query_20260910T091217Z/
+?? tests/test_windows_runner_faults.py

@@ -1,0 +1,7 @@
+{
+    "ProcessId":  16944,
+    "ParentProcessId":  2112,
+    "CreationDate":  "\/Date(1789030531753)\/",
+    "ExecutablePath":  "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+    "CommandLine":  "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\\poly\\scripts\\windows\\poly-weather-daemon-runner.ps1 -DaemonName market-supervisor -ProjectRoot D:\\poly -RawMarketRecovery"
+}
